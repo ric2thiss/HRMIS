@@ -6,6 +6,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+//This is benjie
 Route::get('/students', function() {
 $students = [
             [
