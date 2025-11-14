@@ -1,35 +1,57 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import dictLogo from '../asset/DICT logo.svg'
 
 export default function Landing() {
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const toggleMenu = () => {
+    setMenuOpen((prev) => !prev)
+  }
+
   return (
     <div>
-      <header className="navbar">
-        <div className="container navbar-inner">
-          <div className="brand">
-            <img src={dictLogo} alt="DICT logo" className="brand-logo" />
-            <span>DICT HRMIS</span>
-          </div>
-          <nav className="nav-links">
-            <a href="#features">Features</a>
-            <a href="#about">About</a>
-            <a href="#contact">Contact</a>
-          </nav>
-          <div className="nav-cta">
-            <Link className="button" to="/login">Get Started</Link>
-          </div>
+      <header className="hr-topbar">
+        <button
+          className="hr-menu-button"
+          aria-label="Toggle navigation"
+          type="button"
+          onClick={toggleMenu}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div className="hr-brand">
+          <img src={dictLogo} alt="DICT logo" className="brand-logo" />
+          <span>HRMIS</span>
         </div>
+        <button className="hr-bell" type="button" aria-label="Notifications">
+          🔔
+        </button>
+        <Link className="button secondary" to="/login">
+          Login
+        </Link>
       </header>
+
+      {menuOpen && (
+        <aside className="hr-menu-drawer">
+          <nav className="hr-sidebar-nav">
+            <a className="hr-nav-item" href="/#features">Features</a>
+            <a className="hr-nav-item" href="/#about">About</a>
+            <a className="hr-nav-item" href="/#contact">Contact</a>
+            <Link className="hr-nav-item" to="/login">Login</Link>
+          </nav>
+        </aside>
+      )}
 
       <main>
         <section className="hero container">
-          <div className="kicker">Human Resource Management</div>
+          <div className="kicker">Human Resource Management System</div>
           <h1 className="hero-title">Modern HRMIS to streamline your workforce operations</h1>
           <p className="hero-subtitle">Centralize employee data, automate workflows, and gain insights with a fast, intuitive interface.</p>
           <div className="hero-actions">
             <Link className="button" to="/login">Launch App</Link>
-            <Link className="button secondary" to="/signup">Create account</Link>
           </div>
           <div className="badges">
             <span className="badge">No setup required</span>

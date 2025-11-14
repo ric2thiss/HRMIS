@@ -1,0 +1,60 @@
+/* Landing page styles */
+.hero {
+  padding: 56px 0 40px;
+  text-align: center;
+}
+.kicker { color: var(--accent); font-weight: 600; letter-spacing: 0.5px; }
+.hero-title {
+  margin: 12px auto 14px;
+  font-size: clamp(36px, 6vw, 56px);
+  line-height: 1.05;
+  max-width: 900px;
+}
+.hero-subtitle { margin: 0 auto 26px; max-width: 780px; color: var(--muted); font-size: clamp(16px, 2.5vw, 18px); }
+.hero-actions { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
+
+.badges { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 18px; color: var(--muted); font-size: 14px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+
+.section { padding: 40px 0; }
+.card-grid { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 16px; }
+@media (min-width: 640px) { .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15,23,42,0.06);
+}
+.card h3 { margin: 6px 0 8px; font-size: 18px; color: #0f172a; }
+.card p { margin: 0; color: var(--muted); font-size: 14px; }
+.card .icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: rgba(37,99,235,0.1); color: var(--primary); }
+
+.cta {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  background: linear-gradient(180deg, rgba(37,99,235,0.08), rgba(34,211,238,0.06));
+  display: grid;
+  gap: 16px;
+}
+@media (min-width: 768px) { .cta { grid-template-columns: 1fr auto; align-items: center; } }
+
+.footer {
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+  margin-top: 20px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  z-index: 15;
+}
+.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.footer small { color: var(--muted); }

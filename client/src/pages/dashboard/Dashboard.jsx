@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import dictLogo from '../../asset/DICT logo.svg'
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -10,6 +13,16 @@ export default function Dashboard() {
 
   const toggleMenu = () => {
     setMenuOpen((prev) => !prev)
+  }
+
+  const goToDashboard = () => {
+    navigate('/dashboard')
+    setMenuOpen(false)
+  }
+
+  const goToProfileSettings = () => {
+    navigate('/dashboard/profile')
+    setMenuOpen(false)
   }
 
   const handleMyApproval = () => {
@@ -44,9 +57,19 @@ export default function Dashboard() {
     console.log('Services Record clicked')
   }
 
+  const handleNotifications = () => {
+    console.log('Notifications clicked')
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAdmin')
+    navigate('/login')
+  }
+
   return (
-    <div className={`hr-dashboard${sidebarOpen ? ' hr-dashboard--sidebar-open' : ''}`}>
-      <header className="hr-topbar">
+    <>
+      <div className={`hr-dashboard${sidebarOpen ? ' hr-dashboard--sidebar-open' : ''}`}>
+        <header className="hr-topbar">
         <button
           className="hr-menu-button"
           aria-label="Toggle navigation"
@@ -57,7 +80,18 @@ export default function Dashboard() {
           <span></span>
           <span></span>
         </button>
-        <div className="hr-brand">HRMIS</div>
+        <div className="hr-brand" ><style>
+          
+        </style>
+          <img src={dictLogo} alt="DICT logo" className="brand-logo" />
+          <span>HRMIS</span>
+        </div>
+        <button className="hr-bell" type="button" onClick={handleNotifications} aria-label="Notifications">
+          🔔
+        </button>
+        <button className="button secondary" type="button" onClick={handleLogout}>
+          Log out
+        </button>
       </header>
 
       <div className="hr-layout">
@@ -87,17 +121,13 @@ export default function Dashboard() {
           </div>
 
           <nav className="hr-sidebar-nav">
-            <button className="hr-nav-item active">HOME</button>
-            <div className="hr-nav-select">
-              <span>MY APPLICATION</span>
-              <span className="hr-nav-caret">▾</span>
-            </div>
+            {/* sidebar items moved into burger dashboard menu */}
           </nav>
         </aside>
 
         <main className="hr-main">
           <section className="hr-welcome">
-            <div className="hr-welcome-left">WELCOME RICHARLES PAQUIBOT</div>
+            <div className="hr-welcome-left">WELCOME! RICHARLES PAQUIBOT</div>
             <div className="hr-welcome-right">
               <div className="hr-leave-header">LEAVE CREDITS AS OF 11/12/2004</div>
               <div className="hr-leave-columns">
@@ -149,11 +179,29 @@ export default function Dashboard() {
         </main>
       </div>
 
-      {menuOpen && (
-        <aside className="hr-menu-drawer">
-          {/* empty menu sidebar */}
-        </aside>
-      )}
-    </div>
+        {menuOpen && (
+          <aside className="hr-menu-drawer">
+            <nav className="hr-sidebar-nav">
+              <button className="hr-nav-item" type="button" onClick={goToDashboard}>DASHBOARD</button>
+              <button className="hr-nav-item" type="button" onClick={goToProfileSettings}>MY APPLICATION</button>
+              <div className="hr-nav-select" onClick={goToProfileSettings}>
+                <span>Profile Settings</span>
+                <span className="hr-nav-caret">▾</span>
+              </div>
+            </nav>
+          </aside>
+        )}
+      </div>
+
+      <footer className="footer">
+        <div className="container footer-inner">
+          <small> {new Date().getFullYear()} HRMIS. All rights reserved.</small>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+          </div>
+        </div>
+      </footer>
+    </>
   )
 }
