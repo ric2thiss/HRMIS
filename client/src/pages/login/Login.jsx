@@ -1,35 +1,113 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import dictLogo from '../../asset/DICT logo.svg'
 
 function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('Benz')
-  const [password, setPassword] = useState('12345')
-  const [role, setRole] = useState('employee')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  // const [role, setRole] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  
+  const [error, setError] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem("token");
 
-    setTimeout(() => {
-      if (role === 'employee' && email === 'Benz' && password === '12345') {
-        console.log('Dummy employee logged in:', { username: email })
-        localStorage.removeItem('isAdmin')
-        navigate('/dashboard')
-      } else if (role === 'admin' && email === 'admin' && password === 'admin123') {
-        console.log('Dummy admin logged in:', { username: email })
-        localStorage.setItem('isAdmin', 'true')
-        navigate('/admin/dashboard')
-      } else {
-        setError('Login failed. For employee use Benz/12345. For admin use admin/admin123.')
+      if (!token) {
+        navigate("/login");
+        return;
       }
-      setLoading(false)
-    }, 400)
-  }
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/user", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          // not authenticated
+          navigate("/login");
+          return;
+        }
+
+        // authenticated
+        const data = await res.json();
+        setIsLoggedIn(true);
+        // setUser(data) if needed
+
+        // Only navigate if we are not already on dashboard
+        if (location.pathname !== "/dashboard") {
+          navigate("/dashboard");
+        }
+      } catch (err) {
+        console.error("Auth error:", err);
+        navigate("/login");
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+    const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Invalid credentials");
+        setLoading(false);
+        return;
+      }
+
+      // Save token
+      localStorage.setItem("token", data.token);
+
+      // Redirect
+      navigate("/dashboard");
+    } catch (err) {
+      setError("Something went wrong. Try again.");
+    } finally {
+      setLoading(false);
+    }
+    };
+
+
+    
+
+
+    // setTimeout(() => {
+    //   if (role === 'employee' && email === 'Benz' && password === '12345') {
+    //     console.log('Dummy employee logged in:', { username: email })
+    //     localStorage.removeItem('isAdmin')
+    //     navigate('/dashboard')
+    //   } else if (role === 'admin' && email === 'admin' && password === 'admin123') {
+    //     console.log('Dummy admin logged in:', { username: email })
+    //     localStorage.setItem('isAdmin', 'true')
+    //     navigate('/admin/dashboard')
+    //   } else {
+    //     setError('Login failed. For employee use Benz/12345. For admin use admin/admin123.')
+    //   }
+    //   setLoading(false)
+    // }, 400)
+  
 
   return (
     <>
@@ -67,11 +145,11 @@ function Login() {
           </div>
 
           <div className="auth-right">
-            <h1 className="auth-title">Legacy login</h1>
+            <h1 className="auth-title">Login</h1>
             <div className="auth-subtle">Sign in as employee or admin using dummy credentials.</div>
 
             <form className="auth-actions" onSubmit={handleSubmit}>
-              <div className="auth-row">
+              {/* <div className="auth-row">
                 <div className="field">
                   <label htmlFor="role">Login as</label>
                   <select
@@ -94,15 +172,15 @@ function Login() {
                     <option value="admin">Admin</option>
                   </select>
                 </div>
-              </div>
+              </div> */}
               <div className="auth-row">
                 <div className="field">
-                  <label htmlFor="email">Username</label>
+                  <label htmlFor="email">Email</label>
                   <input
                     id="email"
                     type="text"
                     className="input"
-                    placeholder={role === 'admin' ? 'admin' : 'Benz'}
+                    // placeholder={role === 'admin' ? 'admin' : 'Benz'}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />

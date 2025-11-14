@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import {React, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import dictLogo from '../../asset/DICT logo.svg'
 
@@ -6,6 +6,44 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [user, setUser] = useState({})
+  const [isLoggedin, setisLoggedin] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/user", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          navigate("/login");
+          return;
+        }
+
+        const data = await res.json();
+        setUser(data);          // store user
+        setisLoggedin(true);    // flag that user is logged in
+      } catch (error) {
+        console.error("Auth error:", error);
+        navigate("/login");
+      }
+    };
+
+    checkAuth();
+  }, []); // <-- run only once
+
 
   const toggleSidebar = () => {
     setSidebarOpen((prev) => !prev)
@@ -61,9 +99,20 @@ export default function Dashboard() {
     console.log('Notifications clicked')
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAdmin')
-    navigate('/login')
+  const handleLogout = async() => {
+    const res = await fetch("http://127.0.0.1:8000/api/logout", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      navigate("/login");
+      localStorage.removeItem('token')
+      return;
+    }
   }
 
   return (
