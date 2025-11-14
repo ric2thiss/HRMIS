@@ -1,4 +1,5 @@
 import React from 'react'
+
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Landing from './pages/Landing'
 import Login from './pages/login/Login'
@@ -19,3 +20,4 @@ export default function App() {
     </BrowserRouter>
   )
 }
+
