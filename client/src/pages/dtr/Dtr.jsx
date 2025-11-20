@@ -7,9 +7,9 @@ import LoadingScreen from '../../components/Loading/LoadingScreen'
 import Header from '../../components/Header/Header'
 import Sidebar from '../../components/Sidebar/Sidebar'
 import Hero from '../../components/Hero/Hero'
-import TilesSection from '../../components/Tile/TilesSection'
+import DTRSheet from '../../components/Dtr/DTRSheet'
 
-function Dashboard() {
+function DTR() {
   const navigate = useNavigate();
   const { user, logout, loading } = useAuth();
   if (loading) {
@@ -20,16 +20,13 @@ function Dashboard() {
     navigate("/login");
     return null;
   }
-
   const role = user?.roles[0].name;
 
-  console.log(role);
-  
 
   return (
-    <div class="bg-gray-100 font-sans">
+    <body class="bg-gray-100 font-sans">
        <Helmet>
-          <title>HRMIS - Dashboard</title>
+          <title>HRMIS - My DTR</title>
         </Helmet>
 
         <input type="checkbox" id="menu-toggle" class="hidden" />
@@ -38,15 +35,15 @@ function Dashboard() {
             <Header logout={logout} user={user}/>
 
             <main className="flex flex-1 overflow-hidden">
-                <Sidebar user = {user} role = {role}/>
+                <Sidebar user = {user} role={role}/>
                 <section className="flex-1 p-6 space-y-6 overflow-y-auto">
                   <Hero user = {user} />
-                  <TilesSection role = {role} />
+                  <DTRSheet />
                 </section>
             </main>
         </div>
-    </div>
+    </body>
   )
 }
 
-export default Dashboard
+export default DTR

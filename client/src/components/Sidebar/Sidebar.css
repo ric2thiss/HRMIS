@@ -1,0 +1,26 @@
+ /* Ensure Sidebar Text does not overflow */
+.sidebar-content {
+    white-space: normal;
+}
+
+/* --- Pure CSS for Hamburger Menu Toggle (No JS) --- */
+
+#sidebar {
+    /* Now transitioning transform, width, and padding */
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out, padding 0.3s ease-in-out;
+    transform: translateX(0);
+    width: 16rem; /* w-64 equivalent */
+}
+
+#menu-toggle:checked ~ div#app-container > main #sidebar {
+    /* Styles to hide the sidebar and remove it from the layout flow */
+    transform: translateX(-100%);
+    width: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Rotate the arrow icon when the details element is open */
+details[open] .arrow-icon {
+    transform: rotate(180deg);
+}

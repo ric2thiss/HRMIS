@@ -1,0 +1,7 @@
+/* PURE CSS DROPDOWN FIXES: Hide the default marker for <details> summary */
+/* details > summary {
+    list-style: none;
+}
+details > summary::-webkit-details-marker {
+    display: none;
+} */

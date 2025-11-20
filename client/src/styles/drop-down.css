@@ -1,0 +1,25 @@
+/* Styles for the <details>/<summary> based dropdowns in the Header component.
+  This CSS ensures the default browser marker is hidden and the custom arrow 
+  icon rotates when the dropdown is open.
+*/
+
+/* 1. Remove the default browser marker (triangle) from the summary element */
+details > summary {
+  list-style: none; /* For standard browsers */
+}
+
+/* Remove the marker for WebKit browsers (Chrome, Safari) */
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 2. Define the rotation for the arrow icon */
+.arrow-icon {
+  /* Set initial state (pointing down) - Tailwind already has a transition class on this element */
+  transform: rotate(0deg);
+}
+
+/* 3. Rotate the arrow 180 degrees when the parent <details> tag is open */
+details[open] .arrow-icon {
+  transform: rotate(180deg);
+}

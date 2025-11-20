@@ -1,0 +1,8 @@
+/* FINAL Card Styling: Clear, subtle card look */
+.icon-box {
+    /* Applies white background, rounded corners, subtle shadow, and fixed height */
+    @apply flex flex-col items-center justify-center p-4 bg-white rounded-lg 
+            shadow-md border border-gray-200 
+            transition duration-200 hover:shadow-lg hover:border-blue-300 cursor-pointer;
+    height: 120px; /* Fixed height for consistent look */
+}

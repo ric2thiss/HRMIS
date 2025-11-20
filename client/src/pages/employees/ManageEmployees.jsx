@@ -7,29 +7,27 @@ import LoadingScreen from '../../components/Loading/LoadingScreen'
 import Header from '../../components/Header/Header'
 import Sidebar from '../../components/Sidebar/Sidebar'
 import Hero from '../../components/Hero/Hero'
-import TilesSection from '../../components/Tile/TilesSection'
+import EmployeeCards from '../../components/EmployeesCards/EmployeeCards';
 
-function Dashboard() {
-  const navigate = useNavigate();
-  const { user, logout, loading } = useAuth();
-  if (loading) {
-    return <LoadingScreen />
-  }
+function ManageEmployees() {
+    const navigate = useNavigate();
+    const { user, logout, loading } = useAuth();
+    if (loading) {
+        return <LoadingScreen />
+    }
 
-  if (!user) {
-    navigate("/login");
-    return null;
-  }
+    if (!user) {
+        navigate("/login");
+        return null;
+    }
 
-  const role = user?.roles[0].name;
+    const role = user?.roles[0].name;
 
-  console.log(role);
-  
 
-  return (
-    <div class="bg-gray-100 font-sans">
-       <Helmet>
-          <title>HRMIS - Dashboard</title>
+    return (
+    <body class="bg-gray-100 font-sans">
+        <Helmet>
+            <title>HRMIS - Manage Employees</title>
         </Helmet>
 
         <input type="checkbox" id="menu-toggle" class="hidden" />
@@ -40,13 +38,13 @@ function Dashboard() {
             <main className="flex flex-1 overflow-hidden">
                 <Sidebar user = {user} role = {role}/>
                 <section className="flex-1 p-6 space-y-6 overflow-y-auto">
-                  <Hero user = {user} />
-                  <TilesSection role = {role} />
+                    <Hero user = {user} />
+                    <EmployeeCards />
                 </section>
             </main>
         </div>
-    </div>
-  )
+    </body>
+    )
 }
 
-export default Dashboard
+export default ManageEmployees
