@@ -4,7 +4,7 @@ import AddAccountForm from "./AddAccountForm";
 import api from "../../api/axios";
 import createAccount from "../../api/user/create_account";
 import deleteAccount from "../../api/user/delete_account";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 function ManageAccounts() {
     const navigate = useNavigate();
@@ -65,9 +65,10 @@ function ManageAccounts() {
                         id: created?.id || prev.length + 1,
                         name,
                         email,
-                        role:
+                        role:[
                             roles.find((r) => r.id == role_id)?.name ||
                             "Unknown",
+                        ],
                         status: "Active",
                     },
                 ]);
@@ -132,6 +133,26 @@ function ManageAccounts() {
 
     return (
         <div className="bg-white shadow-lg rounded-lg p-6">
+            <Link 
+                to="/dashboard"
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 hover:underline transition-colors text-base mb-2"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="2"
+                    stroke="currentColor" 
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4 mr-1" 
+                >
+                    <path d="M19 12H5" />
+                    <path d="M12 5l-7 7 7 7" />
+                </svg>
+                <span>Back</span>
+            </Link>
+
             <header className="flex justify-between items-center mb-6 border-b pb-4">
                 <h2 className="text-2xl font-semibold text-gray-800">
                     Manage Accounts

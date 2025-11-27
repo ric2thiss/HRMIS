@@ -5,11 +5,7 @@ import { AuthProvider } from "./context/auth/AuthContext.jsx";
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-// import './styles/base.css'
-// import './styles/navbar.css'
-// import './styles/landing.css'
-// import './styles/auth.css'
-// import './styles/dashboard.css'
+
 import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(

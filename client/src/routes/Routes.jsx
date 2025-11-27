@@ -10,6 +10,10 @@ import ManageEmployees from '../pages/employees/ManageEmployees'
 
 import PageNotFound from '../pages/pageNotFound/404'
 import ManageAccount from "../pages/manageAccount/ManageAccount";
+import SystemSettings from '../pages/system-settings/System-Settings'
+
+import MaintenanceMode from '../pages/maintenance-mode/MaintenanceMode'
+
 
 export default function Routers() {
     return (
@@ -60,13 +64,18 @@ export default function Routers() {
                 </ProtectedRoute>
             } />
 
-
-
-            {/* <Route path="/admin/dashboard" element={
+            <Route path="/system-settings" element={
                 <ProtectedRoute>
-                    <AdminDashboard />
+                    <SystemSettings />
                 </ProtectedRoute>
-            } /> */}
+            } />
+
+            <Route path="/maintenance" element={
+                // <GuestRoute>
+                    <MaintenanceMode />
+                // </GuestRoute>
+            } />
+
 
             <Route path="*" element={
                 <PageNotFound />
