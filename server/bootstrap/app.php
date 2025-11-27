@@ -12,7 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-         $middleware->statefulApi();
+        $middleware->statefulApi();
+        
+        $middleware->alias([
+            'maintenance' => \App\Http\Middleware\CheckSystemMaintenance::class,
+        ]);
         // $middleware->prepend(\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class);
         // $middleware->append(\Illuminate\Routing\Middleware\SubstituteBindings::class);
 

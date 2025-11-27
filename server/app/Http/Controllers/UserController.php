@@ -9,7 +9,7 @@ class UserController extends Controller
 {
     public function getAllUsers()
     {
-        $currentUserId = auth()->id(); // Get logged-in user's ID
+        $currentUserId = auth()->id();
 
         $users = User::where('id', '!=', $currentUserId)
                     ->with('roles')

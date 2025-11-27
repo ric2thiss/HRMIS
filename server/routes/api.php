@@ -2,44 +2,45 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\SystemController;
 
-// Route::get('/user', function (Request $request) {
-//     return $request->user();
-// })->middleware('auth:sanctum');
+// Apply 'maintenance' middleware to all API routes
+Route::middleware('maintenance')->group(function () {
 
-// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-//     return $request->user();
-// });
+    // -------------------
+    // Public routes
+    // -------------------
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
 
+    // -------------------
+    // Protected routes (authenticated)
+    // -------------------
+    Route::middleware('auth:sanctum')->group(function () {
 
+        // Auth routes
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/profile', [AuthController::class, 'profile']);
+        Route::get('/user', [AuthController::class, 'user']); // <--- add this
 
-// Public routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+        // Role routes
+        Route::get('/roles', [RoleController::class, 'index']);
 
-// Protected routes
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/profile', [AuthController::class, 'profile']);
+        // User routes
+        Route::get('/users', [UserController::class, 'getAllUsers']);
+        Route::delete('/users/{id}', [UserController::class, 'delete']);
+        Route::put('/users/{id}', [UserController::class, 'update']);
 
-    Route::get('/roles', [RoleController::class, 'index']);
+        // System toggle (admin only inside controller)
+        Route::put('/maintenance-mode', [SystemController::class, 'toggleMaintenance']);
+    });
+
+    // Include GET maintenance-mode so frontend can fetch status
+    Route::middleware('auth:sanctum')->get('/maintenance-mode', [SystemController::class, 'getMaintenance']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/users', [UserController::class, 'getAllUsers']);
-    Route::delete('/users/{id}', [UserController::class, 'delete']);
-    Route::put('/users/{id}', [UserController::class, 'update']);
-});
-
-// Route::get("/testlang", function(){
-//     return "HELLO WORLD";
-// });
-
-// Route::get('/roles', [RoleController::class, 'index']);
-
-// Route::get('/users', [UserController::class, 'getAllUsers']);
-
-
+Route::get('/maintenance/status', [SystemController::class, 'getMaintenance']);
