@@ -10,53 +10,81 @@ use App\Models\User;
 class AuthController extends Controller
 {
     // REGISTER
+
     // public function register(Request $request)
     // {
+    //     // Validate input
     //     $validated = $request->validate([
     //         'name' => 'required|string|max:255',
-    //         'email' => 'required|string|email|unique:users',
-    //         'password' => 'required|string|min:6|confirmed',
-    //         'role' => 'required'
+    //         'email' => 'required|string|email|unique:users,email',
+    //         'password' => 'required|string|min:6',
+    //         'role_id' => 'required|exists:roles,id',
+    //         'employment_type_id' => 'required|exists:employment_type,id',
     //     ]);
 
+
+    //     // Create the user
     //     $user = User::create([
+    //         'employee_id' => $request->employment_type_id. year . month . 0000 (last id +1 now),
     //         'name' => $validated['name'],
     //         'email' => $validated['email'],
     //         'password' => Hash::make($validated['password']),
     //     ]);
 
-    //     $user->roles()->attach($validated['role']);
+    //     // Attach role
+    //     $user->roles()->attach((int) $validated['role_id']);
 
-    //     // $token = $user->createToken('api-token')->plainTextToken;
+    //     // Attach employment type via pivot table
+    //     $user->employmentTypes()->attach((int) $validated['employment_type_id']);
 
     //     return response()->json([
-    //         'message' => "Successfully created!",
-    //         'user' => $user,
+    //         'message' => 'Registration successful',
+    //         'user' => $user->load(['roles', 'employment_types']) // load both relations
     //     ], 201);
     // }
 
     public function register(Request $request)
     {
+        // Validate input
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|unique:users,email',
             'password' => 'required|string|min:6',
             'role_id' => 'required|exists:roles,id',
+            'employment_type_id' => 'required|exists:employment_type,id',
         ]);
 
+        // Generate employee_id: [employment_type_id][year][month][incremental]
+        $year = date('Y');
+        $month = date('m');
+
+        // Get last user's ID to increment
+        $lastId = User::max('id') ?? 0;
+        $increment = str_pad($lastId + 1, 4, '0', STR_PAD_LEFT); // zero-padded to 4 digits
+
+        $employeeId = $validated['employment_type_id'] . $year . $month . $increment;
+
+        // Create the user
         $user = User::create([
+            'employee_id' => $employeeId,
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
         ]);
 
+        // Attach role
         $user->roles()->attach((int) $validated['role_id']);
+
+        // Attach employment type via pivot table
+        $user->employmentTypes()->attach((int) $validated['employment_type_id']);
 
         return response()->json([
             'message' => 'Registration successful',
-            'user' => $user->load('roles')
+            'user' => $user->load(['roles', 'employmentTypes']) // match method name exactly
         ], 201);
     }
+
+
     // LOGIN
     public function login(Request $request)
     {
@@ -75,7 +103,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => "Successfully logged in!",
-            'user' => auth()->user()->load('roles')
+            'user' => auth()->user()->load(['roles'])
         ]);
     }
 

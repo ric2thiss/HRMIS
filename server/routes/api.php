@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EmploymentController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SystemController;
@@ -25,15 +26,19 @@ Route::middleware('maintenance')->group(function () {
         // Auth routes
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/profile', [AuthController::class, 'profile']);
-        Route::get('/user', [AuthController::class, 'user']); // <--- add this
-
-        // Role routes
-        Route::get('/roles', [RoleController::class, 'index']);
+        Route::get('/user', [AuthController::class, 'user']);
 
         // User routes
         Route::get('/users', [UserController::class, 'getAllUsers']);
         Route::delete('/users/{id}', [UserController::class, 'delete']);
         Route::put('/users/{id}', [UserController::class, 'update']);
+
+        // Role routes
+        Route::get('/roles', [RoleController::class, 'index']);
+
+        // Employment Routes
+        Route::get('/employment/types', [EmploymentController::class, "index"]);
+
 
         // System toggle (admin only inside controller)
         Route::put('/maintenance-mode', [SystemController::class, 'toggleMaintenance']);
@@ -44,3 +49,8 @@ Route::middleware('maintenance')->group(function () {
 });
 
 Route::get('/maintenance/status', [SystemController::class, 'getMaintenance']);
+
+// Employment Routes
+Route::get('/employment/types', [EmploymentController::class, "index"]);
+Route::post('/employment/types', [EmploymentController::class, "store"]);
+

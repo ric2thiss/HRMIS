@@ -22,8 +22,8 @@ function Dashboard() {
   }
 
   const role = user?.roles[0].name;
-
-  console.log(role);
+  
+  console.log(user);
   
 
   return (

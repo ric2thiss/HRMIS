@@ -9,7 +9,7 @@ import Sidebar from '../../components/Sidebar/Sidebar'
 import Hero from '../../components/Hero/Hero'
 import SystemSettingsComponent from '../../components/SystemSettingsComponent/SystemSettings'
 
-function Dashboard() {
+function SystemSettings() {
   const navigate = useNavigate();
   const { user, logout, loading } = useAuth();
   if (loading) {
@@ -49,4 +49,4 @@ function Dashboard() {
   )
 }
 
-export default Dashboard
+export default SystemSettings

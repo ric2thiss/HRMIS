@@ -11,6 +11,7 @@ function ManageAccounts() {
 
     const [accounts, setAccounts] = useState([]);
     const [roles, setRoles] = useState([]);
+    const [EmploymentTypes, setEmploymentTypes] = useState([]);
     const [isFormVisible, setIsFormVisible] = useState(false);
 
     const [loading, setLoading] = useState(false); // form loading
@@ -23,15 +24,18 @@ function ManageAccounts() {
             try {
                 await api.get("/sanctum/csrf-cookie");
 
-                const [rolesRes, usersRes] = await Promise.all([
+                const [rolesRes, usersRes, EmploymentRes] = await Promise.all([
                     api.get("/api/roles"),
                     api.get("/api/users"),
+                    api.get("/api/employment/types")
                 ]);
 
                 console.log(usersRes.data.users);
                 
                 setRoles(rolesRes.data.roles || []);
                 setAccounts(usersRes.data.users || []);
+                setEmploymentTypes(EmploymentRes.data || []);
+                
             } catch (err) {
                 console.error("Failed to fetch initial data:", err);
                 setError("Failed to load account data.");
@@ -40,13 +44,14 @@ function ManageAccounts() {
             }
         };
 
+
         fetchData();
     }, []);
 
     // Handle new account creation
     const handleAddAccount = useCallback(
         async (newAccountData) => {
-            const { name, email, password, role_id } = newAccountData;
+            const { name, email, password, role_id, employment_type_id } = newAccountData;
 
             setError(null);
             setLoading(true);
@@ -56,7 +61,8 @@ function ManageAccounts() {
                     name,
                     email,
                     password,
-                    role_id
+                    role_id, 
+                    employment_type_id
                 );
 
                 setAccounts((prev) => [
@@ -193,7 +199,7 @@ function ManageAccounts() {
                                     Role
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                    Status
+                                    Type
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                     Action
@@ -218,13 +224,15 @@ function ManageAccounts() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span
-                                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                account.status === "Active"
-                                                    ? "bg-green-100 text-green-800"
-                                                    : "bg-red-100 text-red-800"
-                                            }`}
+                                            // className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                            //     account.employment_types[0]?.name === "Plantilla"
+                                            //         ? "bg-green-100 text-green-800"
+                                            //         : "bg-red-100 text-red-800"
+                                            // }`}
+
+                                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800`}
                                         >
-                                            {account.status}
+                                            {account.employment_types[0].name}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm font-medium">
@@ -265,6 +273,7 @@ function ManageAccounts() {
                         onCancel={handleCancel}
                         loading={loading}
                         roles={roles}
+                        EmploymentTypes = {EmploymentTypes}
                     />,
                     document.body
                 )}

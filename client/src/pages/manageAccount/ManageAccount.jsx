@@ -22,6 +22,11 @@ function ManageAccount() {
 
   const role = user?.roles?.[0]?.name;
 
+  if(role !== "hr") {
+    navigate("/dashboard")
+    return null;
+  }
+
   return (
     <div className="bg-gray-100 font-sans min-h-screen">
       <Helmet>

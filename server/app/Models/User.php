@@ -20,6 +20,7 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'employee_id',
         'name',
         'email',
         'password',
@@ -58,4 +59,15 @@ class User extends Authenticatable
     {
         return $this->roles()->where('name', $roleName)->exists();
     }
+
+    public function employmentTypes()
+    {
+        return $this->belongsToMany(
+            Employment::class,
+            'users_employment_types',
+            'user_id',
+            'employment_type_id'
+        );
+    }
+
 }

@@ -56,12 +56,12 @@ export const tilesConfig = [
     title: "Manage Account",
     link: "/manage-accounts",
     icon: <ManageAccountIcon />,
-    roles: ["admin"]
+    roles: ["hr"]
   },
   {
     title: "System Settings",
     link: "/system-settings",
     icon: <SettingsIcon />,
-    roles: ["admin"]
+    roles: ["hr"]
   }
 ];

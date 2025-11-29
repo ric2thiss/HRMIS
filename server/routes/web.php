@@ -16,7 +16,7 @@ Route::middleware(['auth:sanctum', 'maintenance'])->group(function () {
 
     Route::get('/api/user', function (Request $request) {
         return response()->json([
-            'user' => $request->user()->load('roles')
+            'user' => $request->user()->load('roles', 'employmentTypes')
         ]);
     });
 

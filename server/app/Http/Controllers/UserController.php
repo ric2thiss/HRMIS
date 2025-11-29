@@ -12,11 +12,11 @@ class UserController extends Controller
         $currentUserId = auth()->id();
 
         $users = User::where('id', '!=', $currentUserId)
-                    ->with('roles')
+                    ->with(['roles', 'employmentTypes']) // plural if many-to-many
                     ->get();
 
         return response()->json([
-            "users" => $users
+            'users' => $users
         ]);
     }
 

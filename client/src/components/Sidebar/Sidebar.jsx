@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation  } from 'react-router-dom'
 import './Sidebar.css'
 
 function Sidebar({user, role}) {
+    console.log(user)
   return (
     <aside id="sidebar" className="w-64 bg-white p-4 flex flex-col shadow-lg flex-shrink-0 overflow-y-auto">
             
@@ -18,7 +19,7 @@ function Sidebar({user, role}) {
         <div className="space-y-3 mb-6">
             <div className="p-3 border rounded-lg bg-gray-50">
                 <p className="text-xs text-gray-500">EMPLOYEE ID:</p>
-                <p className="font-medium text-sm sidebar-content">{user.id}</p>
+                <p className="font-medium text-sm sidebar-content">{user.employee_id}</p>
             </div>
             <div className="p-3 border rounded-lg bg-gray-50">
                 <p className="text-xs text-gray-500">EMAIL ADDRESS:</p>

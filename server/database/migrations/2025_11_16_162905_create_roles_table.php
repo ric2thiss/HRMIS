@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('name')->unique(); // e.g., 'admin', 'user'
             $table->timestamps();
         });
+
+        
     }
 
     /**
@@ -24,5 +26,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('roles');
+        Schema::dropIfExists('employment_type');
     }
 };

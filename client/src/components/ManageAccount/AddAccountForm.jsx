@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
-function AddAccountForm({ onAddAccount, roles, onCancel, loading }) {
+function AddAccountForm({ onAddAccount, roles, EmploymentTypes, onCancel, loading }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     role_id: '',
+    employment_type_id: '' // ✅ fixed
   });
 
   // Set default role_id after roles are loaded
@@ -17,14 +18,21 @@ function AddAccountForm({ onAddAccount, roles, onCancel, loading }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // Convert IDs to integers for backend
+    const finalValue = ['role_id', 'employment_type_id'].includes(name)
+      ? parseInt(value) || ''
+      : value;
+
     setFormData(prevData => ({
       ...prevData,
-      [name]: value,
+      [name]: finalValue,
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('Submitting form data:', formData);
     onAddAccount(formData); 
   };
 
@@ -96,6 +104,25 @@ function AddAccountForm({ onAddAccount, roles, onCancel, loading }) {
               {roles?.map((role) => (
                 <option key={role.id} value={role.id}>
                   {role.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700">Employment Type</label>
+            <select 
+              name="employment_type_id"
+              value={formData.employment_type_id}
+              onChange={handleChange}
+              required
+              disabled={loading || EmploymentTypes.length === 0}
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+            >
+              <option value="">Select Employment Type</option>
+              {EmploymentTypes?.map((EmploymentType) => (
+                <option key={EmploymentType.id} value={EmploymentType.id}>
+                  {EmploymentType.name}
                 </option>
               ))}
             </select>
