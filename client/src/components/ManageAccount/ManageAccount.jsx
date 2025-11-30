@@ -4,18 +4,15 @@ import AddAccountForm from "./AddAccountForm";
 import api from "../../api/axios";
 import createAccount from "../../api/user/create_account";
 import deleteAccount from "../../api/user/delete_account";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 function ManageAccounts() {
-    const navigate = useNavigate();
-
     const [accounts, setAccounts] = useState([]);
     const [roles, setRoles] = useState([]);
-    const [EmploymentTypes, setEmploymentTypes] = useState([]);
+    const [employmentTypes, setEmploymentTypes] = useState([]);
     const [isFormVisible, setIsFormVisible] = useState(false);
-
-    const [loading, setLoading] = useState(false); // form loading
-    const [initializing, setInitializing] = useState(true); // page loading
+    const [loading, setLoading] = useState(false);
+    const [initializing, setInitializing] = useState(true);
     const [error, setError] = useState(null);
 
     // Fetch roles + users on mount
@@ -24,26 +21,22 @@ function ManageAccounts() {
             try {
                 await api.get("/sanctum/csrf-cookie");
 
-                const [rolesRes, usersRes, EmploymentRes] = await Promise.all([
+                const [rolesRes, usersRes, employmentRes] = await Promise.all([
                     api.get("/api/roles"),
                     api.get("/api/users"),
                     api.get("/api/employment/types")
                 ]);
-
-                console.log(usersRes.data.users);
                 
                 setRoles(rolesRes.data.roles || []);
                 setAccounts(usersRes.data.users || []);
-                setEmploymentTypes(EmploymentRes.data || []);
+                setEmploymentTypes(employmentRes.data || []);
                 
             } catch (err) {
-                console.error("Failed to fetch initial data:", err);
                 setError("Failed to load account data.");
             } finally {
                 setInitializing(false);
             }
         };
-
 
         fetchData();
     }, []);
@@ -65,19 +58,9 @@ function ManageAccounts() {
                     employment_type_id
                 );
 
-                setAccounts((prev) => [
-                    ...prev,
-                    {
-                        id: created?.id || prev.length + 1,
-                        name,
-                        email,
-                        role:[
-                            roles.find((r) => r.id == role_id)?.name ||
-                            "Unknown",
-                        ],
-                        status: "Active",
-                    },
-                ]);
+                // Refresh accounts list after creation
+                const usersRes = await api.get("/api/users");
+                setAccounts(usersRes.data.users || []);
 
                 setIsFormVisible(false);
             } catch (err) {
@@ -90,7 +73,7 @@ function ManageAccounts() {
                 setLoading(false);
             }
         },
-        [roles]
+        []
     );
 
     const handleCancel = useCallback(() => {
@@ -106,18 +89,17 @@ function ManageAccounts() {
             if (!confirmDelete) return;
 
             try {
-                await deleteAccount(accountId); // call your API
+                await deleteAccount(accountId);
                 // Remove the deleted account from state
                 setAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
             } catch (err) {
                 const message =
                     err?.response?.data?.message || err.message || "Delete failed.";
                 setError(message);
-                console.error("Delete Error:", err);
             }
         } else if (action === "Edit") {
-            console.log("Edit account with ID:", accountId);
-            // Implement your edit logic here
+            // TODO: Implement edit functionality
+            setError("Edit functionality not yet implemented");
         }
     };
 
@@ -232,7 +214,7 @@ function ManageAccounts() {
 
                                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800`}
                                         >
-                                            {account.employment_types[0].name}
+                                            {(account.employmentTypes || account.employment_types)?.[0]?.name || "N/A"}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm font-medium">
@@ -273,7 +255,7 @@ function ManageAccounts() {
                         onCancel={handleCancel}
                         loading={loading}
                         roles={roles}
-                        EmploymentTypes = {EmploymentTypes}
+                        employmentTypes={employmentTypes}
                     />,
                     document.body
                 )}
@@ -281,4 +263,4 @@ function ManageAccounts() {
     );
 }
 
-export default ManageAccounts;
+export default React.memo(ManageAccounts);

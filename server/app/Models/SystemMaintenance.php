@@ -9,11 +9,16 @@ class SystemMaintenance extends Model
     protected $table = "system_maintenance";
     
     protected $fillable = [
-    'is_enabled',
-    'message',
-    'enabled_by',
-    'started_at',
-    'ended_at'
-];
+        'is_enabled',
+        'allowed_login_roles',
+        'message',
+        'enabled_by',
+        'started_at',
+        'ended_at'
+    ];
+
+    protected $casts = [
+        'allowed_login_roles' => 'array',
+    ];
 
 }

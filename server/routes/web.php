@@ -12,16 +12,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::middleware(['auth:sanctum', 'maintenance'])->group(function () {
-
-    Route::get('/api/user', function (Request $request) {
-        return response()->json([
-            'user' => $request->user()->load('roles', 'employmentTypes')
-        ]);
-    });
-
-    // Route::post('/api/logout', [AuthController::class, 'logout']);
-});
+// Removed duplicate /api/user route - it's defined in api.php
 
 Route::middleware(['auth:sanctum'])->post('/api/logout', [AuthController::class, 'logout']);
 

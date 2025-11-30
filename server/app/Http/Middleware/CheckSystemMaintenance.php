@@ -28,15 +28,32 @@ class CheckSystemMaintenance
         // React sends Sanctum cookies, so auth may work
         // -----------------------------------------
         if (Auth::check()) {
+            $user = Auth::user();
+            $userRoles = $user->roles->pluck('name')->toArray();
+            $allowedRoles = $maintenance->allowed_login_roles ?? ['admin', 'hr'];
 
-            // Admin bypass
-            if (Auth::user()->hasRole('admin')) {
-                Log::info('Maintenance: admin bypass', ['user_id' => Auth::id()]);
+            // Check if user has any of the allowed roles
+            $hasAllowedRole = false;
+            foreach ($userRoles as $role) {
+                if (in_array($role, $allowedRoles)) {
+                    $hasAllowedRole = true;
+                    break;
+                }
+            }
+
+            if ($hasAllowedRole) {
+                Log::info('Maintenance: User with allowed role bypass', [
+                    'user_id' => Auth::id(), 
+                    'user_roles' => $userRoles,
+                    'allowed_roles' => $allowedRoles
+                ]);
                 return $next($request);
             }
 
-            Log::info('Maintenance: non-admin authenticated user blocked', [
-                'user_id' => Auth::id()
+            Log::info('Maintenance: User without allowed role blocked', [
+                'user_id' => Auth::id(),
+                'user_roles' => $userRoles,
+                'allowed_roles' => $allowedRoles
             ]);
 
             // Return 503 → React interceptor handles force logout + redirect
@@ -48,7 +65,7 @@ class CheckSystemMaintenance
         // -----------------------------------------
         // User is NOT authenticated
         // Allow login page access:
-        // Only block actual login POST if not admin
+        // Only allow login if user's role is in allowed_login_roles
         // -----------------------------------------
         if ($request->is('api/login')) {
             Log::info('Maintenance: login attempt received');
@@ -57,14 +74,33 @@ class CheckSystemMaintenance
             $credentials = $request->only('email', 'password');
 
             if (Auth::attempt($credentials)) {
-
-                if (Auth::user()->hasRole('admin')) {
-                    Log::info('Maintenance: admin logged in during maintenance');
+                $user = Auth::user();
+                $userRoles = $user->roles->pluck('name')->toArray();
+                $allowedRoles = $maintenance->allowed_login_roles ?? ['admin', 'hr'];
+                
+                // Check if user has any of the allowed roles
+                $hasAllowedRole = false;
+                foreach ($userRoles as $role) {
+                    if (in_array($role, $allowedRoles)) {
+                        $hasAllowedRole = true;
+                        break;
+                    }
+                }
+                
+                if ($hasAllowedRole) {
+                    Log::info('Maintenance: User with allowed role logged in', [
+                        'user_id' => $user->id,
+                        'user_roles' => $userRoles,
+                        'allowed_roles' => $allowedRoles
+                    ]);
                     return $next($request);
                 }
 
-                // Normal user attempting login → block
-                Log::info('Maintenance: non-admin tried to login → blocked');
+                // User without allowed role attempting login → block
+                Log::info('Maintenance: User without allowed role tried to login → blocked', [
+                    'user_roles' => $userRoles,
+                    'allowed_roles' => $allowedRoles
+                ]);
                 Auth::logout();
 
                 return response()->json([

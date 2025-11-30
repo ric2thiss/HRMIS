@@ -1,52 +1,30 @@
-import { React, useState } from 'react';
-import { Helmet } from "react-helmet";
-import { useAuth } from "../../context/auth/AuthContext";
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-import LoadingScreen from '../../components/Loading/LoadingScreen'
-import Header from '../../components/Header/Header'
-import Sidebar from '../../components/Sidebar/Sidebar'
-import Hero from '../../components/Hero/Hero'
-import TilesSection from '../../components/Tile/TilesSection'
+import { useAuth } from "../../context/auth/AuthContext";
+import AppLayout from '../../components/Layout/AppLayout';
+import TilesSection from '../../components/Tile/TilesSection';
 
 function Dashboard() {
   const navigate = useNavigate();
   const { user, logout, loading } = useAuth();
-  if (loading) {
-    return <LoadingScreen />
-  }
 
-  if (!user) {
-    navigate("/login");
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+  }, [loading, user, navigate]);
+
+  if (loading || !user) {
     return null;
   }
 
-  const role = user?.roles[0].name;
-  
-  console.log(user);
-  
+  const role = user?.roles?.[0]?.name;
 
   return (
-    <div class="bg-gray-100 font-sans">
-       <Helmet>
-          <title>HRMIS - Dashboard</title>
-        </Helmet>
-
-        <input type="checkbox" id="menu-toggle" class="hidden" />
-
-        <div className="flex flex-col h-screen" id="app-container">
-            <Header logout={logout} user={user}/>
-
-            <main className="flex flex-1 overflow-hidden">
-                <Sidebar user = {user} role = {role}/>
-                <section className="flex-1 p-6 space-y-6 overflow-y-auto">
-                  <Hero user = {user} />
-                  <TilesSection role = {role} />
-                </section>
-            </main>
-        </div>
-    </div>
-  )
+    <AppLayout user={user} logout={logout} loading={loading} title="Dashboard">
+      <TilesSection role={role} />
+    </AppLayout>
+  );
 }
 
-export default Dashboard
+export default Dashboard;

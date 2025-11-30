@@ -71,8 +71,8 @@ function Header({ user, logout }) {
               </summary>
 
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl z-50">
-                <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile </Link>
-                <Link to="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</Link>
+                <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</Link>
+                <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</Link>
                 <a onClick={logout} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t mt-1 cursor-pointer">Logout</a>
               </div>
             </details>

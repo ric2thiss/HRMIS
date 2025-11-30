@@ -70,4 +70,9 @@ class User extends Authenticatable
         );
     }
 
+    public function personalDataSheet()
+    {
+        return $this->hasOne(PersonalDataSheet::class);
+    }
+
 }

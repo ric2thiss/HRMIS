@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         
         $middleware->alias([
             'maintenance' => \App\Http\Middleware\CheckSystemMaintenance::class,
+            'role' => \App\Http\Middleware\CheckRole::class,
         ]);
         // $middleware->prepend(\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class);
         // $middleware->append(\Illuminate\Routing\Middleware\SubstituteBindings::class);

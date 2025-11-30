@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import html2canvas from 'html2canvas'; // 1. Import html2canvas
 import jsPDF from 'jspdf';           // 2. Import jspdf
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 
 // --- Auxiliary Data ---
@@ -142,26 +142,6 @@ const DTR = () => {
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg space-y-6">
-            <Link 
-                to="/dashboard"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 hover:underline transition-colors text-base mb-2"
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="2"
-                    stroke="currentColor" 
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-4 h-4 mr-1" 
-                >
-                    <path d="M19 12H5" />
-                    <path d="M12 5l-7 7 7 7" />
-                </svg>
-                <span>Back</span>
-            </Link>
-
             <h1 className="text-2xl font-bold text-gray-800">Daily Time Record (DTR)</h1>
             
             {/* Filter and Action Bar */}

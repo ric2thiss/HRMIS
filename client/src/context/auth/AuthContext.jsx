@@ -31,11 +31,8 @@ export function AuthProvider({ children }) {
 
                 // Only handle HTTP 503 errors
                 if (error.response?.status === 503 && !originalRequest._retry) {
-                    console.log("🚨 Maintenance mode detected!");
-
                     // --- Do NOT logout admin ---
-                    if (user?.roles?.[0] === "admin") {
-                        console.log("Admin detected. Skipping logout.");
+                    if (user?.roles?.[0]?.name === "admin") {
                         return Promise.reject(error);
                     }
 
@@ -81,6 +78,18 @@ export function AuthProvider({ children }) {
     }, [user]);
 
 
+    // Helper function to normalize user object (handle both snake_case and camelCase)
+    const normalizeUser = (user) => {
+        if (!user) return null;
+        
+        // Normalize employmentTypes - Laravel returns as employment_types (snake_case)
+        if (user.employment_types && !user.employmentTypes) {
+            user.employmentTypes = user.employment_types;
+        }
+        
+        return user;
+    };
+
     // ---------------------------------------
     //  Load user at startup
     // ---------------------------------------
@@ -89,7 +98,7 @@ export function AuthProvider({ children }) {
             try {
                 await api.get("/sanctum/csrf-cookie", { withCredentials: true });
                 const res = await api.get("/api/user", { withCredentials: true });
-                setUser(res.data.user);
+                setUser(normalizeUser(res.data.user));
             } catch (err) {
                 setUser(null);
             } finally {
@@ -106,8 +115,11 @@ export function AuthProvider({ children }) {
     const login = async (email, password) => {
         try {
             await api.get("/sanctum/csrf-cookie");
-            const res = await api.post("/api/login", { email, password }, { withCredentials: true });
-            setUser(res.data.user);
+            await api.post("/api/login", { email, password }, { withCredentials: true });
+            
+            // Always fetch the complete user data after login to ensure all relationships are loaded
+            const userRes = await api.get("/api/user", { withCredentials: true });
+            setUser(normalizeUser(userRes.data.user));
         } catch (err) {
             setUser(null);
             throw err;

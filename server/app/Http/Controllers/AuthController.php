@@ -10,39 +10,6 @@ use App\Models\User;
 class AuthController extends Controller
 {
     // REGISTER
-
-    // public function register(Request $request)
-    // {
-    //     // Validate input
-    //     $validated = $request->validate([
-    //         'name' => 'required|string|max:255',
-    //         'email' => 'required|string|email|unique:users,email',
-    //         'password' => 'required|string|min:6',
-    //         'role_id' => 'required|exists:roles,id',
-    //         'employment_type_id' => 'required|exists:employment_type,id',
-    //     ]);
-
-
-    //     // Create the user
-    //     $user = User::create([
-    //         'employee_id' => $request->employment_type_id. year . month . 0000 (last id +1 now),
-    //         'name' => $validated['name'],
-    //         'email' => $validated['email'],
-    //         'password' => Hash::make($validated['password']),
-    //     ]);
-
-    //     // Attach role
-    //     $user->roles()->attach((int) $validated['role_id']);
-
-    //     // Attach employment type via pivot table
-    //     $user->employmentTypes()->attach((int) $validated['employment_type_id']);
-
-    //     return response()->json([
-    //         'message' => 'Registration successful',
-    //         'user' => $user->load(['roles', 'employment_types']) // load both relations
-    //     ], 201);
-    // }
-
     public function register(Request $request)
     {
         // Validate input
@@ -103,7 +70,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => "Successfully logged in!",
-            'user' => auth()->user()->load(['roles'])
+            'user' => auth()->user()->load(['roles', 'employmentTypes'])
         ]);
     }
 
@@ -127,7 +94,7 @@ class AuthController extends Controller
     // PROFILE (Protected)
     public function profile(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json($request->user()->load(['roles', 'employmentTypes']));
     }
 
     // LOGOUT FROM ALL DEVICES
@@ -152,7 +119,7 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         return response()->json([
-            'user' => $request->user()
+            'user' => $request->user()->load(['roles', 'employmentTypes'])
         ], 200);
     }
 }

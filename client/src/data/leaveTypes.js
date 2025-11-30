@@ -1,0 +1,108 @@
+// Civil Service Commission Leave Types (Philippines)
+export const LEAVE_TYPES = [
+  {
+    id: 1,
+    code: 'VL',
+    name: 'Vacation Leave',
+    maxDays: 15,
+    description: 'Annual vacation leave credits',
+    requiresDocument: false,
+    requiresApproval: true,
+  },
+  {
+    id: 2,
+    code: 'SL',
+    name: 'Sick Leave',
+    maxDays: 15,
+    description: 'For illness or medical appointments',
+    requiresDocument: true,
+    requiresApproval: true,
+  },
+  {
+    id: 3,
+    code: 'SPL',
+    name: 'Special Privilege Leave',
+    maxDays: 3,
+    description: 'For personal matters, birthdays, or special occasions',
+    requiresDocument: false,
+    requiresApproval: true,
+  },
+  {
+    id: 4,
+    code: 'ML',
+    name: 'Maternity Leave',
+    maxDays: 105,
+    description: 'For female employees who gave birth',
+    requiresDocument: true,
+    requiresApproval: true,
+  },
+  {
+    id: 5,
+    code: 'PL',
+    name: 'Paternity Leave',
+    maxDays: 7,
+    description: 'For male employees whose spouse gave birth',
+    requiresDocument: true,
+    requiresApproval: true,
+  },
+  {
+    id: 6,
+    code: 'SLB',
+    name: 'Solo Parent Leave',
+    maxDays: 7,
+    description: 'For solo parents',
+    requiresDocument: true,
+    requiresApproval: true,
+  },
+  {
+    id: 7,
+    code: 'EL',
+    name: 'Emergency Leave',
+    maxDays: 5,
+    description: 'For emergencies and calamities',
+    requiresDocument: true,
+    requiresApproval: true,
+  },
+  {
+    id: 8,
+    code: 'RL',
+    name: 'Rehabilitation Leave',
+    maxDays: 6,
+    description: 'For work-related injuries',
+    requiresDocument: true,
+    requiresApproval: true,
+  },
+  {
+    id: 9,
+    code: 'SLW',
+    name: 'Study Leave',
+    maxDays: 6,
+    description: 'For educational purposes',
+    requiresDocument: true,
+    requiresApproval: true,
+  },
+  {
+    id: 10,
+    code: 'SLB',
+    name: 'Service Incentive Leave',
+    maxDays: 5,
+    description: 'For employees with at least 1 year of service',
+    requiresDocument: false,
+    requiresApproval: true,
+  },
+];
+
+export const LEAVE_STATUS = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+  CANCELLED: 'cancelled',
+};
+
+export const LEAVE_STATUS_LABELS = {
+  [LEAVE_STATUS.PENDING]: 'Pending',
+  [LEAVE_STATUS.APPROVED]: 'Approved',
+  [LEAVE_STATUS.REJECTED]: 'Rejected',
+  [LEAVE_STATUS.CANCELLED]: 'Cancelled',
+};
+

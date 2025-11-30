@@ -20,9 +20,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function delete(Request $request)
+    public function delete($id)
     {
-        $user = User::find($request->id);
+        $user = User::find($id);
 
         if(!$user) {
             return response()->json([
@@ -38,9 +38,9 @@ class UserController extends Controller
 
     }
 
-    public function update(Request $request)
+    public function update(Request $request, $id)
     {
-        $user = User::find($request->id);
+        $user = User::find($id);
 
         if(!$user) return response()->json([
             "message" => "User not found."
@@ -48,7 +48,7 @@ class UserController extends Controller
 
          $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
+            'email' => 'required|email|unique:users,email,' . $user->id,
             'role_id' => 'required|exists:roles,id'
         ]);
 
@@ -60,7 +60,7 @@ class UserController extends Controller
 
         return response()->json([
             "message" => "Updated Successfully",
-            'user' => $user->load('roles')
+            'user' => $user->load(['roles', 'employmentTypes'])
         ]);
     }
 

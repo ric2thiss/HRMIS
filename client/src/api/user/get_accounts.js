@@ -1,11 +1,14 @@
-import api from '../axios'
+import api from '../axios';
 
-const get_accounts = async() => {
+/**
+ * Get all user accounts
+ * @returns {Promise<Array>} Array of user objects
+ */
+const getAccounts = async () => {
     await api.get("/sanctum/csrf-cookie");
-    const res = await api.get('/api/users')
-    console.log(res.data.user);
+    const res = await api.get('/api/users');
     
-    return res.data.user
-}
+    return res.data.users || [];
+};
 
-export default get_accounts;
+export default getAccounts;

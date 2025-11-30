@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function AddAccountForm({ onAddAccount, roles, EmploymentTypes, onCancel, loading }) {
+function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loading }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -32,7 +32,6 @@ function AddAccountForm({ onAddAccount, roles, EmploymentTypes, onCancel, loadin
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Submitting form data:', formData);
     onAddAccount(formData); 
   };
 
@@ -116,13 +115,13 @@ function AddAccountForm({ onAddAccount, roles, EmploymentTypes, onCancel, loadin
               value={formData.employment_type_id}
               onChange={handleChange}
               required
-              disabled={loading || EmploymentTypes.length === 0}
+              disabled={loading || employmentTypes.length === 0}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
             >
               <option value="">Select Employment Type</option>
-              {EmploymentTypes?.map((EmploymentType) => (
-                <option key={EmploymentType.id} value={EmploymentType.id}>
-                  {EmploymentType.name}
+              {employmentTypes?.map((employmentType) => (
+                <option key={employmentType.id} value={employmentType.id}>
+                  {employmentType.name}
                 </option>
               ))}
             </select>

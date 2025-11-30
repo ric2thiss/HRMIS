@@ -1,5 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useNotification } from '../../context/NotificationContext';
+import { getMyPds, createPds, updatePds, submitPds } from '../../api/pds/pds';
 
 // --- INITIAL STATE DEFINITION ---
 // This large object holds the data for ALL form fields (approx 100+).
@@ -66,9 +68,49 @@ const initialFormData = {
 
 
 // --- MAIN COMPONENT ---
-const PdsForm = () => {
+const PdsForm = ({ initialData, readOnly = false, onSave }) => {
+    const navigate = useNavigate();
+    const { showSuccess, showError } = useNotification();
     const [activeTab, setActiveTab] = useState('personal');
-    const [formData, setFormData] = useState(initialFormData);
+    const [formData, setFormData] = useState(initialData || initialFormData);
+    const [pds, setPds] = useState(null); // Current PDS from server
+    const [loading, setLoading] = useState(!initialData);
+    const [saving, setSaving] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Load existing PDS on mount (only if not provided as prop)
+    useEffect(() => {
+        if (initialData) {
+            setLoading(false);
+            return;
+        }
+        
+        const loadPds = async () => {
+            try {
+                setLoading(true);
+                const existingPds = await getMyPds();
+                if (existingPds) {
+                    setPds(existingPds);
+                    // Load form data from existing PDS
+                    if (existingPds.form_data) {
+                        setFormData(existingPds.form_data);
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading PDS:', err);
+                showError('Failed to load PDS data');
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadPds();
+    }, [showError, initialData]);
+
+    // Check if form is editable
+    const isEditable = !readOnly && (!pds || pds.status === 'draft' || pds.status === 'declined');
+    const isApproved = pds?.status === 'approved';
+    const isPending = pds?.status === 'pending';
+    const isDeclined = pds?.status === 'declined';
 
     // Optimized Change Handler: Only re-created if dependencies change (none here)
     const handleChange = useCallback((e) => {
@@ -132,28 +174,111 @@ const PdsForm = () => {
 
     }, []); // Empty dependency array as it uses functional update of setFormData
 
+    // Save PDS (create or update)
+    const handleSave = async () => {
+        try {
+            setSaving(true);
+            if (pds) {
+                // Update existing PDS
+                const updated = await updatePds(pds.id, formData);
+                setPds(updated);
+                showSuccess('PDS saved successfully');
+            } else {
+                // Create new PDS
+                const created = await createPds(formData);
+                setPds(created);
+                showSuccess('PDS created successfully');
+            }
+            if (onSave) onSave();
+        } catch (err) {
+            console.error('Error saving PDS:', err);
+            showError(err.response?.data?.message || 'Failed to save PDS');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // Submit PDS for approval
+    const handleSubmit = async () => {
+        if (!pds) {
+            showError('Please save the PDS first before submitting');
+            return;
+        }
+
+        if (!window.confirm('Are you sure you want to submit this PDS for approval? You will not be able to edit it until it is reviewed.')) {
+            return;
+        }
+
+        try {
+            setSubmitting(true);
+            const updated = await submitPds(pds.id);
+            setPds(updated);
+            showSuccess('PDS submitted for approval successfully');
+        } catch (err) {
+            console.error('Error submitting PDS:', err);
+            showError(err.response?.data?.message || 'Failed to submit PDS');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Print PDS (for approved PDS)
+    const handlePrint = () => {
+        window.print();
+    };
+
+    if (loading) {
+        return (
+            <div className="p-4 bg-white shadow-xl rounded-xl text-center">
+                <p className="text-gray-600">Loading PDS...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 bg-white shadow-xl rounded-xl">
-            <Link 
-                to="/dashboard"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 hover:underline transition-colors text-base mb-5"
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="2"
-                    stroke="currentColor" 
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-4 h-4 mr-1" 
-                >
-                    <path d="M19 12H5" />
-                    <path d="M12 5l-7 7 7 7" />
-                </svg>
-                <span>Back</span>
-            </Link>
+            {/* Status Banner */}
+            {pds && (
+                <div className={`mb-4 p-4 rounded-lg border-l-4 ${
+                    isApproved ? 'bg-green-50 border-green-500' :
+                    isPending ? 'bg-yellow-50 border-yellow-500' :
+                    isDeclined ? 'bg-red-50 border-red-500' :
+                    'bg-blue-50 border-blue-500'
+                }`}>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="font-semibold text-gray-800">
+                                Status: <span className="uppercase">{pds.status}</span>
+                            </h3>
+                            {isDeclined && pds.hr_comments && (
+                                <div className="mt-2">
+                                    <p className="text-sm font-medium text-gray-700">HR Comments:</p>
+                                    <p className="text-sm text-gray-600 mt-1">{pds.hr_comments}</p>
+                                </div>
+                            )}
+                            {isPending && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                    Your PDS is pending review. You cannot edit it until it is reviewed.
+                                </p>
+                            )}
+                            {isApproved && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                    Your PDS has been approved. You can view and print it.
+                                </p>
+                            )}
+                        </div>
+                        {isApproved && (
+                            <button
+                                onClick={handlePrint}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                            >
+                                Print PDS
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <p className="text-xs text-red-600 font-medium mb-4">
                 WARNING: Any misrepresentation made in the Personal Data Sheet and the Work Experience Sheet shall cause the filing of administrative/criminal case/s against the person concerned.
             </p>
@@ -179,7 +304,7 @@ const PdsForm = () => {
             </div>
 
             {/* Tab Content - CONDITIONAL RENDERING APPLIED */}
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
                 
                 {/* 1. PERSONAL INFORMATION */}
                 {activeTab === 'personal' && (
@@ -406,24 +531,51 @@ const PdsForm = () => {
                 )}
             </form>
 
-            {/* Simple navigation buttons between tabs */}
-            <div className="flex justify-between mt-8 pt-4 border-t">
-                <button
-                    onClick={() => setActiveTab(tabs[currentIndex - 1].id)}
-                    disabled={currentIndex === 0}
-                    type="button" 
-                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md disabled:opacity-50"
-                >
-                    &larr; Previous Section
-                </button>
-                <button
-                    onClick={() => setActiveTab(tabs[currentIndex + 1].id)}
-                    disabled={currentIndex === tabs.length - 1}
-                    type="button"
-                    className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 disabled:opacity-50"
-                >
-                    Next Section &rarr;
-                </button>
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center mt-8 pt-4 border-t">
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setActiveTab(tabs[currentIndex - 1].id)}
+                        disabled={currentIndex === 0 || !isEditable}
+                        type="button" 
+                        className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md disabled:opacity-50"
+                    >
+                        &larr; Previous Section
+                    </button>
+                    <button
+                        onClick={() => setActiveTab(tabs[currentIndex + 1].id)}
+                        disabled={currentIndex === tabs.length - 1 || !isEditable}
+                        type="button"
+                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        Next Section &rarr;
+                    </button>
+                </div>
+                
+                <div className="flex gap-2">
+                    {isEditable && (
+                        <>
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                type="button"
+                                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                            >
+                                {saving ? 'Saving...' : pds ? 'Save Changes' : 'Save Draft'}
+                            </button>
+                            {pds && (pds.status === 'draft' || pds.status === 'declined') && (
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={submitting || saving}
+                                    type="button"
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                    {submitting ? 'Submitting...' : 'Submit for Approval'}
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
             {/* Optional: Display formData for debugging */}
             {/* <pre className="mt-4 text-xs bg-gray-100 p-2">{JSON.stringify(formData, null, 2)}</pre> */}

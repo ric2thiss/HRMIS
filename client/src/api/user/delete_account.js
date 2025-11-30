@@ -1,9 +1,14 @@
-import api from '../axios'
+import api from '../axios';
 
-const admin_delete_account_user = async(id) => {
+/**
+ * Delete a user account
+ * @param {number} userId - User ID to delete
+ * @returns {Promise<Object>} Response data
+ */
+const deleteAccount = async (userId) => {
     await api.get("/sanctum/csrf-cookie");
-    const res = await api.delete(`/api/users/${id}`);
-    return res.data.user
-}
+    const res = await api.delete(`/api/users/${userId}`);
+    return res.data;
+};
 
-export default admin_delete_account_user;
+export default deleteAccount;

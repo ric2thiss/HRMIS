@@ -124,7 +124,6 @@ const EmployeeTableView = ({ employees }) => {
 
     // Dummy handlers for demonstration
     const handleAction = (action, employeeId) => {
-        console.log(`${action} employee ID: ${employeeId}`);
         alert(`${action} action triggered for ID ${employeeId}`);
     };
 
