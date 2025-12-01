@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNotification } from '../../../context/NotificationContext';
+import React, { useState, useEffect } from 'react';
+import { useNotification } from '../../../hooks/useNotification';
 import updateProfile from '../../../api/user/updateProfile';
 
 function ProfileForm({ user, onUpdate }) {
@@ -13,6 +13,18 @@ function ProfileForm({ user, onUpdate }) {
   });
   const [profileImage, setProfileImage] = useState(user.profile_image || '');
   const [loading, setLoading] = useState(false);
+
+  // Sync form data and profile image when user prop changes
+  useEffect(() => {
+    setFormData({
+      name: user.name || '',
+      email: user.email || '',
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+    setProfileImage(user.profile_image || '');
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,9 +91,9 @@ function ProfileForm({ user, onUpdate }) {
         updatePayload.current_password = formData.currentPassword;
       }
 
-      // Add profile image if changed
-      if (profileImage && profileImage !== user.profile_image) {
-        updatePayload.profile_image = profileImage;
+      // Add profile image if changed (including if it was removed)
+      if (profileImage !== (user.profile_image || '')) {
+        updatePayload.profile_image = profileImage || '';
       }
 
       // Call API
@@ -236,13 +248,16 @@ function ProfileForm({ user, onUpdate }) {
         <div className="flex justify-end gap-4">
           <button
             type="button"
-            onClick={() => setFormData({
-              name: user.name || '',
-              email: user.email || '',
-              currentPassword: '',
-              newPassword: '',
-              confirmPassword: '',
-            })}
+            onClick={() => {
+              setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: '',
+              });
+              setProfileImage(user.profile_image || '');
+            }}
             className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Cancel

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/auth/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import AppLayout from '../../components/Layout/AppLayout';
 import MyLeaveList from '../../components/features/leave/MyLeaveList';
 import LeaveApplicationForm from '../../components/features/leave/LeaveApplicationForm';

@@ -1,21 +1,31 @@
-import React from "react";
+import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { AuthProvider } from "./context/auth/AuthContext";
-import { NotificationProvider } from "./context/NotificationContext";
+import { useAuthStore } from "./stores/authStore";
 import NotificationContainer from "./components/ui/Notification/NotificationContainer";
 import App from './App';
 import './index.css';
 
+// Initialize auth store on app load
+function AppWithInit() {
+  const initialize = useAuthStore((state) => state.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  return (
+    <>
+      <App />
+      <NotificationContainer />
+    </>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <NotificationProvider>
-          <App />
-          <NotificationContainer />
-        </NotificationProvider>
-      </AuthProvider>
+      <AppWithInit />
     </BrowserRouter>
   </React.StrictMode>
 );

@@ -30,7 +30,7 @@ const PdsPrintView = ({ formData }) => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                     <div style={{ fontSize: '10px', fontWeight: 'bold', textAlign: 'left' }}>
                         CS Form No. 212<br />
-                        Revised 2017
+                        Revised 2025
                     </div>
                     <div style={{ textAlign: 'right', fontSize: '10px' }}>
                         <div style={{ marginBottom: '5px' }}>
@@ -861,7 +861,7 @@ const PdsPrintView = ({ formData }) => {
 
                 {/* Page Footer */}
                 <div style={{ textAlign: 'right', fontSize: '8px', marginTop: '20px', color: '#666' }}>
-                    CS FORM 212 (Revised 2017). Page 4 of 4
+                    CS FORM 212 (Revised 2025). Page 4 of 4
                 </div>
             </div>
         </div>

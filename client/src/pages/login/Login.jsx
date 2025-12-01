@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom'
 import React, { useState, useEffect } from 'react'
 import { Helmet } from "react-helmet";
+import {Eye, EyeOff} from "lucide-react"
 
-import { useAuth } from "../../context/auth/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import Header from "../../components/Header/Header"
 import Footer from "../../components/Footer/Footer"
 import Logo from "../../asset/DICT logo.svg"
@@ -13,6 +14,7 @@ function Login() {
     const navigate = useNavigate()
     const { login } = useAuth(); 
     const [email, setEmail] = useState('')
+    const [showPassword, setShowPassword] = useState(false);
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("");
@@ -101,17 +103,34 @@ function Login() {
                             </div>
                             
                             {/* Password Field */}
-                            <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <div className="relative">
+                                <label 
+                                    htmlFor="password" 
+                                    className="block text-sm font-medium text-gray-700 mb-1"
+                                >
+                                    Password
+                                </label>
+
                                 <input
                                     id="password"
-                                    type="password"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150"
-                                    placeholder="••••••••"
+                                    type={showPassword ? "text" : "password"}
+                                    className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg 
+                                            focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                                    placeholder="Password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                 />
+
+                                {/* Icon button */}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-[45px] transform -translate-y-1/2 
+                                            text-gray-500 hover:text-gray-700"
+                                >
+                                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                                </button>
                             </div>
 
                             {/* Checkbox */}

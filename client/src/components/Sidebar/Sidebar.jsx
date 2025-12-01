@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { getUserRole, hasSystemSettingsAccess } from '../../utils/userHelpers';
 
 import './Sidebar.css'
 
-function Sidebar({ user, role }) {
+function Sidebar({ user, role: roleProp }) {
   const location = useLocation();
+  // Use prop if provided, otherwise get from user
+  const role = roleProp || getUserRole(user);
   
   return (
     <aside id="sidebar" className="w-64 bg-white p-4 flex flex-col shadow-lg flex-shrink-0 overflow-y-auto">
@@ -23,7 +26,14 @@ function Sidebar({ user, role }) {
             )}
         </div>
 
-        <h2 className="text-lg font-semibold mb-4 text-gray-800 sidebar-content">{user.name?.toUpperCase() || ''}</h2>
+        <h2 className="text-lg font-semibold mb-1 text-gray-800 sidebar-content">
+            {user.first_name && user.last_name
+                ? `${user.first_name} ${user.middle_initial || ''} ${user.last_name}`.trim().toUpperCase()
+                : (user.name?.toUpperCase() || '')}
+        </h2>
+        <p className="text-sm text-gray-600 mb-4 sidebar-content">
+            {user.position?.title || 'N/A'}
+        </p>
         
         <div className="space-y-3 mb-6">
             <div className="p-3 border rounded-lg bg-gray-50">
@@ -41,6 +51,12 @@ function Sidebar({ user, role }) {
                 </p>
             </div>
             <div className="p-3 border rounded-lg bg-gray-50">
+                <p className="text-xs text-gray-500">PROJECT:</p>
+                <p className="font-medium text-sm sidebar-content">
+                    {user.project?.name || 'N/A'}
+                </p>
+            </div>
+            <div className="p-3 border rounded-lg bg-gray-50">
                 <p className="text-xs text-gray-500">OFFICE:</p>
                 <p className="font-medium text-sm sidebar-content">REGION13</p>
             </div>
@@ -49,7 +65,7 @@ function Sidebar({ user, role }) {
         <nav className="flex-1 space-y-2">
             <Link to="/dashboard" className={`flex items-center p-2 rounded-lg text-sm font-medium ${location.pathname === '/dashboard' ? 'bg-blue-100': ''} text-blue-700`}>
                 <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-9v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                DASHBOARD
+                HOME
             </Link>
             
             <details className="relative">
@@ -144,12 +160,21 @@ function Sidebar({ user, role }) {
                         }`}>
                             Import Attendance
                         </Link>
-                        <Link to="/system-settings" className={`block p-2 text-sm rounded-lg transition-colors ${
-                            location.pathname === '/system-settings' 
+                        {hasSystemSettingsAccess(user) && (
+                            <Link to="/system-settings" className={`block p-2 text-sm rounded-lg transition-colors ${
+                                location.pathname === '/system-settings' 
+                                    ? 'bg-blue-100 text-blue-700 font-medium' 
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}>
+                                System Settings
+                            </Link>
+                        )}
+                        <Link to="/master-lists" className={`block p-2 text-sm rounded-lg transition-colors ${
+                            location.pathname === '/master-lists' 
                                 ? 'bg-blue-100 text-blue-700 font-medium' 
                                 : 'text-gray-600 hover:bg-gray-100'
                         }`}>
-                            System Settings
+                            Master Lists
                         </Link>
                     </div>
                 </details>

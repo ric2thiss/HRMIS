@@ -1,4 +1,4 @@
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../hooks/useNotification';
 
 function NotificationContainer() {
   const { notifications, removeNotification } = useNotification();

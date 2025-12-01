@@ -4,9 +4,17 @@ import AddAccountForm from "./AddAccountForm";
 import api from "../../../api/axios";
 import createAccount from "../../../api/user/create_account";
 import deleteAccount from "../../../api/user/delete_account";
+import toggleSystemSettingsAccess from "../../../api/user/toggleSystemSettingsAccess";
 import LoadingSpinner from "../../../components/Loading/LoadingSpinner";
+import { useAuth } from "../../../hooks/useAuth";
+import { getUserRole } from "../../../utils/userHelpers";
+import { useNotificationStore } from "../../../stores/notificationStore";
 
 function AccountManager() {
+    const { user: currentUser } = useAuth();
+    const isAdmin = getUserRole(currentUser) === 'admin';
+    const showSuccess = useNotificationStore((state) => state.showSuccess);
+    const showError = useNotificationStore((state) => state.showError);
     const [accounts, setAccounts] = useState([]);
     const [roles, setRoles] = useState([]);
     const [employmentTypes, setEmploymentTypes] = useState([]);
@@ -44,18 +52,24 @@ function AccountManager() {
     // Handle new account creation
     const handleAddAccount = useCallback(
         async (newAccountData) => {
-            const { name, email, password, role_id, employment_type_id } = newAccountData;
+            const { first_name, middle_initial, last_name, email, password, role_id, employment_type_id } = newAccountData;
 
             setError(null);
             setLoading(true);
 
             try {
                 const created = await createAccount(
-                    name,
+                    first_name,
+                    middle_initial || '',
+                    last_name,
                     email,
                     password,
-                    role_id, 
-                    employment_type_id
+                    newAccountData.position_id,
+                    newAccountData.role_id,
+                    newAccountData.project_id,
+                    employment_type_id,
+                    newAccountData.special_capability_ids || [],
+                    newAccountData.office_id || null
                 );
 
                 // Refresh accounts list after creation
@@ -101,6 +115,38 @@ function AccountManager() {
         }
     };
 
+    const handleToggleSystemSettingsAccess = async (accountId, currentAccess) => {
+        if (!isAdmin) {
+            showError("Only administrators can grant system settings access.");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const updatedUser = await toggleSystemSettingsAccess(accountId, !currentAccess);
+            
+            // Update the account in the list
+            setAccounts((prev) => 
+                prev.map(acc => 
+                    acc.id === accountId 
+                        ? { ...acc, has_system_settings_access: updatedUser.has_system_settings_access }
+                        : acc
+                )
+            );
+            
+            showSuccess(
+                updatedUser.has_system_settings_access 
+                    ? 'System settings access granted successfully'
+                    : 'System settings access revoked successfully'
+            );
+        } catch (err) {
+            const message = err?.response?.data?.message || err.message || "Operation failed.";
+            showError(message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (initializing) {
         return <LoadingSpinner text="Loading accounts..." />;
     }
@@ -143,11 +189,25 @@ function AccountManager() {
                                     Email
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Position
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                     Role
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Project
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Office
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                     Type
                                 </th>
+                                {isAdmin && (
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        System Settings Access
+                                    </th>
+                                )}
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                     Action
                                 </th>
@@ -155,25 +215,57 @@ function AccountManager() {
                         </thead>
 
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {accounts.map((account) => (
+                            {accounts.map((account) => {
+                                // Build full name from parts or use name field
+                                const fullName = account.first_name && account.last_name
+                                    ? `${account.first_name} ${account.middle_initial || ''} ${account.last_name}`.trim()
+                                    : account.name || 'N/A';
+                                
+                                return (
                                 <tr key={account.id}>
                                     <td className="px-6 py-4">
-                                        {account.name}
+                                        {fullName}
                                     </td>
                                     <td className="px-6 py-4 text-gray-500">
                                         {account.email}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {account.roles
-                                            ?.map(r => r.name.charAt(0).toUpperCase() + r.name.slice(1))
-                                            .join(", ") || "No role"
-                                        }
+                                        {account.position?.title || 'N/A'}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {account.role?.name || account.roles?.[0]?.name || "No role"}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {account.project?.name || 'N/A'}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {account.office?.name || 'N/A'}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                             {(account.employmentTypes || account.employment_types)?.[0]?.name || "N/A"}
                                         </span>
                                     </td>
+                                    {isAdmin && (
+                                        <td className="px-6 py-4">
+                                            {account.role?.name === 'hr' ? (
+                                                <button
+                                                    onClick={() => handleToggleSystemSettingsAccess(account.id, account.has_system_settings_access)}
+                                                    disabled={loading}
+                                                    className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+                                                        account.has_system_settings_access
+                                                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    } disabled:opacity-50`}
+                                                    title={account.has_system_settings_access ? 'Click to revoke access' : 'Click to grant access'}
+                                                >
+                                                    {account.has_system_settings_access ? '✓ Granted' : '✗ Not Granted'}
+                                                </button>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">N/A</span>
+                                            )}
+                                        </td>
+                                    )}
                                     <td className="px-6 py-4 text-sm font-medium">
                                         <button
                                             onClick={() => handleAction(account.id, "Edit")}
@@ -189,7 +281,7 @@ function AccountManager() {
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                         </tbody>
                     </table>
                 </div>

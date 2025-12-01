@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { mockLeaveApplications, mockLeaveCredits } from '../../../data/mockLeaveData';
 import { LEAVE_STATUS, LEAVE_STATUS_LABELS } from '../../../data/leaveTypes';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../hooks/useNotification';
 
 function MyLeaveList({ user }) {
   const { showSuccess, showError } = useNotification();

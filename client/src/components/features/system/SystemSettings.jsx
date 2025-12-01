@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ToggleSwitch from '../../ui/ToggleSwitch/ToggleSwitch';
 import { getMaintenanceStatus, updateMaintenanceMode } from '../../../api/system/maintenance-mode';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../hooks/useNotification';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
 

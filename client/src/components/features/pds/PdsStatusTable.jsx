@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { submitPds } from '../../../api/pds/pds';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../hooks/useNotification';
 
 /**
  * Calculate completion percentage based on filled fields

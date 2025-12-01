@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
-import ProtectedRoute from "../context/auth/ProtectedRoute";
-import RoleProtectedRoute from "../context/auth/RoleProtectedRoute";
-import GuestRoute from "../context/auth/GuestRoute";
+import ProtectedRoute from "../components/auth/ProtectedRoute";
+import RoleProtectedRoute from "../components/auth/RoleProtectedRoute";
+import GuestRoute from "../components/auth/GuestRoute";
 import Landing from '../pages/Landing'
 import Login from "../pages/login/Login";
 import Dashboard from "../pages/dashboard/Dashboard";
@@ -18,6 +18,7 @@ import ManageLeave from '../pages/leave/ManageLeave'
 import MyApproval from '../pages/approval/MyApproval'
 import ImportAttendance from '../pages/attendance/ImportAttendance'
 import ManagePds from '../pages/pds/ManagePds'
+import MasterLists from '../pages/masterLists/MasterLists'
 
 export default function Routers() {
     return (
@@ -75,8 +76,14 @@ export default function Routers() {
           } />
 
           <Route path="/system-settings" element={
-              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+              <ProtectedRoute>
                   <SystemSettingsPage />
+              </ProtectedRoute>
+          } />
+
+          <Route path="/master-lists" element={
+              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+                  <MasterLists />
               </RoleProtectedRoute>
           } />
 

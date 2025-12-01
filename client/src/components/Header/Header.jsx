@@ -63,9 +63,17 @@ function Header({ user, logout }) {
             {/* User Profile Dropdown */}
             <details className="relative">
               <summary className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 focus:outline-none cursor-pointer">
-                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-white">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4a4 4 0 100 8 4 4 0 000-8zm0 10c-4.42 0-8 3.58-8 8h16c0-4.42-3.58-8-8-8z"/></svg>
-                </div>
+                {user.profile_image ? (
+                  <img 
+                    src={user.profile_image} 
+                    alt="Profile" 
+                    className="w-8 h-8 rounded-full object-cover border-2 border-gray-300"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-white">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4a4 4 0 100 8 4 4 0 000-8zm0 10c-4.42 0-8 3.58-8 8h16c0-4.42-3.58-8-8-8z"/></svg>
+                  </div>
+                )}
                 <span className="text-sm font-medium text-gray-700 hidden sm:block">{user.name}</span>
                 <svg className="w-4 h-4 text-gray-500 transition-transform duration-200 arrow-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
               </summary>

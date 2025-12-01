@@ -68,6 +68,12 @@ export const tilesConfig = [
     title: "System Settings",
     link: "/system-settings",
     icon: <SettingsIcon />,
-    roles: ["hr"]
+    roles: ["admin", "hr"] // Admin always, HR if granted
+  },
+  {
+    title: "Master Lists",
+    link: "/master-lists",
+    icon: <SettingsIcon />,
+    roles: ["hr", "admin"]
   }
 ];

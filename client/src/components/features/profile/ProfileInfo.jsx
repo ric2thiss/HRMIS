@@ -45,9 +45,24 @@ function ProfileInfo({ user }) {
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-500 mb-1">Role</label>
+            <label className="block text-sm font-medium text-gray-500 mb-1">Position/Designation</label>
+            <p className="text-lg font-semibold text-gray-800">
+              {user.position?.title || 'N/A'}
+            </p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-1">Organizational Role</label>
             <p className="text-lg font-semibold text-gray-800 capitalize">
-              {user.roles?.[0]?.name || 'N/A'}
+              {user.role?.name || user.roles?.[0]?.name || 'N/A'}
+            </p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-1">Project Affiliation</label>
+            <p className="text-lg text-gray-800">
+              {user.project?.name || 'N/A'}
+              {user.project?.status && ` (${user.project.status})`}
             </p>
           </div>
           

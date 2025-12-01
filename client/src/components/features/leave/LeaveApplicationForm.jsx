@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LEAVE_TYPES } from '../../../data/leaveTypes';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../hooks/useNotification';
 
 function LeaveApplicationForm({ user }) {
   const { showSuccess, showError } = useNotification();

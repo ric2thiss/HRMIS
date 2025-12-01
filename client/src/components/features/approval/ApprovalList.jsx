@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { mockLeaveApplications } from '../../../data/mockLeaveData';
 import { LEAVE_STATUS, LEAVE_STATUS_LABELS } from '../../../data/leaveTypes';
-import { useNotification } from '../../../context/NotificationContext';
+import { useNotification } from '../../../hooks/useNotification';
 import PdsReviewList from '../pds/PdsReviewList';
 
 function ApprovalList() {

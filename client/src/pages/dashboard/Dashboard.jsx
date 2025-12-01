@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from "../../context/auth/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import AppLayout from '../../components/Layout/AppLayout';
 import TilesSection from '../../components/Tile/TilesSection';
+import { getUserRole } from '../../utils/userHelpers';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -19,11 +20,11 @@ function Dashboard() {
     return null;
   }
 
-  const role = user?.roles?.[0]?.name;
+  const role = getUserRole(user);
 
   return (
     <AppLayout user={user} logout={logout} loading={loading} title="Dashboard">
-      <TilesSection role={role} />
+      <TilesSection role={role} user={user} />
     </AppLayout>
   );
 }

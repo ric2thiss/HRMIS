@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "./AuthContext";
-import LoadingScreen from "../../components/Loading/LoadingScreen";
+import { useAuth } from "../../hooks/useAuth";
+import LoadingScreen from "../Loading/LoadingScreen";
+import { getUserRole } from "../../utils/userHelpers";
 
 /**
  * RoleProtectedRoute - Protects routes based on user roles
@@ -17,11 +18,11 @@ export default function RoleProtectedRoute({ children, allowedRoles = [] }) {
         return <Navigate to="/login" replace />;
     }
 
-    // Get user's role - handle both array and object formats
-    const userRole = user?.roles?.[0]?.name || user?.roles?.[0];
+    // Get user's role - handles both belongsTo and many-to-many relationships
+    const userRole = getUserRole(user);
     
     // Check if user has one of the allowed roles
-    const hasAccess = allowedRoles.includes(userRole);
+    const hasAccess = userRole && allowedRoles.includes(userRole);
 
     if (!hasAccess) {
         // Redirect unauthorized users to dashboard

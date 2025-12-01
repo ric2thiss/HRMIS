@@ -5,6 +5,7 @@ import Sidebar from "../Sidebar/Sidebar";
 import Hero from "../Hero/Hero";
 import LoadingScreen from "../Loading/LoadingScreen";
 import BackButton from "../ui/BackButton/BackButton";
+import { getUserRole } from "../../utils/userHelpers";
 
 /**
  * Shared layout component for authenticated pages
@@ -23,7 +24,7 @@ function AppLayout({ user, logout, loading, title, children, showBackButton = tr
     return <LoadingScreen />;
   }
 
-  const role = user?.roles?.[0]?.name;
+  const role = getUserRole(user);
   const isDashboard = location.pathname === '/dashboard';
   // Show back button on all pages except dashboard
   const shouldShowBack = showBackButton && !isDashboard;

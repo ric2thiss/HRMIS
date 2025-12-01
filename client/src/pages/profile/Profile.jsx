@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/auth/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import AppLayout from '../../components/Layout/AppLayout';
 import ProfileForm from '../../components/features/profile/ProfileForm';
 import ProfileInfo from '../../components/features/profile/ProfileInfo';
@@ -19,14 +19,14 @@ function Profile() {
   }, [loading, authUser, navigate]);
 
   const handleProfileUpdate = async (updatedUser) => {
-    // Update local state
-    setUser(updatedUser);
     // Refresh user from server to ensure we have latest data
+    // This updates the AuthContext, which will trigger the useEffect above
     if (refreshUser) {
-      const freshUser = await refreshUser();
-      if (freshUser) {
-        setUser(freshUser);
-      }
+      await refreshUser();
+      // The useEffect will automatically sync the local state with the updated authUser
+    } else {
+      // Fallback: use the updated user from the API response
+      setUser(updatedUser);
     }
   };
 

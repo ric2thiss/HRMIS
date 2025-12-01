@@ -14,11 +14,19 @@ class AuthController extends Controller
     {
         // Validate input
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'middle_initial' => 'nullable|string|max:10',
+            'last_name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255', // Keep for backward compatibility
             'email' => 'required|string|email|unique:users,email',
             'password' => 'required|string|min:6',
+            'position_id' => 'required|exists:positions,id',
             'role_id' => 'required|exists:roles,id',
+            'project_id' => 'required|exists:projects,id',
+            'office_id' => 'nullable|exists:offices,id',
             'employment_type_id' => 'required|exists:employment_type,id',
+            'special_capability_ids' => 'nullable|array',
+            'special_capability_ids.*' => 'exists:special_capabilities,id',
         ]);
 
         // Generate employee_id: [employment_type_id][year][month][incremental]
@@ -31,23 +39,40 @@ class AuthController extends Controller
 
         $employeeId = $validated['employment_type_id'] . $year . $month . $increment;
 
-        // Create the user
+        // Build full name from parts
+        $fullName = trim($validated['first_name'] . ' ' . 
+            ($validated['middle_initial'] ?? '') . ' ' . 
+            $validated['last_name']);
+
+        // Create the user with new foreign keys
         $user = User::create([
             'employee_id' => $employeeId,
-            'name' => $validated['name'],
+            'first_name' => $validated['first_name'],
+            'middle_initial' => $validated['middle_initial'] ?? null,
+            'last_name' => $validated['last_name'],
+            'name' => $validated['name'] ?? $fullName, // Use provided name or build from parts
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'position_id' => $validated['position_id'],
+            'role_id' => $validated['role_id'],
+            'project_id' => $validated['project_id'],
+            'office_id' => $validated['office_id'] ?? null,
         ]);
 
-        // Attach role
+        // Attach role (maintain backward compatibility with many-to-many)
         $user->roles()->attach((int) $validated['role_id']);
 
         // Attach employment type via pivot table
         $user->employmentTypes()->attach((int) $validated['employment_type_id']);
 
+        // Attach special capabilities if provided (for JO employees)
+        if (isset($validated['special_capability_ids']) && !empty($validated['special_capability_ids'])) {
+            $user->specialCapabilities()->attach($validated['special_capability_ids']);
+        }
+
         return response()->json([
             'message' => 'Registration successful',
-            'user' => $user->load(['roles', 'employmentTypes']) // match method name exactly
+            'user' => $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities'])
         ], 201);
     }
 
@@ -64,13 +89,22 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
-        // $request->session()->regenerate();
+        // Regenerate session for security after successful login
+        $request->session()->regenerate();
 
-        // $user = Auth::user()->load('roles'); // eager load roles
-
+        $user = auth()->user();
+        
+        // Safely load relationships - handle cases where foreign keys might be null
+        try {
+            $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities']);
+        } catch (\Exception $e) {
+            // If relationships fail to load, just load the basic ones
+            $user->load(['roles', 'employmentTypes']);
+        }
+        
         return response()->json([
             'message' => "Successfully logged in!",
-            'user' => auth()->user()->load(['roles', 'employmentTypes'])
+            'user' => $user
         ]);
     }
 
@@ -94,7 +128,16 @@ class AuthController extends Controller
     // PROFILE (Protected)
     public function profile(Request $request)
     {
-        return response()->json($request->user()->load(['roles', 'employmentTypes']));
+        $user = $request->user();
+        
+        // Safely load relationships
+        try {
+            $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities']);
+        } catch (\Exception $e) {
+            $user->load(['roles', 'employmentTypes']);
+        }
+        
+        return response()->json($user);
     }
 
     // LOGOUT FROM ALL DEVICES
@@ -118,8 +161,17 @@ class AuthController extends Controller
     // RETURN AUTH USER
     public function user(Request $request)
     {
+        $user = $request->user();
+        
+        // Safely load relationships
+        try {
+            $user->load(['role', 'position', 'project', 'roles', 'employmentTypes', 'specialCapabilities']);
+        } catch (\Exception $e) {
+            $user->load(['roles', 'employmentTypes']);
+        }
+        
         return response()->json([
-            'user' => $request->user()->load(['roles', 'employmentTypes'])
+            'user' => $user
         ], 200);
     }
 
@@ -129,15 +181,33 @@ class AuthController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
+            'first_name' => 'sometimes|required|string|max:255',
+            'middle_initial' => 'nullable|string|max:10',
+            'last_name' => 'sometimes|required|string|max:255',
+            'name' => 'nullable|string|max:255', // Keep for backward compatibility
             'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
             'password' => 'sometimes|nullable|string|min:6',
             'current_password' => 'required_with:password|string',
             'profile_image' => 'sometimes|nullable|string', // Base64 encoded image
         ]);
 
-        // Update name if provided
-        if (isset($validated['name'])) {
+        // Update name fields if provided
+        if (isset($validated['first_name'])) {
+            $user->first_name = $validated['first_name'];
+        }
+        if (isset($validated['middle_initial'])) {
+            $user->middle_initial = $validated['middle_initial'];
+        }
+        if (isset($validated['last_name'])) {
+            $user->last_name = $validated['last_name'];
+        }
+        // Build full name from parts if name parts are provided
+        if (isset($validated['first_name']) || isset($validated['last_name'])) {
+            $fullName = trim(($user->first_name ?? '') . ' ' . 
+                ($user->middle_initial ?? '') . ' ' . 
+                ($user->last_name ?? ''));
+            $user->name = $validated['name'] ?? $fullName;
+        } elseif (isset($validated['name'])) {
             $user->name = $validated['name'];
         }
 
@@ -164,9 +234,16 @@ class AuthController extends Controller
 
         $user->save();
 
+        // Safely load relationships
+        try {
+            $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities']);
+        } catch (\Exception $e) {
+            $user->load(['roles', 'employmentTypes']);
+        }
+        
         return response()->json([
             'message' => 'Profile updated successfully',
-            'user' => $user->load(['roles', 'employmentTypes'])
+            'user' => $user
         ]);
     }
 }

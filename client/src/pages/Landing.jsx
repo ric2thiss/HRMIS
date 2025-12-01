@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { Link } from 'react-router-dom'
 import dictLogo from '../asset/DICT logo.svg'
 import Header from '../components/Header/Header';
-import { useAuth } from "../context/auth/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import LoadingScreen from '../components/Loading/LoadingScreen'
 // Component for feature icons
 const FeatureIcon = ({ children }) => (

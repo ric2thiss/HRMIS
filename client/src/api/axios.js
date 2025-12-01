@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"; //localhost:8000
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -28,7 +28,22 @@ api.interceptors.request.use(
 // Response interceptor: Handle common errors
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
+        // Handle 419 CSRF Token Mismatch - retry with fresh token
+        if (error.response?.status === 419 && !error.config._retry) {
+            error.config._retry = true;
+            try {
+                // Fetch fresh CSRF cookie
+                await api.get('/sanctum/csrf-cookie', { withCredentials: true });
+                // Wait a bit for cookie to be set
+                await new Promise(resolve => setTimeout(resolve, 100));
+                // Retry the original request
+                return api.request(error.config);
+            } catch (retryError) {
+                return Promise.reject(retryError);
+            }
+        }
+        
         // Handle 401 Unauthorized
         if (error.response?.status === 401) {
             // Could redirect to login here if needed
