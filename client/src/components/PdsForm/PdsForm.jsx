@@ -64,6 +64,9 @@ const initialFormData = {
 
     // XI. DECLARATION (Q42)
     govtIdType: '', govtIdNumber: '', govtIdIssuePlaceDate: '', dateAccomplished: '',
+    photo: '', // Base64 encoded 2x2 photo
+    signature: '', // Base64 encoded signature
+    personAdministeringOath: '',
 };
 
 
@@ -78,9 +81,31 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    // Load existing PDS on mount (only if not provided as prop)
+    // Update formData when initialData changes
     useEffect(() => {
         if (initialData) {
+            // Merge initialData with initialFormData to ensure all fields exist
+            const mergedData = {
+                ...initialFormData,
+                ...initialData,
+                // Preserve arrays if they exist in initialData, otherwise use defaults
+                education: initialData.education || initialFormData.education,
+                eligibility: initialData.eligibility || initialFormData.eligibility,
+                workExperience: initialData.workExperience || initialFormData.workExperience,
+                voluntaryWork: initialData.voluntaryWork || initialFormData.voluntaryWork,
+                training: initialData.training || initialFormData.training,
+                children: initialData.children || initialFormData.children,
+            };
+            console.log('PdsForm - Setting formData with initialData:', {
+                hasPhoto: !!mergedData.photo,
+                hasSignature: !!mergedData.signature,
+                photoLength: mergedData.photo?.length || 0,
+                signatureLength: mergedData.signature?.length || 0,
+                photoPreview: mergedData.photo ? mergedData.photo.substring(0, 50) + '...' : 'none',
+                signaturePreview: mergedData.signature ? mergedData.signature.substring(0, 50) + '...' : 'none',
+                initialDataKeys: initialData ? Object.keys(initialData) : 'no initialData',
+            });
+            setFormData(mergedData);
             setLoading(false);
             return;
         }
@@ -93,7 +118,11 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                     setPds(existingPds);
                     // Load form data from existing PDS
                     if (existingPds.form_data) {
-                        setFormData(existingPds.form_data);
+                        const mergedData = {
+                            ...initialFormData,
+                            ...existingPds.form_data,
+                        };
+                        setFormData(mergedData);
                     }
                 }
             } catch (err) {
@@ -132,6 +161,36 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
             }));
         }
     }, []);
+
+    // Handle image upload (photo and signature)
+    const handleImageUpload = useCallback((e, fieldName) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            showError('Please upload an image file');
+            return;
+        }
+
+        // Validate file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            showError('Image size must be less than 2MB');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setFormData(prevData => ({
+                ...prevData,
+                [fieldName]: reader.result // Store as base64
+            }));
+        };
+        reader.onerror = () => {
+            showError('Failed to read image file');
+        };
+        reader.readAsDataURL(file);
+    }, [showError]);
 
     const tabs = [
         { id: 'personal', name: 'Personal Information' },
@@ -236,7 +295,32 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
     }
 
     return (
-        <div className="p-4 bg-white shadow-xl rounded-xl">
+        <div className={`p-4 bg-white ${readOnly ? 'shadow-none' : 'shadow-xl'} rounded-xl w-full overflow-x-auto pds-form-container`}>
+            {/* Official Form Header - Only visible when printing */}
+            <div className="pds-official-header hidden print-block">
+                <div className="text-center mb-4">
+                    <h1 className="text-3xl font-bold uppercase mb-2">PERSONAL DATA SHEET</h1>
+                    <div className="flex justify-between items-start text-sm">
+                        <div>
+                            <span className="font-semibold">CS Form No. 212</span>
+                            <span className="ml-2">Revised 2017</span>
+                        </div>
+                        <div className="text-right">
+                            <div className="mb-1">
+                                <span className="font-medium">1. CS ID No.</span>
+                                <span className="ml-2 text-xs">(Do not fill up. For CSC use only)</span>
+                            </div>
+                            <div className="border-b-2 border-black w-32 inline-block"></div>
+                        </div>
+                    </div>
+                </div>
+                <div className="border-t-2 border-b-2 border-black py-2 mb-4 text-xs">
+                    <p className="font-bold mb-1">WARNING: Any misrepresentation made in the Personal Data Sheet and the Work Experience Sheet shall cause the filing of administrative/criminal case/s against the person concerned.</p>
+                    <p className="mb-1"><strong>READ THE ATTACHED GUIDE TO FILLING OUT THE PERSONAL DATA SHEET (PDS) BEFORE ACCOMPLISHING THE PDS FORM.</strong></p>
+                    <p>Print legibly. Tick appropriate boxes (☐) and use separate sheet if necessary. Indicate N/A if not applicable. DO NOT ABBREVIATE.</p>
+                </div>
+            </div>
+
             {/* Status Banner */}
             {pds && (
                 <div className={`mb-4 p-4 rounded-lg border-l-4 ${
@@ -284,7 +368,7 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
             </p>
             
             {/* Tab Navigation */}
-            <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
+            <div className="flex border-b border-gray-200 mb-6 overflow-x-auto no-print">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
@@ -303,12 +387,11 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                 ))}
             </div>
 
-            {/* Tab Content - CONDITIONAL RENDERING APPLIED */}
+            {/* Tab Content - Show active tab in normal view, all sections in print/PDF */}
             <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
                 
                 {/* 1. PERSONAL INFORMATION */}
-                {activeTab === 'personal' && (
-                    <div className="space-y-6">
+                <div className={`pds-section space-y-6 ${activeTab === 'personal' ? '' : 'hidden'} print-show`}>
                         <h2 className="text-xl font-bold text-gray-800 border-b pb-2">I. PERSONAL INFORMATION</h2>
                         
                         {/* 1. CS ID No. (For CSC Use Only) */}
@@ -319,39 +402,39 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                         
                         {/* 2. Name Fields - CONNECTED TO STATE */}
                         <h3 className="text-lg font-semibold text-gray-700 mt-6 border-b pb-1">2. Name</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
+                            <div className="min-w-0">
                                 <label htmlFor="surname" className="block text-sm font-medium text-gray-700">SURNAME</label>
-                                <input type="text" id="surname" name="surname" value={formData.surname} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+                                <input type="text" id="surname" name="surname" value={formData.surname || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md min-w-0" required />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">FIRST NAME</label>
-                                <input type="text" id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+                                <input type="text" id="firstName" name="firstName" value={formData.firstName || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md min-w-0" required />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">MIDDLE NAME</label>
-                                <input type="text" id="middleName" name="middleName" value={formData.middleName} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+                                <input type="text" id="middleName" name="middleName" value={formData.middleName || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md min-w-0" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <label htmlFor="nameExtension" className="block text-sm font-medium text-gray-700">NAME EXTENSION (JR., SR.)</label>
-                                <input type="text" id="nameExtension" name="nameExtension" value={formData.nameExtension} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="e.g., JR., SR., III" />
+                                <input type="text" id="nameExtension" name="nameExtension" value={formData.nameExtension || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md min-w-0" placeholder="e.g., JR., SR., III" />
                             </div>
                         </div>
 
                         {/* 3-6, 16. */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t min-w-0">
                             {/* 3. Date of Birth */}
-                            <div>
+                            <div className="min-w-0">
                                 <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">3. DATE OF BIRTH (mm/dd/yyyy)</label>
-                                <input type="date" id="dateOfBirth" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+                                <input type="date" id="dateOfBirth" name="dateOfBirth" value={formData.dateOfBirth || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md min-w-0" required />
                             </div>
                             {/* 4. Place of Birth */}
-                            <div>
+                            <div className="min-w-0">
                                 <label htmlFor="placeOfBirth" className="block text-sm font-medium text-gray-700">4. PLACE OF BIRTH</label>
-                                <input type="text" id="placeOfBirth" name="placeOfBirth" value={formData.placeOfBirth} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+                                <input type="text" id="placeOfBirth" name="placeOfBirth" value={formData.placeOfBirth || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md min-w-0" required />
                             </div>
                             {/* 5. Sex */}
-                            <div>
+                            <div className="min-w-0">
                                 <label className="block text-sm font-medium text-gray-700">5. SEX</label>
                                 <div className="flex space-x-4 mt-2">
                                     <label className="inline-flex items-center"><input type="radio" name="sex" value="Male" checked={formData.sex === 'Male'} onChange={handleChange} className="form-radio h-4 w-4 text-blue-600" required/><span className="ml-2 text-sm text-gray-700">Male</span></label>
@@ -360,7 +443,7 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start pt-4 border-t">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start pt-4 border-t min-w-0">
                             {/* 6. Civil Status */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-medium text-gray-700">6. CIVIL STATUS</label>
@@ -428,17 +511,15 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                         
                         {/* 19-21 Contact Details */}
                         <h3 className="text-lg font-semibold text-gray-700 mt-6 border-b pb-1">19-21. Contact Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div><label htmlFor="telephoneNo" className="block text-sm font-medium text-gray-700">19. TELEPHONE NO.</label><input type="tel" id="telephoneNo" name="telephoneNo" value={formData.telephoneNo} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
-                            <div><label htmlFor="mobileNo" className="block text-sm font-medium text-gray-700">20. MOBILE NO.</label><input type="tel" id="mobileNo" name="mobileNo" value={formData.mobileNo} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required /></div>
-                            <div><label htmlFor="emailAddress" className="block text-sm font-medium text-gray-700">21. E-MAIL ADDRESS (if any)</label><input type="email" id="emailAddress" name="emailAddress" value={formData.emailAddress} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" /></div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-w-0">
+                            <div className="min-w-0"><label htmlFor="telephoneNo" className="block text-sm font-medium text-gray-700">19. TELEPHONE NO.</label><input type="tel" id="telephoneNo" name="telephoneNo" value={formData.telephoneNo || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md min-w-0" /></div>
+                            <div className="min-w-0"><label htmlFor="mobileNo" className="block text-sm font-medium text-gray-700">20. MOBILE NO.</label><input type="tel" id="mobileNo" name="mobileNo" value={formData.mobileNo || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md min-w-0" required /></div>
+                            <div className="min-w-0"><label htmlFor="emailAddress" className="block text-sm font-medium text-gray-700">21. E-MAIL ADDRESS (if any)</label><input type="email" id="emailAddress" name="emailAddress" value={formData.emailAddress || ''} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md min-w-0" /></div>
                         </div>
                     </div>
-                )}
 
                 {/* 2. FAMILY BACKGROUND & EDUCATION */}
-                {activeTab === 'family-education' && (
-                    <div className="space-y-8">
+                <div className={`pds-section space-y-8 ${activeTab === 'family-education' ? '' : 'hidden'} print-show`}>
                         <h2 className="text-xl font-bold text-gray-800 border-b pb-2">II. FAMILY BACKGROUND</h2>
                         
                         {/* 22. Spouse's Information */}
@@ -453,34 +534,30 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                         {/* 25. Mother's Information */}
                         <ParentForm title="25. MOTHER'S MAIDEN NAME" prefix="mother" isMaiden={true} formData={formData} handleChange={handleChange} />
 
-                        <h2 className="text-xl font-bold text-gray-800 border-b pb-2 pt-4">III. EDUCATIONAL BACKGROUND</h2>
+                        <h2 className="text-lg font-bold text-gray-800 border-b-2 border-gray-400 pb-2 pt-4 print-section-header">III. EDUCATIONAL BACKGROUND</h2>
                         
                         {/* 26. Educational Background (Dynamic List for each level) */}
                         <EducationalBackgroundList formData={formData} handleChange={handleChange} />
                     </div>
-                )}
             
                 {/* 3. ELIGIBILITY & WORK EXPERIENCE */}
-                {activeTab === 'eligibility-work' && (
-                    <div className="space-y-8">
-                        <h2 className="text-xl font-bold text-gray-800 border-b pb-2">IV. CIVIL SERVICE ELIGIBILITY</h2>
+                <div className={`pds-section space-y-4 ${activeTab === 'eligibility-work' ? '' : 'hidden'} print-show`}>
+                        <h2 className="text-lg font-bold text-gray-800 border-b-2 border-gray-400 pb-2 print-section-header">IV. CIVIL SERVICE ELIGIBILITY</h2>
                         <EligibilityList formData={formData} handleChange={handleChange} setFormData={setFormData} />
 
-                        <h2 className="text-xl font-bold text-gray-800 border-b pb-2 pt-4">V. WORK EXPERIENCE</h2>
+                        <h2 className="text-lg font-bold text-gray-800 border-b-2 border-gray-400 pb-2 pt-4 print-section-header">V. WORK EXPERIENCE</h2>
                         <WorkExperienceList formData={formData} handleChange={handleChange} setFormData={setFormData} />
                     </div>
-                )}
 
                 {/* 4. VOLUNTARY WORK, L&D, & OTHER INFO */}
-                {activeTab === 'voluntary-training' && (
-                    <div className="space-y-8">
-                        <h2 className="text-xl font-bold text-gray-800 border-b pb-2">VI. VOLUNTARY WORK</h2>
+                <div className={`pds-section space-y-4 ${activeTab === 'voluntary-training' ? '' : 'hidden'} print-show`}>
+                        <h2 className="text-lg font-bold text-gray-800 border-b-2 border-gray-400 pb-2 print-section-header">VI. VOLUNTARY WORK</h2>
                         <VoluntaryWorkList formData={formData} handleChange={handleChange} setFormData={setFormData} />
 
-                        <h2 className="text-xl font-bold text-gray-800 border-b pb-2 pt-4">VII. LEARNING AND DEVELOPMENT (L&D) INTERVENTIONS/TRAINING</h2>
+                        <h2 className="text-lg font-bold text-gray-800 border-b-2 border-gray-400 pb-2 pt-4 print-section-header">VII. LEARNING AND DEVELOPMENT (L&D) INTERVENTIONS/TRAINING</h2>
                         <TrainingList formData={formData} handleChange={handleChange} setFormData={setFormData} />
 
-                        <h2 className="text-xl font-bold text-gray-800 border-b pb-2 pt-4">VIII. OTHER INFORMATION</h2>
+                        <h2 className="text-lg font-bold text-gray-800 border-b-2 border-gray-400 pb-2 pt-4 print-section-header">VIII. OTHER INFORMATION</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* 31. Special Skills and Hobbies */}
                             <div>
@@ -499,12 +576,10 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                             </div>
                         </div>
                     </div>
-                )}
 
                 {/* 5. AFFIDAVIT & REFERENCES */}
-                {activeTab === 'affidavit-reference' && (
-                    <div className="space-y-8">
-                        <h2 className="text-xl font-bold text-gray-800 border-b pb-2">IX. YES/NO QUESTIONS</h2>
+                <div className={`pds-section space-y-4 ${activeTab === 'affidavit-reference' ? '' : 'hidden'} print-show`}>
+                        <h2 className="text-lg font-bold text-gray-800 border-b-2 border-gray-400 pb-2 print-section-header">IX. YES/NO QUESTIONS</h2>
                         <div className="space-y-6">
                             <YesNoQuestion number="34.a" question="Are you related by consanguinity or affinity to the appointing or recommending authority, or to the chief of bureau or office or to the person who has immediate supervision over you in the Office, Bureau or Department where you will be apppointed, within the third degree?" formData={formData} handleChange={handleChange} />
                             <YesNoQuestion number="34.b" question="within the fourth degree (for Local Government Unit - Career Employees)?" formData={formData} handleChange={handleChange} />
@@ -522,61 +597,160 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                             <YesNoQuestion number="40.c" question="Are you a solo parent?" detailLabel="If YES, please specify ID No:" formData={formData} handleChange={handleChange} />
                         </div>
 
+                        <h2 className="text-lg font-bold text-gray-800 border-b-2 border-gray-400 pb-2 pt-4 print-section-header">X. REFERENCES</h2>
                         {/* 41. References */}
                         <ReferencesList formData={formData} handleChange={handleChange} />
 
+                        <h2 className="text-lg font-bold text-gray-800 border-b-2 border-gray-400 pb-2 pt-4 print-section-header">XI. DECLARATION</h2>
                         {/* 42. Declaration and Oath */}
-                        <DeclarationAndOath formData={formData} handleChange={handleChange} />
+                        <DeclarationAndOath formData={formData} handleChange={handleChange} handleImageUpload={handleImageUpload} isEditable={isEditable} />
                     </div>
-                )}
             </form>
 
             {/* Action Buttons */}
-            <div className="flex justify-between items-center mt-8 pt-4 border-t">
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => setActiveTab(tabs[currentIndex - 1].id)}
-                        disabled={currentIndex === 0 || !isEditable}
-                        type="button" 
-                        className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md disabled:opacity-50"
-                    >
-                        &larr; Previous Section
-                    </button>
-                    <button
-                        onClick={() => setActiveTab(tabs[currentIndex + 1].id)}
-                        disabled={currentIndex === tabs.length - 1 || !isEditable}
-                        type="button"
-                        className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 disabled:opacity-50"
-                    >
-                        Next Section &rarr;
-                    </button>
-                </div>
-                
-                <div className="flex gap-2">
-                    {isEditable && (
-                        <>
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                type="button"
-                                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-                            >
-                                {saving ? 'Saving...' : pds ? 'Save Changes' : 'Save Draft'}
-                            </button>
-                            {pds && (pds.status === 'draft' || pds.status === 'declined') && (
+            <div className="flex justify-between items-center mt-8 pt-4 border-t no-print">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setActiveTab(tabs[currentIndex - 1].id)}
+                            disabled={currentIndex === 0 || !isEditable}
+                            type="button" 
+                            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md disabled:opacity-50"
+                        >
+                            &larr; Previous Section
+                        </button>
+                        <button
+                            onClick={() => setActiveTab(tabs[currentIndex + 1].id)}
+                            disabled={currentIndex === tabs.length - 1 || !isEditable}
+                            type="button"
+                            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            Next Section &rarr;
+                        </button>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                        {isEditable && (
+                            <>
                                 <button
-                                    onClick={handleSubmit}
-                                    disabled={submitting || saving}
+                                    onClick={handleSave}
+                                    disabled={saving}
                                     type="button"
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                                    className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
                                 >
-                                    {submitting ? 'Submitting...' : 'Submit for Approval'}
+                                    {saving ? 'Saving...' : pds ? 'Save Changes' : 'Save Draft'}
                                 </button>
-                            )}
-                        </>
-                    )}
+                                {pds && (pds.status === 'draft' || pds.status === 'declined') && (
+                                    <button
+                                        onClick={handleSubmit}
+                                        disabled={submitting || saving}
+                                        type="button"
+                                        className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        {submitting ? 'Submitting...' : 'Submit for Approval'}
+                                    </button>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
-            </div>
+            
+            {/* Print Styles - Official Form Format */}
+            <style>{`
+                /* Print-specific styles */
+                @media print {
+                    .no-print {
+                        display: none !important;
+                    }
+                    .pds-official-header {
+                        display: block !important;
+                    }
+                    .pds-form-container {
+                        padding: 0 !important;
+                        box-shadow: none !important;
+                        border-radius: 0 !important;
+                    }
+                    .pds-section {
+                        display: block !important;
+                        page-break-inside: avoid;
+                        margin-bottom: 15px;
+                        padding-bottom: 15px;
+                        border-bottom: 1px solid #000;
+                    }
+                    .pds-section:last-child {
+                        border-bottom: none;
+                    }
+                    .print-show {
+                        display: block !important;
+                    }
+                    /* Hide input borders and make them look like filled fields */
+                    .pds-section input[type="text"],
+                    .pds-section input[type="date"],
+                    .pds-section input[type="number"],
+                    .pds-section input[type="email"],
+                    .pds-section input[type="tel"],
+                    .pds-section select,
+                    .pds-section textarea {
+                        border: none !important;
+                        border-bottom: 1px solid #000 !important;
+                        background: transparent !important;
+                        padding: 2px 4px !important;
+                        box-shadow: none !important;
+                        border-radius: 0 !important;
+                        appearance: none !important;
+                        -webkit-appearance: none !important;
+                    }
+                    .pds-section input[disabled] {
+                        border-bottom: 1px dashed #666 !important;
+                    }
+                    /* Style section headers */
+                    .pds-section h2 {
+                        background: #e5e7eb !important;
+                        padding: 8px !important;
+                        margin: 15px 0 10px 0 !important;
+                        border: 1px solid #000 !important;
+                        font-weight: bold !important;
+                        text-transform: uppercase !important;
+                    }
+                    .pds-section h3 {
+                        font-weight: bold !important;
+                        margin-top: 10px !important;
+                        margin-bottom: 5px !important;
+                        border-bottom: 1px solid #ccc !important;
+                        padding-bottom: 3px !important;
+                    }
+                    /* Make labels more form-like */
+                    .pds-section label {
+                        font-weight: normal !important;
+                        font-size: 11px !important;
+                    }
+                    /* Radio buttons - show as checked/unchecked */
+                    .pds-section input[type="radio"] {
+                        margin-right: 4px !important;
+                    }
+                    /* Grid layouts for print */
+                    .pds-section .grid {
+                        display: grid !important;
+                        gap: 8px !important;
+                    }
+                }
+                
+                /* PDF mode styles (for html2canvas) */
+                .pdf-mode .pds-official-header {
+                    display: block !important;
+                }
+                .pdf-mode .pds-section {
+                    display: block !important;
+                    margin-bottom: 15px;
+                    padding-bottom: 15px;
+                    border-bottom: 1px solid #000;
+                }
+                .pdf-mode .pds-section:last-child {
+                    border-bottom: none;
+                }
+                .pdf-mode .print-show {
+                    display: block !important;
+                }
+            `}</style>
             {/* Optional: Display formData for debugging */}
             {/* <pre className="mt-4 text-xs bg-gray-100 p-2">{JSON.stringify(formData, null, 2)}</pre> */}
         </div>
@@ -942,7 +1116,18 @@ const ReferencesList = React.memo(({ formData, handleChange }) => (
     </div>
 ));
 
-const DeclarationAndOath = React.memo(({ formData, handleChange }) => (
+const DeclarationAndOath = React.memo(({ formData, handleChange, handleImageUpload, isEditable = true }) => {
+    // Debug logging
+    React.useEffect(() => {
+        console.log('DeclarationAndOath - formData:', {
+            hasPhoto: !!formData?.photo,
+            hasSignature: !!formData?.signature,
+            photoValue: formData?.photo ? formData.photo.substring(0, 50) + '...' : 'none',
+            signatureValue: formData?.signature ? formData.signature.substring(0, 50) + '...' : 'none',
+        });
+    }, [formData?.photo, formData?.signature]);
+
+    return (
     <div className="p-4 border border-blue-200 rounded-md bg-blue-50 space-y-4">
         <h3 className="text-lg font-bold text-blue-800">42. DECLARATION AND OATH</h3>
         <p className="text-sm italic text-gray-700">
@@ -954,25 +1139,100 @@ const DeclarationAndOath = React.memo(({ formData, handleChange }) => (
                 <div className="border border-gray-400 p-2 h-24">
                     <label className="block text-xs font-medium text-gray-600">Government Issued ID (i.e. Passport, GSIS, SSS, PRC, Driver's License, etc.)</label>
                     <label className="block text-xs font-medium text-gray-600">PLEASE INDICATE ID Number and Date of Issuance</label>
-                    <input type="text" name="govtIdType" value={formData.govtIdType} onChange={handleChange} placeholder="Government Issued ID:" className="mt-1 block w-full p-1 border-b border-gray-300 bg-transparent text-sm" />
-                    <input type="text" name="govtIdNumber" value={formData.govtIdNumber} onChange={handleChange} placeholder="ID/License/Passport No.:" className="mt-1 block w-full p-1 border-b border-gray-300 bg-transparent text-sm" />
-                    <input type="text" name="govtIdIssuePlaceDate" value={formData.govtIdIssuePlaceDate} onChange={handleChange} placeholder="Date/Place of Issuance:" className="mt-1 block w-full p-1 border-b border-gray-300 bg-transparent text-sm" />
+                    <input type="text" name="govtIdType" value={formData.govtIdType || ''} onChange={handleChange} placeholder="Government Issued ID:" disabled={!isEditable} className="mt-1 block w-full p-1 border-b border-gray-300 bg-transparent text-sm disabled:opacity-50" />
+                    <input type="text" name="govtIdNumber" value={formData.govtIdNumber || ''} onChange={handleChange} placeholder="ID/License/Passport No.:" disabled={!isEditable} className="mt-1 block w-full p-1 border-b border-gray-300 bg-transparent text-sm disabled:opacity-50" />
+                    <input type="text" name="govtIdIssuePlaceDate" value={formData.govtIdIssuePlaceDate || ''} onChange={handleChange} placeholder="Date/Place of Issuance:" disabled={!isEditable} className="mt-1 block w-full p-1 border-b border-gray-300 bg-transparent text-sm disabled:opacity-50" />
                 </div>
             </div>
 
-            <div className="border border-gray-400 p-2 h-24 flex items-center justify-center bg-white">
-                <span className="text-sm text-gray-500">PHOTO (2x2)</span>
+            {/* Photo Upload */}
+            <div className="border border-gray-400 p-2 bg-white relative" style={{ minHeight: '96px' }}>
+                {formData?.photo && formData.photo.trim() !== '' ? (
+                    <div className="relative w-full h-full">
+                        <img 
+                            src={formData.photo} 
+                            alt="2x2 Photo" 
+                            className="w-full h-full object-contain"
+                            style={{ maxHeight: '96px' }}
+                            onError={(e) => {
+                                console.error('Error loading photo:', formData.photo?.substring(0, 50));
+                                e.target.style.display = 'none';
+                            }}
+                        />
+                        {isEditable && (
+                            <button
+                                type="button"
+                                onClick={() => handleChange({ target: { name: 'photo', value: '' } })}
+                                className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                                title="Remove photo"
+                            >
+                                ×
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(e, 'photo')}
+                            disabled={!isEditable}
+                            className="hidden"
+                        />
+                        <svg className="w-8 h-8 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-xs text-gray-500 text-center">PHOTO (2x2)<br />Click to upload</span>
+                    </label>
+                )}
             </div>
         </div>
         
         <div className="grid grid-cols-3 gap-6 items-end">
             <div className="col-span-1">
-                <input type="text" name="dateAccomplished" value={formData.dateAccomplished} onChange={handleChange} placeholder="Date Accomplished" className="mt-1 block w-full p-2 border-b-2 border-gray-800 bg-transparent text-sm text-center" />
+                <input type="text" name="dateAccomplished" value={formData.dateAccomplished || ''} onChange={handleChange} placeholder="Date Accomplished" disabled={!isEditable} className="mt-1 block w-full p-2 border-b-2 border-gray-800 bg-transparent text-sm text-center disabled:opacity-50" />
                 <p className="text-center text-xs text-gray-500 pt-1">Date Accomplished</p>
             </div>
+            {/* Signature Upload */}
             <div className="col-span-1">
-                <div className="h-20 border border-gray-400 flex items-center justify-center bg-white">
-                    <span className="text-sm text-gray-500">Signature (Sign inside the box)</span>
+                <div className="h-20 border border-gray-400 bg-white relative">
+                    {formData?.signature && formData.signature.trim() !== '' ? (
+                        <div className="relative w-full h-full">
+                            <img 
+                                src={formData.signature} 
+                                alt="Signature" 
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                    console.error('Error loading signature:', formData.signature?.substring(0, 50));
+                                    e.target.style.display = 'none';
+                                }}
+                            />
+                            {isEditable && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleChange({ target: { name: 'signature', value: '' } })}
+                                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                                    title="Remove signature"
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-50 transition-colors">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageUpload(e, 'signature')}
+                                disabled={!isEditable}
+                                className="hidden"
+                            />
+                            <svg className="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            <span className="text-xs text-gray-500 text-center">Signature<br />Click to upload</span>
+                        </label>
+                    )}
                 </div>
             </div>
             <div className="col-span-1">
@@ -984,10 +1244,11 @@ const DeclarationAndOath = React.memo(({ formData, handleChange }) => (
 
         <div className="pt-4 border-t border-blue-300">
              <p className="text-xs font-medium text-blue-800 italic">SUBSCRIBED AND SWORN to before me this _____________, affiant exhibiting his/her validly issued government ID as indicated above.</p>
-             <input type="text" name="personAdministeringOath" placeholder="Person Administering Oath" className="mt-4 block w-full p-2 border-b-2 border-gray-800 bg-transparent text-sm text-center" />
+             <input type="text" name="personAdministeringOath" value={formData.personAdministeringOath || ''} onChange={handleChange} placeholder="Person Administering Oath" disabled={!isEditable} className="mt-4 block w-full p-2 border-b-2 border-gray-800 bg-transparent text-sm text-center disabled:opacity-50" />
         </div>
     </div>
-));
+    );
+});
 
 
 export default PdsForm;

@@ -5,6 +5,7 @@ import AppLayout from '../../components/Layout/AppLayout';
 import PdsForm from '../../components/PdsForm/PdsForm';
 import PdsStatusTable from '../../components/features/pds/PdsStatusTable';
 import LoadingScreen from '../../components/Loading/LoadingScreen';
+import LoadingSpinner from '../../components/Loading/LoadingSpinner';
 import { getMyPds } from '../../api/pds/pds';
 
 function Pds() {
@@ -43,16 +44,23 @@ function Pds() {
   }, [user]);
 
   const handleRefresh = async () => {
-    const existingPds = await getMyPds();
-    setPds(existingPds);
+    setLoadingPds(true);
+    try {
+      const existingPds = await getMyPds();
+      setPds(existingPds);
+    } catch (err) {
+      console.error('Error refreshing PDS:', err);
+    } finally {
+      setLoadingPds(false);
+    }
   };
 
   const handleUpdate = () => {
     setShowForm(true);
   };
 
-  // Show loading screen while auth is loading or PDS is loading
-  if (loading || !user || loadingPds) {
+  // Show full page loading only for initial auth check
+  if (loading || !user) {
     return <LoadingScreen />;
   }
 
@@ -61,23 +69,29 @@ function Pds() {
 
   return (
     <AppLayout user={user} logout={logout} loading={loading} title="My PDS">
-      {isHR && (
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
-          <p className="text-sm text-blue-700">
-            <strong>Note:</strong> As HR/Admin, you can maintain your own PDS for record-keeping. This PDS will remain in draft status and cannot be submitted for approval.
-          </p>
-        </div>
-      )}
-      {pds && (
-        <PdsStatusTable 
-          pds={pds} 
-          onUpdate={handleUpdate}
-          onRefresh={handleRefresh}
-          isHR={isHR}
-        />
-      )}
-      {showForm && (
-        <PdsForm onSave={handleRefresh} />
+      {loadingPds ? (
+        <LoadingSpinner text="Loading PDS..." />
+      ) : (
+        <>
+          {isHR && (
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
+              <p className="text-sm text-blue-700">
+                <strong>Note:</strong> As HR/Admin, you can maintain your own PDS for record-keeping. This PDS will remain in draft status and cannot be submitted for approval.
+              </p>
+            </div>
+          )}
+          {pds && (
+            <PdsStatusTable 
+              pds={pds} 
+              onUpdate={handleUpdate}
+              onRefresh={handleRefresh}
+              isHR={isHR}
+            />
+          )}
+          {showForm && (
+            <PdsForm onSave={handleRefresh} />
+          )}
+        </>
       )}
     </AppLayout>
   );

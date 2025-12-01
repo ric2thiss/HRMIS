@@ -122,5 +122,52 @@ class AuthController extends Controller
             'user' => $request->user()->load(['roles', 'employmentTypes'])
         ], 200);
     }
+
+    // UPDATE PROFILE (for current user)
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
+            'password' => 'sometimes|nullable|string|min:6',
+            'current_password' => 'required_with:password|string',
+            'profile_image' => 'sometimes|nullable|string', // Base64 encoded image
+        ]);
+
+        // Update name if provided
+        if (isset($validated['name'])) {
+            $user->name = $validated['name'];
+        }
+
+        // Update email if provided
+        if (isset($validated['email'])) {
+            $user->email = $validated['email'];
+        }
+
+        // Update password if provided
+        if (isset($validated['password'])) {
+            // Verify current password
+            if (!Hash::check($validated['current_password'], $user->password)) {
+                return response()->json([
+                    'message' => 'Current password is incorrect'
+                ], 422);
+            }
+            $user->password = Hash::make($validated['password']);
+        }
+
+        // Update profile image if provided
+        if (isset($validated['profile_image'])) {
+            $user->profile_image = $validated['profile_image']; // Store base64 string
+        }
+
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user->load(['roles', 'employmentTypes'])
+        ]);
+    }
 }
     

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getAllPds, reviewPds } from '../../../api/pds/pds';
 import { useNotification } from '../../../context/NotificationContext';
 import PdsReviewModal from './PdsReviewModal';
+import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
 
 function PdsReviewList() {
     const { showSuccess, showError } = useNotification();
@@ -16,7 +17,8 @@ function PdsReviewList() {
     const loadPendingPds = async () => {
         try {
             setLoading(true);
-            const allPds = await getAllPds();
+            const response = await getAllPds();
+            const allPds = response.pds || [];
             const pending = allPds.filter(pds => pds.status === 'pending');
             setPendingPds(pending);
         } catch (err) {
@@ -47,14 +49,14 @@ function PdsReviewList() {
 
     if (loading) {
         return (
-            <div className="bg-white rounded-xl shadow-lg p-6">
-                <p className="text-center text-gray-500">Loading PDS submissions...</p>
+            <div className="bg-white rounded-xl p-6">
+                <LoadingSpinner text="Loading PDS submissions..." />
             </div>
         );
     }
 
     return (
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white rounded-xl p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Pending PDS Submissions</h2>
 
             {pendingPds.length === 0 ? (

@@ -27,6 +27,7 @@ Route::middleware('maintenance')->group(function () {
         // Auth routes
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/profile', [AuthController::class, 'profile']);
+        Route::put('/profile', [AuthController::class, 'updateProfile']); // Update own profile
         Route::get('/user', [AuthController::class, 'user']);
 
         // User routes (HR and Admin only)
@@ -58,6 +59,7 @@ Route::middleware('maintenance')->group(function () {
         // HR/Admin only routes
         Route::middleware('role:hr,admin')->group(function () {
             Route::post('/pds/{id}/review', [PersonalDataSheetController::class, 'review']); // Approve/Decline PDS
+            Route::post('/pds/{id}/return', [PersonalDataSheetController::class, 'returnToOwner']); // Return PDS to owner
             Route::get('/pds/employees/without-pds', [PersonalDataSheetController::class, 'employeesWithoutPds']); // Get employees without PDS
             Route::post('/pds/employees/{userId}/notify', [PersonalDataSheetController::class, 'notifyEmployee']); // Notify employee to fill PDS
         });

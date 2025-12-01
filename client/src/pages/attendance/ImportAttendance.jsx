@@ -14,12 +14,15 @@ function ImportAttendance() {
       return;
     }
 
-    const role = user?.roles?.[0]?.name;
-    if (role !== 'hr' && role !== 'admin') {
-      navigate("/dashboard");
+    if (user) {
+      const role = user?.roles?.[0]?.name;
+      if (role !== 'hr' && role !== 'admin') {
+        navigate("/dashboard");
+      }
     }
   }, [loading, user, navigate]);
 
+  // Show full page loading only for initial auth check
   if (loading || !user) {
     return null;
   }

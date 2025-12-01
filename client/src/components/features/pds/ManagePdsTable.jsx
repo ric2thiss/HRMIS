@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getAllPds, getEmployeesWithoutPds, notifyEmployee } from '../../../api/pds/pds';
+import { getAllPds, getEmployeesWithoutPds, notifyEmployee, reviewPds, deletePds, returnPdsToOwner } from '../../../api/pds/pds';
 import { useNotification } from '../../../context/NotificationContext';
 import PdsReviewModal from './PdsReviewModal';
+import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
 
 function ManagePdsTable() {
     const { showSuccess, showError } = useNotification();
@@ -25,8 +26,25 @@ function ManagePdsTable() {
                 setEmployeesWithoutPds(response.employees || []);
                 setPdsList([]);
             } else {
-                const response = await getAllPds(activeFilter === 'all' ? null : activeFilter);
-                setPdsList(response.pds || []);
+                // Map frontend filter to backend status
+                let statusFilter = null;
+                if (activeFilter === 'draft') {
+                    statusFilter = 'draft';
+                } else if (activeFilter === 'approved') {
+                    statusFilter = 'approved';
+                } else if (activeFilter === 'all') {
+                    statusFilter = null; // Get all
+                }
+                
+                const response = await getAllPds(statusFilter);
+                // Additional client-side filtering to ensure correct status
+                let filteredPds = response.pds || [];
+                if (activeFilter === 'draft') {
+                    filteredPds = filteredPds.filter(pds => pds.status === 'draft');
+                } else if (activeFilter === 'approved') {
+                    filteredPds = filteredPds.filter(pds => pds.status === 'approved');
+                }
+                setPdsList(filteredPds);
                 setEmployeesWithoutPds([]);
             }
         } catch (err) {
@@ -48,6 +66,53 @@ function ManagePdsTable() {
             showError(err.response?.data?.message || 'Failed to send notification');
         } finally {
             setNotifying(prev => ({ ...prev, [employeeId]: false }));
+        }
+    };
+
+    const handleReview = async (pdsId, action, comments = null) => {
+        try {
+            const response = await reviewPds(pdsId, action, comments);
+            showSuccess(`PDS ${action}d successfully`);
+            
+            if (action === 'approve' && response?.notification) {
+                showSuccess('PDS approved! The employee has been notified.');
+            }
+            
+            loadData(); // Refresh list
+            setSelectedPds(null);
+        } catch (err) {
+            console.error('Error reviewing PDS:', err);
+            showError(err.response?.data?.message || `Failed to ${action} PDS`);
+        }
+    };
+
+    const handleDelete = async (pdsId, employeeName) => {
+        if (!window.confirm(`Are you sure you want to delete the PDS for ${employeeName}? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await deletePds(pdsId);
+            showSuccess('PDS deleted successfully');
+            loadData(); // Refresh list
+        } catch (err) {
+            console.error('Error deleting PDS:', err);
+            showError(err.response?.data?.message || 'Failed to delete PDS');
+        }
+    };
+
+    const handleReturnToOwner = async (pdsId, employeeName) => {
+        if (!window.confirm(`Are you sure you want to return the PDS to ${employeeName}? The status will be changed to draft so they can update it.`)) {
+            return;
+        }
+
+        try {
+            await returnPdsToOwner(pdsId);
+            showSuccess('PDS returned to owner successfully. Employee can now update it.');
+            loadData(); // Refresh list
+        } catch (err) {
+            console.error('Error returning PDS:', err);
+            showError(err.response?.data?.message || 'Failed to return PDS to owner');
         }
     };
 
@@ -109,9 +174,7 @@ function ManagePdsTable() {
             {/* Table */}
             <div className="bg-white rounded-xl shadow-lg p-6">
                 {loading ? (
-                    <div className="text-center py-10 text-gray-500">
-                        Loading...
-                    </div>
+                    <LoadingSpinner text="Loading PDS data..." />
                 ) : activeFilter === 'without-pds' ? (
                     // Employees Without PDS Table
                     employeesWithoutPds.length === 0 ? (
@@ -261,6 +324,24 @@ function ManagePdsTable() {
                                                         </button>
                                                     </>
                                                 )}
+                                                {pds.status === 'approved' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleReturnToOwner(pds.id, pds.user?.name || 'employee')}
+                                                            className="text-orange-600 hover:text-orange-900"
+                                                            title="Return to owner for updates"
+                                                        >
+                                                            Return to Owner
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(pds.id, pds.user?.name || 'employee')}
+                                                            className="text-red-600 hover:text-red-900"
+                                                            title="Delete PDS"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -276,14 +357,8 @@ function ManagePdsTable() {
                 <PdsReviewModal
                     pds={selectedPds}
                     onClose={() => setSelectedPds(null)}
-                    onApprove={() => {
-                        setSelectedPds(null);
-                        loadData();
-                    }}
-                    onDecline={() => {
-                        setSelectedPds(null);
-                        loadData();
-                    }}
+                    onApprove={() => handleReview(selectedPds.id, 'approve')}
+                    onDecline={(comments) => handleReview(selectedPds.id, 'decline', comments)}
                 />
             )}
         </div>

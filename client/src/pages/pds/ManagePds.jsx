@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/auth/AuthContext';
 import AppLayout from '../../components/Layout/AppLayout';
@@ -15,12 +15,15 @@ function ManagePds() {
       return;
     }
 
-    const role = user?.roles?.[0]?.name;
-    if (role !== 'hr' && role !== 'admin') {
-      navigate("/dashboard");
+    if (user) {
+      const role = user?.roles?.[0]?.name;
+      if (role !== 'hr' && role !== 'admin') {
+        navigate("/dashboard");
+      }
     }
   }, [loading, user, navigate]);
 
+  // Show full page loading only for initial auth check
   if (loading || !user) {
     return <LoadingScreen />;
   }

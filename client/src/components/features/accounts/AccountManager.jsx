@@ -4,6 +4,7 @@ import AddAccountForm from "./AddAccountForm";
 import api from "../../../api/axios";
 import createAccount from "../../../api/user/create_account";
 import deleteAccount from "../../../api/user/delete_account";
+import LoadingSpinner from "../../../components/Loading/LoadingSpinner";
 
 function AccountManager() {
     const [accounts, setAccounts] = useState([]);
@@ -101,13 +102,7 @@ function AccountManager() {
     };
 
     if (initializing) {
-        return (
-            <div className="flex justify-center items-center h-40">
-                <div className="text-gray-600 animate-pulse text-lg">
-                    Loading accounts...
-                </div>
-            </div>
-        );
+        return <LoadingSpinner text="Loading accounts..." />;
     }
 
     return (

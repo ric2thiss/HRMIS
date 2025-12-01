@@ -154,8 +154,20 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const refreshUser = async () => {
+        try {
+            await api.get("/sanctum/csrf-cookie", { withCredentials: true });
+            const res = await api.get("/api/user", { withCredentials: true });
+            setUser(normalizeUser(res.data.user));
+            return normalizeUser(res.data.user);
+        } catch (err) {
+            console.error('Error refreshing user:', err);
+            return null;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading, refreshUser, setUser }}>
             {children}
         </AuthContext.Provider>
     );

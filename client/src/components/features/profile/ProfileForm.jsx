@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNotification } from '../../../context/NotificationContext';
+import updateProfile from '../../../api/user/updateProfile';
 
-function ProfileForm({ user }) {
+function ProfileForm({ user, onUpdate }) {
   const { showSuccess, showError } = useNotification();
   const [formData, setFormData] = useState({
     name: user.name || '',
@@ -10,6 +11,7 @@ function ProfileForm({ user }) {
     newPassword: '',
     confirmPassword: '',
   });
+  const [profileImage, setProfileImage] = useState(user.profile_image || '');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -18,6 +20,32 @@ function ProfileForm({ user }) {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showError('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showError('Image size must be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImage(reader.result); // Store as base64
+    };
+    reader.onerror = () => {
+      showError('Failed to read image file');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -39,8 +67,30 @@ function ProfileForm({ user }) {
         }
       }
 
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Prepare update payload
+      const updatePayload = {
+        name: formData.name,
+        email: formData.email,
+      };
+
+      // Add password if changing
+      if (formData.newPassword) {
+        updatePayload.password = formData.newPassword;
+        updatePayload.current_password = formData.currentPassword;
+      }
+
+      // Add profile image if changed
+      if (profileImage && profileImage !== user.profile_image) {
+        updatePayload.profile_image = profileImage;
+      }
+
+      // Call API
+      const updatedUser = await updateProfile(updatePayload);
+      
+      // Call parent callback if provided to refresh user data
+      if (onUpdate) {
+        onUpdate(updatedUser);
+      }
       
       showSuccess('Profile updated successfully');
       setFormData(prev => ({
@@ -50,7 +100,7 @@ function ProfileForm({ user }) {
         confirmPassword: '',
       }));
     } catch (error) {
-      showError('Failed to update profile. Please try again.');
+      showError(error.response?.data?.message || 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -61,6 +111,50 @@ function ProfileForm({ user }) {
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Update Profile</h2>
       
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Profile Image Upload */}
+        <div className="flex items-center gap-6 pb-6 border-b">
+          <div className="relative">
+            {profileImage ? (
+              <div className="relative">
+                <img 
+                  src={profileImage} 
+                  alt="Profile" 
+                  className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setProfileImage('')}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                  title="Remove image"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
+                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Profile Image
+            </label>
+            <label className="cursor-pointer inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              {profileImage ? 'Change Image' : 'Upload Image'}
+            </label>
+            <p className="text-xs text-gray-500 mt-1">Max 2MB, JPG/PNG</p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

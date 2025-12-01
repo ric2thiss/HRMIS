@@ -29,6 +29,12 @@ export const tilesConfig = [
     roles: ["hr", "employee", "admin"]
   },
   {
+    title: "Manage PDS",
+    link: "/manage-pds",
+    icon: <PDSIcon />,
+    roles: ["hr", "admin"]
+  },
+  {
     title: "My DTR",
     link: "/my-dtr",
     icon: <DTRIcon />,

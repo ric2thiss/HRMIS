@@ -3,6 +3,7 @@ import ToggleSwitch from '../../ui/ToggleSwitch/ToggleSwitch';
 import { getMaintenanceStatus, updateMaintenanceMode } from '../../../api/system/maintenance-mode';
 import { useNotification } from '../../../context/NotificationContext';
 import api from '../../../api/axios';
+import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
 
 function SystemSettings() {
   const { showSuccess, showError } = useNotification();
@@ -145,11 +146,7 @@ function SystemSettings() {
   };
 
   if (loading) {
-    return (
-      <div className="p-6 text-center text-gray-500">
-        Loading system settings...
-      </div>
-    );
+    return <LoadingSpinner text="Loading system settings..." />;
   }
 
   return (

@@ -14,6 +14,7 @@ function DTR() {
     }
   }, [loading, user, navigate]);
 
+  // Show full page loading only for initial auth check
   if (loading || !user) {
     return null;
   }

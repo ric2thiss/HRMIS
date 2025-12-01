@@ -109,12 +109,26 @@ export const reviewPds = async (id, action, comments = null) => {
 };
 
 /**
- * Delete PDS (only if draft)
+ * Delete PDS
+ * - Employees can only delete their own draft PDS
+ * - HR/Admin can delete any PDS
  * @param {number} id - PDS ID
  * @returns {Promise<void>}
  */
 export const deletePds = async (id) => {
     await api.get("/sanctum/csrf-cookie");
     await api.delete(`/api/pds/${id}`);
+};
+
+/**
+ * Return PDS to owner (HR/Admin only)
+ * Changes status back to draft so employee can update
+ * @param {number} id - PDS ID
+ * @returns {Promise<Object>} Updated PDS object
+ */
+export const returnPdsToOwner = async (id) => {
+    await api.get("/sanctum/csrf-cookie");
+    const res = await api.post(`/api/pds/${id}/return`);
+    return res.data;
 };
 

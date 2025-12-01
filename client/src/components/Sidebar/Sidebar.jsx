@@ -10,12 +10,20 @@ function Sidebar({ user, role }) {
     <aside id="sidebar" className="w-64 bg-white p-4 flex flex-col shadow-lg flex-shrink-0 overflow-y-auto">
             
         <div className="mb-6 p-4 border rounded-lg flex justify-center">
-            <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">
-                <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4a4 4 0 100 8 4 4 0 000-8zm0 10c-4.42 0-8 3.58-8 8h16c0-4.42-3.58-8-8-8z"/></svg>
-            </div>
+            {user.profile_image ? (
+                <img 
+                    src={user.profile_image} 
+                    alt="Profile" 
+                    className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
+                />
+            ) : (
+                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">
+                    <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 4a4 4 0 100 8 4 4 0 000-8zm0 10c-4.42 0-8 3.58-8 8h16c0-4.42-3.58-8-8-8z"/></svg>
+                </div>
+            )}
         </div>
 
-        <h2 className="text-lg font-semibold mb-4 text-gray-800 sidebar-content">{user.name}</h2>
+        <h2 className="text-lg font-semibold mb-4 text-gray-800 sidebar-content">{user.name?.toUpperCase() || ''}</h2>
         
         <div className="space-y-3 mb-6">
             <div className="p-3 border rounded-lg bg-gray-50">
@@ -24,11 +32,13 @@ function Sidebar({ user, role }) {
             </div>
             <div className="p-3 border rounded-lg bg-gray-50">
                 <p className="text-xs text-gray-500">EMAIL ADDRESS:</p>
-                <p className="font-medium text-sm truncate sidebar-content">{user.email}</p>
+                <p className="font-medium text-sm truncate sidebar-content">{user.email?.toUpperCase() || ''}</p>
             </div>
             <div className="p-3 border rounded-lg bg-gray-50">
                 <p className="text-xs text-gray-500">ROLE:</p>
-                <p className="font-medium text-sm sidebar-content">{role}</p>
+                <p className="font-medium text-sm sidebar-content">
+                    {role ? `${role.toUpperCase()} (${((user.employmentTypes || user.employment_types)?.[0]?.name || 'N/A').toUpperCase()})` : 'N/A'}
+                </p>
             </div>
             <div className="p-3 border rounded-lg bg-gray-50">
                 <p className="text-xs text-gray-500">OFFICE:</p>
