@@ -3,7 +3,8 @@ import React from 'react';
 import {
     PieChart, Pie, Cell, Tooltip,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
-    LineChart, Line
+    LineChart, Line,
+    ResponsiveContainer
 } from 'recharts';
 import StatCard from './StatCard';
 import ChartCard from './ChartCard';
@@ -45,8 +46,8 @@ const positionsData = [
 
 const Dashboard = () => {
     return (
-        <div className="min-h-screen p-5 bg-gray-100 font-sans">
-            <header className="bg-blue-700 text-white p-4 font-bold flex justify-between items-center rounded-t-lg">
+        <div className="min-h-screen bg-gray-100 font-sans">
+            <header className="bg-blue-700 text-white p-3 font-bold flex justify-between items-center rounded-t-lg">
                 <div className="flex gap-4">
                     <span>DASHBOARD</span>
                     <span className="text-sm font-normal opacity-80">December 2025</span>
@@ -55,7 +56,7 @@ const Dashboard = () => {
             </header>
 
             {/* Top Row: Statistics Cards (Grid 4) */}
-            <div className="grid grid-cols-4 gap-4 mb-5 mt-5">
+            <div className="grid grid-cols-4 gap-4 mb-4 mt-2">
                 <StatCard 
                     title="EMPLOYEES" 
                     value="96" 
@@ -91,7 +92,7 @@ const Dashboard = () => {
                 
                 {/* 1. Status Pie Chart */}
                 <ChartCard>
-                    <div className="flex items-center justify-start gap-8">
+                    <div className="flex items-center justify-start gap-8 h-full min-h-[250px]">
                         {/* Custom Legend (Mimicking the image) */}
                         <div className="flex flex-col flex-wrap max-h-56 p-2 border border-gray-200">
                             {pieData.map((entry, index) => (
@@ -105,49 +106,61 @@ const Dashboard = () => {
                             ))}
                         </div>
 
-                        {/* Pie Chart */}
-                        <PieChart width={300} height={300}>
-                            <Pie
-                                data={pieData}
-                                dataKey="value"
-                                nameKey="name"
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={120}
-                                fill="#8884d8"
-                            >
-                                {pieData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                        </PieChart>
+                        {/* Pie Chart - Responsive */}
+                        <div className="flex-1 h-full min-h-[200px]">
+                            <ResponsiveContainer width="100%" height={250}>
+                                <PieChart>
+                                    <Pie
+                                        data={pieData}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                    >
+                                        {pieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </ChartCard>
 
                 {/* 2. Daily Login Activity Line Chart */}
                 <ChartCard title="DAILY LOGIN ACTIVITY (THIS MONTH)">
-                    <LineChart width={550} height={250} data={loginData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="day" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="Daily Logins" stroke="#2196F3" strokeWidth={2} />
-                    </LineChart>
+                    <div className="w-full h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={loginData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="day" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Line type="monotone" dataKey="Daily Logins" stroke="#2196F3" strokeWidth={2} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
                 </ChartCard>
 
                 {/* 3. Modules Line Chart */}
                 <ChartCard title="MODULES">
-                    <LineChart width={550} height={250} data={moduleData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="day" />
-                        <YAxis domain={[0, 1]} />
-                        <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="Leave" stroke="#E53935" strokeWidth={2} dot={{ fill: '#E53935', r: 3 }} />
-                        <Line type="monotone" dataKey="DTRAS" stroke="#00BCD4" strokeWidth={2} dot={{ fill: '#00BCD4', r: 3 }} />
-                    </LineChart>
+                    <div className="w-full h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={moduleData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="day" />
+                                <YAxis domain={[0, 1]} />
+                                <Tooltip />
+                                <Legend />
+                                <Line type="monotone" dataKey="Leave" stroke="#E53935" strokeWidth={2} dot={{ fill: '#E53935', r: 3 }} />
+                                <Line type="monotone" dataKey="DTRAS" stroke="#00BCD4" strokeWidth={2} dot={{ fill: '#00BCD4', r: 3 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
                 </ChartCard>
                 
                 {/* 4. Positions by Province Bar Chart */}
@@ -155,25 +168,29 @@ const Dashboard = () => {
                     <div className="text-xs text-gray-600 mb-4">
                         Position & Employment Distribution (Overall $\rightarrow$ Regions $\rightarrow$ Center)
                     </div>
-                    <BarChart width={550} height={250} data={positionsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="category" hide={true}/>
-                        <YAxis domain={[0, 700]} />
-                        <Tooltip />
-                        <Legend layout="horizontal" align="center" verticalAlign="top" payload={
-                            positionsData.map((item) => ({
-                                id: item.category,
-                                value: item.category,
-                                type: 'square',
-                                color: item.color,
-                            }))
-                        } />
-                        <Bar dataKey="value" name="Total Positions" >
-                            {positionsData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                        </Bar>
-                    </BarChart>
+                    <div className="w-full h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={positionsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="category" hide={true}/>
+                                <YAxis domain={[0, 700]} />
+                                <Tooltip />
+                                <Legend layout="horizontal" align="center" verticalAlign="top" payload={
+                                    positionsData.map((item) => ({
+                                        id: item.category,
+                                        value: item.category,
+                                        type: 'square',
+                                        color: item.color,
+                                    }))
+                                } />
+                                <Bar dataKey="value" name="Total Positions" >
+                                    {positionsData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </ChartCard>
             </div>
         </div>

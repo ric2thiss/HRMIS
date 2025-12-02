@@ -45,10 +45,15 @@ function AppLayout({ user, logout, loading, title, children, showBackButton = tr
 
         <main className="flex flex-1 overflow-hidden">
           <Sidebar user={user} role={role} />
-          <section className="flex-1 p-6 space-y-6 overflow-y-auto">
+          <section className="flex-1 p-4 pt-2 space-y-4 overflow-y-auto relative">
+            {/* Move back button to top right, only if not dashboard */}
+              {/* Back button centered in the gap between header and content */}
+              {shouldShowBack && (
+                <div className="absolute top-4 left-6 -translate-y-1/2 z-10">
+                  <BackButton />
+                </div>
+              )}
             {isDashboardForHR && <Hero user={user} />}
-            {/* <Hero user={user} /> */}
-            {shouldShowBack && <BackButton />}
             {children}
           </section>
         </main>
