@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getAllPds, getEmployeesWithoutPds, notifyEmployee, reviewPds, deletePds, returnPdsToOwner } from '../../../api/pds/pds';
 import { useNotification } from '../../../hooks/useNotification';
 import PdsReviewModal from './PdsReviewModal';
@@ -6,6 +7,7 @@ import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
 
 function ManagePdsTable() {
     const { showSuccess, showError } = useNotification();
+    const navigate = useNavigate();
     const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'draft', 'approved', 'without-pds'
     const [pdsList, setPdsList] = useState([]);
     const [employeesWithoutPds, setEmployeesWithoutPds] = useState([]);
@@ -303,7 +305,7 @@ function ManagePdsTable() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                                                 <button
-                                                    onClick={() => setSelectedPds({ ...pds, action: 'view' })}
+                                                    onClick={() => navigate(`/manage-pds/${pds.id}/pdf`)}
                                                     className="text-blue-600 hover:text-blue-900"
                                                 >
                                                     View

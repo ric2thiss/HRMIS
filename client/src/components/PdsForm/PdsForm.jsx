@@ -1,7 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../../hooks/useNotification';
 import { getMyPds, createPds, updatePds, submitPds } from '../../api/pds/pds';
+import PdsPrintView from './PdsPrintView';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 // --- INITIAL STATE DEFINITION ---
 // This large object holds the data for ALL form fields (approx 100+).
@@ -281,9 +284,101 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
         }
     };
 
-    // Print PDS (for approved PDS)
+    const printRef = useRef(null);
+
+    // Print PDS (for approved PDS) - open a new window with printable HTML
     const handlePrint = () => {
-        window.print();
+        // Ensure we have form data to print
+        if (!formData) {
+            alert('No PDS data to print');
+            return;
+        }
+
+        // Ensure the printable element exists (rendered but hidden)
+        if (!printRef.current) {
+            alert('Printable content not ready. Please try again.');
+            return;
+        }
+
+        const printWindow = window.open('', '', 'height=800,width=900');
+        if (!printWindow) {
+            alert('Unable to open print window. Please check your popup blocker.');
+            return;
+        }
+
+        // Basic styles for printing - include font and page sizing
+        const styles = `
+            <style>
+                @media print { @page { size: A4; margin: 10mm 15mm; } }
+                body { font-family: Arial, sans-serif; color: #000; }
+                table { border-collapse: collapse; }
+            </style>
+        `;
+
+        printWindow.document.write('<html><head><title>Print PDS</title>' + styles + '</head><body>');
+        // Use outerHTML to include the printable element and its children (including inline images)
+        printWindow.document.write(printRef.current.outerHTML);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+
+        // Delay a bit to ensure content is rendered in new window
+        setTimeout(() => {
+            printWindow.focus();
+            printWindow.print();
+            // Optionally close window after printing (commented to let user control it)
+            // printWindow.close();
+        }, 300);
+    };
+
+    // Download PDF using html2canvas + jsPDF (similar to PdsReviewModal)
+    const handleDownloadPDF = async () => {
+        if (!printRef.current) {
+            alert('Printable content not ready. Please try again.');
+            return;
+        }
+
+        try {
+            // Ensure printable area is visible to the capture
+            const prevDisplay = printRef.current.style.display;
+            printRef.current.style.display = 'block';
+
+            // Wait for rendering
+            await new Promise(resolve => setTimeout(resolve, 600));
+
+            const canvas = await html2canvas(printRef.current, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+            });
+
+            // Restore display
+            printRef.current.style.display = prevDisplay;
+
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210; // A4 width in mm
+            const pageHeight = 297;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft > 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+
+            const fileName = `PDS_${(formData.surname || 'Employee')}_${new Date().toISOString().split('T')[0]}.pdf`;
+            pdf.save(fileName);
+        } catch (err) {
+            console.error('Error generating PDF:', err);
+            alert('Failed to generate PDF. Please try again.');
+        }
     };
 
     if (loading) {
@@ -321,6 +416,11 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                 </div>
             </div>
 
+            {/* Hidden printable area used for generating print/PDF preview */}
+            <div ref={printRef} className="pds-printable-area" style={{ display: 'none' }}>
+                <PdsPrintView formData={formData} />
+            </div>
+
             {/* Status Banner */}
             {pds && (
                 <div className={`mb-4 p-4 rounded-lg border-l-4 ${
@@ -352,12 +452,20 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                             )}
                         </div>
                         {isApproved && (
-                            <button
-                                onClick={handlePrint}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                                Print PDS
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleDownloadPDF}
+                                    className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                                >
+                                    Download PDF
+                                </button>
+                                <button
+                                    onClick={handlePrint}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                >
+                                    Print PDS
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>

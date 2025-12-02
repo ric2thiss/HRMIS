@@ -72,11 +72,37 @@ function AccountManager() {
                     newAccountData.office_id || null
                 );
 
-                // Refresh accounts list after creation
-                const usersRes = await api.get("/api/users");
-                setAccounts(usersRes.data.users || []);
-
+                // Close the form immediately after successful creation
                 setIsFormVisible(false);
+                showSuccess('Account created successfully');
+
+                // Cleanup overlays and re-enable interaction in case any
+                // full-screen backdrop remained in the DOM.
+                try {
+                    const overlays = Array.from(document.querySelectorAll('body > *')).filter(el => el.classList && el.classList.contains('inset-0'));
+                    overlays.forEach(el => {
+                        if (el.id === 'app-container' || el.id === 'root') return;
+                        el.parentNode && el.parentNode.removeChild(el);
+                    });
+
+                    if (document && document.body) {
+                        document.body.style.pointerEvents = 'auto';
+                        document.body.style.overflow = 'auto';
+                    }
+                    const appContainer = document.getElementById('app-container');
+                    if (appContainer) appContainer.style.pointerEvents = 'auto';
+                } catch (e) {
+                    console.error('Interaction cleanup failed', e);
+                }
+
+                // Refresh accounts list after creation (best-effort)
+                try {
+                    const usersRes = await api.get("/api/users");
+                    setAccounts(usersRes.data.users || []);
+                } catch (refreshErr) {
+                    // If refreshing fails, log and keep UI usable - user already created
+                    console.error('Failed to refresh users after create:', refreshErr);
+                }
             } catch (err) {
                 const message =
                     err?.response?.data?.message ||
@@ -91,6 +117,25 @@ function AccountManager() {
     );
 
     const handleCancel = useCallback(() => {
+        // Clean any leftover fullscreen overlays and re-enable interaction
+        try {
+            // Remove any body children that cover the full viewport (inset-0)
+            const overlays = Array.from(document.querySelectorAll('body > *')).filter(el => el.classList && el.classList.contains('inset-0'));
+            overlays.forEach(el => {
+                // avoid removing app container or root if mis-tagged
+                if (el.id === 'app-container' || el.id === 'root') return;
+                el.parentNode && el.parentNode.removeChild(el);
+            });
+            if (document && document.body) {
+                document.body.style.pointerEvents = 'auto';
+                document.body.style.overflow = 'auto';
+            }
+            const appContainer = document.getElementById('app-container');
+            if (appContainer) appContainer.style.pointerEvents = 'auto';
+        } catch (e) {
+            console.error('Cleanup overlays failed', e);
+        }
+
         setIsFormVisible(false);
         setError(null);
     }, []);

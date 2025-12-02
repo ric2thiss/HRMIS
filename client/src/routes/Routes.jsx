@@ -20,6 +20,7 @@ import ImportAttendance from '../pages/attendance/ImportAttendance'
 import ManagePds from '../pages/pds/ManagePds'
 import MasterLists from '../pages/masterLists/MasterLists'
 import AdminDashboard from "../pages/adminDashboard/adminDashboard";
+import PdsPdfViewer from '../pages/pds/PdsPdfViewer';
 
 export default function Routers() {
     return (
@@ -97,6 +98,12 @@ export default function Routers() {
           <Route path="/manage-pds" element={
               <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
                   <ManagePds />
+              </RoleProtectedRoute>
+          } />
+
+          <Route path="/manage-pds/:id/pdf" element={
+              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+                  <PdsPdfViewer />
               </RoleProtectedRoute>
           } />
 
