@@ -19,6 +19,7 @@ import MyApproval from '../pages/approval/MyApproval'
 import ImportAttendance from '../pages/attendance/ImportAttendance'
 import ManagePds from '../pages/pds/ManagePds'
 import MasterLists from '../pages/masterLists/MasterLists'
+import AdminDashboard from "../pages/adminDashboard/adminDashboard";
 
 export default function Routers() {
     return (
@@ -110,6 +111,12 @@ export default function Routers() {
                   <ImportAttendance />
               </RoleProtectedRoute>
           } />
+
+          <Route path="/admin/dashboard" element={
+            <RoleProtectedRoute allowedRoles={["hr"]}>
+                <AdminDashboard />
+            </RoleProtectedRoute>
+          }/>
 
           <Route path="/maintenance" element={<MaintenanceMode />} />
 

@@ -80,7 +80,7 @@ export default function Landing() {
             </div>
             
             {/* Badges */}
-            <div className="flex flex-wrap justify-center gap-4 text-gray-200 text-sm font-medium">
+            {/* <div className="flex flex-wrap justify-center gap-4 text-gray-200 text-sm font-medium">
               <span className="flex items-center bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20">
                 <span className="mr-2 text-green-400">✔</span> No setup required
               </span>
@@ -90,18 +90,18 @@ export default function Landing() {
               <span className="flex items-center bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20">
                 <span className="mr-2 text-green-400">✔</span> Secure by default
               </span>
-            </div>
+            </div> */}
 
           </div>
         </section>
 
         {/* 🧩 Features Section (Unchanged) */}
         <section id="features" className="container mx-auto px-6 py-20">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-center text-gray-800 mb-16">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-center my-10 text-gray-800 mb-16">
             Core Modules
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 my-10">
             
             <div className="bg-white p-8 rounded-xl shadow-xl hover:shadow-2xl transition duration-300 transform hover:-translate-y-1 text-center border-t-4 border-blue-600">
               <FeatureIcon>👥</FeatureIcon>
@@ -151,7 +151,7 @@ export default function Landing() {
       </main>
 
       {/* Footer (Unchanged) */}
-      <footer className="bg-gray-800 text-gray-400 text-sm py-6">
+      <footer className="bg-gray-800 text-gray-400 text-sm py-6 mt-10">
         <div className="container mx-auto px-6 flex flex-col sm:flex-row justify-between items-center">
           <p className="mb-3 sm:mb-0">&copy; {new Date().getFullYear()} HRMIS. All rights reserved.</p>
           <div className="flex space-x-4">

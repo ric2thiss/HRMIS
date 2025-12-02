@@ -6,6 +6,7 @@ import '../../styles/drop-down.css';
 
 function Header({ user, logout }) {
   const location = useLocation();
+  // console.log(user.role?.name)
 
   return (
     <header className="bg-white shadow-md p-3 flex items-center justify-between">
@@ -80,7 +81,8 @@ function Header({ user, logout }) {
 
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl z-50">
                 <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</Link>
-                <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</Link>
+                {user.role?.name === "hr" && <Link to="/admin/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</Link>}
+                {/* <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</Link> */}
                 <a onClick={logout} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t mt-1 cursor-pointer">Logout</a>
               </div>
             </details>

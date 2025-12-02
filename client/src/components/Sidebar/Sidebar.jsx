@@ -8,6 +8,8 @@ function Sidebar({ user, role: roleProp }) {
   const location = useLocation();
   // Use prop if provided, otherwise get from user
   const role = roleProp || getUserRole(user);
+
+  console.log(user)
   
   return (
     <aside id="sidebar" className="w-64 bg-white p-4 flex flex-col shadow-lg flex-shrink-0 overflow-y-auto">

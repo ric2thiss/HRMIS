@@ -29,6 +29,9 @@ function AppLayout({ user, logout, loading, title, children, showBackButton = tr
   // Show back button on all pages except dashboard
   const shouldShowBack = showBackButton && !isDashboard;
 
+  const isDashboardForHR = location.pathname !== "/admin/dashboard";
+  
+
   return (
     <div className="bg-gray-100 font-sans">
       <Helmet>
@@ -43,7 +46,8 @@ function AppLayout({ user, logout, loading, title, children, showBackButton = tr
         <main className="flex flex-1 overflow-hidden">
           <Sidebar user={user} role={role} />
           <section className="flex-1 p-6 space-y-6 overflow-y-auto">
-            <Hero user={user} />
+            {isDashboardForHR && <Hero user={user} />}
+            {/* <Hero user={user} /> */}
             {shouldShowBack && <BackButton />}
             {children}
           </section>
