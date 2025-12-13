@@ -11,9 +11,10 @@ import api from '../axios';
  * @param {string} [data.password] - New password (optional)
  * @param {string} [data.current_password] - Current password (required if changing password)
  * @param {string} [data.profile_image] - Base64 encoded profile image (optional)
+ * @param {string} [data.signature] - Base64 encoded signature (optional)
  * @returns {Promise<Object>} Updated user object
  */
-const updateProfile = async ({ first_name, middle_initial, last_name, name, email, password, current_password, profile_image }) => {
+const updateProfile = async ({ first_name, middle_initial, last_name, name, email, password, current_password, profile_image, signature }) => {
     await api.get('/sanctum/csrf-cookie');
 
     const payload = {};
@@ -28,6 +29,7 @@ const updateProfile = async ({ first_name, middle_initial, last_name, name, emai
         payload.current_password = current_password;
     }
     if (profile_image !== undefined) payload.profile_image = profile_image;
+    if (signature !== undefined) payload.signature = signature;
 
     const res = await api.put('/api/profile', payload);
 

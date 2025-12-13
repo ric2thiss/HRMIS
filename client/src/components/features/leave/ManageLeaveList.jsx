@@ -7,6 +7,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { getUserRole } from '../../../utils/userHelpers';
 import { getAllMasterLists } from '../../../api/master-lists/masterLists';
 import Pagination from '../../common/Pagination';
+import LeaveApprovalModal from './LeaveApprovalModal';
 
 function ManageLeaveList() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ function ManageLeaveList() {
   const [leaves, setLeaves] = useState([]);
   const [filter, setFilter] = useState('all');
   const [selectedLeave, setSelectedLeave] = useState(null);
+  const [approvalModalLeave, setApprovalModalLeave] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userApprovalNameIds, setUserApprovalNameIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -84,20 +86,24 @@ function ManageLeaveList() {
     setCurrentPage(1);
   };
 
-  const handleApprove = async (leaveId) => {
-    if (window.confirm('Are you sure you want to approve this leave application?')) {
-      try {
-        await approveLeaveApplication(leaveId, { 
-          status: 'approved',
-          approval_remarks: 'Approved'
-        });
-        showSuccess('Leave application approved successfully');
-        setSelectedLeave(null);
-        loadLeaves(); // Reload the list
-      } catch (err) {
-        showError(err?.response?.data?.message || 'Failed to approve leave application');
-      }
+  const handleApprove = async (approvalData) => {
+    try {
+      await approveLeaveApplication(approvalData.id, { 
+        status: 'approved',
+        approval_remarks: approvalData.approval_remarks || 'Approved',
+        signature: approvalData.signature
+      });
+      showSuccess('Leave application approved successfully');
+      setApprovalModalLeave(null);
+      setSelectedLeave(null);
+      loadLeaves(); // Reload the list
+    } catch (err) {
+      showError(err?.response?.data?.message || 'Failed to approve leave application');
     }
+  };
+
+  const handleApproveClick = (leave) => {
+    setApprovalModalLeave(leave);
   };
 
   const handleReject = async (leaveId, remarks) => {
@@ -338,7 +344,7 @@ function ManageLeaveList() {
                       {leave.status === LEAVE_STATUS.PENDING && !hasUserAlreadyDecided(leave) && isUserTurnToApprove(leave) && (
                         <>
                           <button
-                            onClick={() => handleApprove(leave.id)}
+                            onClick={() => handleApproveClick(leave)}
                             className="text-green-600 hover:text-green-900 transition-colors"
                             title="Approve this leave application"
                           >
@@ -376,6 +382,17 @@ function ManageLeaveList() {
           itemsPerPage={itemsPerPage}
           totalItems={totalItems}
           onItemsPerPageChange={handleItemsPerPageChange}
+        />
+      )}
+
+      {/* Approval Modal */}
+      {approvalModalLeave && (
+        <LeaveApprovalModal
+          isOpen={!!approvalModalLeave}
+          onClose={() => setApprovalModalLeave(null)}
+          onApprove={(data) => handleApprove({ ...approvalModalLeave, ...data })}
+          user={user}
+          leave={approvalModalLeave}
         />
       )}
 

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, PenTool } from 'lucide-react';
 import { useNotification } from '../../../hooks/useNotification';
 import updateProfile from '../../../api/user/updateProfile';
 import { getUserRole } from '../../../utils/userHelpers';
+import SignatureModal from './SignatureModal';
+import { useAuth } from '../../../hooks/useAuth';
 
 function ProfileForm({ user, onUpdate }) {
   const { showSuccess, showError } = useNotification();
+  const { refreshUser } = useAuth();
   const userRole = getUserRole(user);
   const isHR = userRole === 'hr' || userRole === 'admin';
   const [formData, setFormData] = useState({
@@ -18,6 +21,8 @@ function ProfileForm({ user, onUpdate }) {
     confirmPassword: '',
   });
   const [profileImage, setProfileImage] = useState(user.profile_image || '');
+  const [signature, setSignature] = useState(user.signature || '');
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
     currentPassword: false,
@@ -37,6 +42,7 @@ function ProfileForm({ user, onUpdate }) {
       confirmPassword: '',
     });
     setProfileImage(user.profile_image || '');
+    setSignature(user.signature || '');
   }, [user]);
 
   const handleChange = (e) => {
@@ -128,8 +134,13 @@ function ProfileForm({ user, onUpdate }) {
         updatePayload.profile_image = profileImage || '';
       }
 
+      // Add signature if changed (including if it was removed)
+      if (signature !== (user.signature || '')) {
+        updatePayload.signature = signature || '';
+      }
+
       // Only submit if there's something to update
-      if (!updatePayload.password && !updatePayload.profile_image && 
+      if (!updatePayload.password && !updatePayload.profile_image && !updatePayload.signature &&
           !updatePayload.first_name && !updatePayload.last_name && !updatePayload.middle_initial && !updatePayload.sex) {
         showError('Please make a change to update your profile');
         setLoading(false);
@@ -139,8 +150,13 @@ function ProfileForm({ user, onUpdate }) {
       // Call API
       const updatedUser = await updateProfile(updatePayload);
       
-      // Call parent callback if provided to refresh user data
-      if (onUpdate) {
+      // Refresh user from server to get latest data including signature
+      if (refreshUser) {
+        const refreshedUser = await refreshUser();
+        if (onUpdate) {
+          onUpdate(refreshedUser || updatedUser);
+        }
+      } else if (onUpdate) {
         onUpdate(updatedUser);
       }
       
@@ -157,6 +173,9 @@ function ProfileForm({ user, onUpdate }) {
       }
       if (updatePayload.profile_image) {
         updates.push('profile image');
+      }
+      if (updatePayload.signature) {
+        updates.push('signature');
       }
       
       if (updates.length > 0) {
@@ -358,6 +377,48 @@ function ProfileForm({ user, onUpdate }) {
           )}
         </div>
 
+        {/* E-Signature Section */}
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">E-Signature</h3>
+          <div className="flex items-center gap-4">
+            {signature ? (
+              <div className="flex items-center gap-4 flex-1">
+                <div className="border border-gray-300 rounded-lg p-4 bg-white max-w-md">
+                  <img 
+                    src={signature} 
+                    alt="E-Signature" 
+                    className="max-w-full h-auto max-h-24 object-contain"
+                    onError={(e) => {
+                      console.error('Error loading signature');
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSignatureModalOpen(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <PenTool size={18} />
+                  Update Signature
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsSignatureModalOpen(true)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium"
+              >
+                <PenTool size={20} />
+                Create E-Signature
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 mt-2">
+            Your encrypted digital signature stored securely in the system.
+          </p>
+        </div>
+
         <div className="border-t pt-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Change Password </h3>
           
@@ -455,6 +516,7 @@ function ProfileForm({ user, onUpdate }) {
                 confirmPassword: '',
               });
               setProfileImage(user.profile_image || '');
+              setSignature(user.signature || '');
             }}
             className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
@@ -464,6 +526,7 @@ function ProfileForm({ user, onUpdate }) {
             type="submit"
             disabled={loading || (
               profileImage === (user.profile_image || '') && 
+              signature === (user.signature || '') &&
               !formData.newPassword &&
               (!isHR || (
                 formData.first_name === (user.first_name || '') &&
@@ -478,6 +541,39 @@ function ProfileForm({ user, onUpdate }) {
           </button>
         </div>
       </form>
+
+      {/* Signature Modal */}
+      <SignatureModal
+        isOpen={isSignatureModalOpen}
+        onClose={() => setIsSignatureModalOpen(false)}
+        onSave={async (newSignature) => {
+          // Save signature immediately when created/updated in modal
+          try {
+            setLoading(true);
+            const updatePayload = { signature: newSignature };
+            await updateProfile(updatePayload);
+            
+            // Refresh user from server to get latest signature (decrypted)
+            if (refreshUser) {
+              const refreshedUser = await refreshUser();
+              setSignature(refreshedUser?.signature || newSignature);
+              if (onUpdate) {
+                onUpdate(refreshedUser);
+              }
+            } else {
+              setSignature(newSignature);
+            }
+            
+            showSuccess('E-signature saved successfully');
+            setIsSignatureModalOpen(false);
+          } catch (error) {
+            showError(error.response?.data?.message || 'Failed to save signature');
+          } finally {
+            setLoading(false);
+          }
+        }}
+        currentSignature={signature}
+      />
     </div>
   );
 }

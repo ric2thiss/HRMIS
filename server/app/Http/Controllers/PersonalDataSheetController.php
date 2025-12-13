@@ -14,11 +14,18 @@ class PersonalDataSheetController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $userRole = $user->roles->first()->name ?? null;
+        // Eager load roles to avoid N+1 query
+        $user->load('roles');
+        $userRole = $user->roles->first()?->name ?? null;
 
         // HR/Admin can see all PDS
         if ($userRole === 'hr' || $userRole === 'admin') {
-            $query = PersonalDataSheet::with(['user.roles', 'user.employmentTypes', 'reviewer'])
+            $query = PersonalDataSheet::with([
+                'user:id,name,first_name,last_name,employee_id,email',
+                'user.roles:id,name',
+                'user.employmentTypes:id,name',
+                'reviewer:id,name,first_name,last_name'
+            ])
                 ->orderBy('created_at', 'desc');
 
             // Filter by status if provided
@@ -30,7 +37,7 @@ class PersonalDataSheetController extends Controller
         } else {
             // Employee can only see their own PDS
             $query = PersonalDataSheet::where('user_id', $user->id)
-                ->with(['reviewer'])
+                ->with(['reviewer:id,name,first_name,last_name'])
                 ->orderBy('created_at', 'desc');
 
             // Filter by status if provided
@@ -100,7 +107,9 @@ class PersonalDataSheetController extends Controller
     public function show($id)
     {
         $user = auth()->user();
-        $userRole = $user->roles->first()->name ?? null;
+        // Eager load roles to avoid N+1 query
+        $user->load('roles');
+        $userRole = $user->roles->first()?->name ?? null;
 
         $pds = PersonalDataSheet::with(['user', 'reviewer'])->find($id);
 
@@ -179,7 +188,9 @@ class PersonalDataSheetController extends Controller
     public function submit($id)
     {
         $user = auth()->user();
-        $userRole = $user->roles->first()->name ?? null;
+        // Eager load roles to avoid N+1 query
+        $user->load('roles');
+        $userRole = $user->roles->first()?->name ?? null;
 
         // HR cannot submit PDS (they can only maintain drafts)
         // Admin users can submit PDS like regular employees
@@ -224,7 +235,9 @@ class PersonalDataSheetController extends Controller
     public function review(Request $request, $id)
     {
         $user = auth()->user();
-        $userRole = $user->roles->first()->name ?? null;
+        // Eager load roles to avoid N+1 query
+        $user->load('roles');
+        $userRole = $user->roles->first()?->name ?? null;
 
         // Only HR and Admin can review
         if ($userRole !== 'hr' && $userRole !== 'admin') {
@@ -301,7 +314,9 @@ class PersonalDataSheetController extends Controller
     public function destroy($id)
     {
         $user = auth()->user();
-        $userRole = $user->roles->first()->name ?? null;
+        // Eager load roles to avoid N+1 query
+        $user->load('roles');
+        $userRole = $user->roles->first()?->name ?? null;
         $pds = PersonalDataSheet::find($id);
 
         if (!$pds) {
@@ -333,7 +348,9 @@ class PersonalDataSheetController extends Controller
     public function returnToOwner($id)
     {
         $user = auth()->user();
-        $userRole = $user->roles->first()->name ?? null;
+        // Eager load roles to avoid N+1 query
+        $user->load('roles');
+        $userRole = $user->roles->first()?->name ?? null;
 
         // Only HR and Admin can return PDS
         if ($userRole !== 'hr' && $userRole !== 'admin') {
@@ -368,7 +385,9 @@ class PersonalDataSheetController extends Controller
     public function employeesWithoutPds()
     {
         $user = auth()->user();
-        $userRole = $user->roles->first()->name ?? null;
+        // Eager load roles to avoid N+1 query
+        $user->load('roles');
+        $userRole = $user->roles->first()?->name ?? null;
 
         if ($userRole !== 'hr' && $userRole !== 'admin') {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -431,7 +450,9 @@ class PersonalDataSheetController extends Controller
     public function notifyEmployee(Request $request, $userId)
     {
         $hrUser = auth()->user();
-        $userRole = $hrUser->roles->first()->name ?? null;
+        // Eager load roles to avoid N+1 query
+        $hrUser->load('roles');
+        $userRole = $hrUser->roles->first()?->name ?? null;
 
         if ($userRole !== 'hr' && $userRole !== 'admin') {
             return response()->json(['message' => 'Unauthorized'], 403);

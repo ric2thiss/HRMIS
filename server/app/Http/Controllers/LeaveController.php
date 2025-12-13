@@ -7,6 +7,7 @@ use App\Models\LeaveType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Crypt;
 
 class LeaveController extends Controller
 {
@@ -17,10 +18,14 @@ class LeaveController extends Controller
     {
         try {
             $user = $request->user();
+            // Eager load roles to avoid N+1 query
+            $user->load('roles');
             $role = $user->roles->first()?->name ?? $user->role?->name;
 
             $query = Leave::with([
-                'user:id,employee_id,first_name,middle_initial,last_name,email',
+                'user:id,employee_id,first_name,middle_initial,last_name,email,position_id,office_id,signature',
+                'user.position:id,title',
+                'user.office:id,name,code',
                 'leaveType:id,code,name',
                 'leaveCreditAuthorizedOfficer:id,name',
                 'recommendationApprover:id,name',
@@ -173,10 +178,14 @@ class LeaveController extends Controller
     {
         try {
             $user = $request->user();
+            // Eager load roles to avoid N+1 query
+            $user->load('roles');
             $role = $user->roles->first()?->name ?? $user->role?->name;
 
             $leave = Leave::with([
-                'user:id,employee_id,first_name,middle_initial,last_name,email',
+                'user:id,employee_id,first_name,middle_initial,last_name,email,position_id,office_id,signature',
+                'user.position:id,title',
+                'user.office:id,name,code',
                 'leaveType:id,code,name',
                 'leaveCreditAuthorizedOfficer:id,name',
                 'recommendationApprover:id,name',
@@ -303,11 +312,14 @@ class LeaveController extends Controller
     {
         try {
             $user = $request->user();
+            // Eager load roles to avoid N+1 query
+            $user->load('roles');
             $role = $user->roles->first()?->name ?? $user->role?->name;
 
             $validated = $request->validate([
                 'status' => 'required|in:approved,rejected',
                 'approval_remarks' => 'nullable|string',
+                'signature' => 'required_if:status,approved|nullable|string', // Required for approval, optional for rejection
             ]);
 
             $leave = Leave::with([
@@ -425,6 +437,26 @@ class LeaveController extends Controller
                 ], 403);
             }
 
+            // Check if user has signature for approval (not required for rejection)
+            if ($validated['status'] === 'approved') {
+                // Check if user has a signature in their profile
+                // The accessor will automatically decrypt the signature when accessed
+                if (empty($user->signature)) {
+                    return response()->json([
+                        'error' => 'Signature Required',
+                        'message' => 'You must have an e-signature in your profile before you can approve leave applications. Please create your e-signature in your profile page first.'
+                    ], 400);
+                }
+
+                // Validate that signature is provided in request
+                if (empty($validated['signature'])) {
+                    return response()->json([
+                        'error' => 'Signature Required',
+                        'message' => 'E-signature is required to approve this leave application.'
+                    ], 422);
+                }
+            }
+
             // Handle rejection - reject immediately regardless of stage
             if ($validated['status'] === 'rejected') {
                 $leave->update([
@@ -461,6 +493,7 @@ class LeaveController extends Controller
                         'leave_credit_officer_approved_by' => $user->id,
                         'leave_credit_officer_approved_at' => now(),
                         'leave_credit_officer_remarks' => $validated['approval_remarks'] ?? null,
+                        'leave_credit_officer_signature' => !empty($validated['signature']) ? Crypt::encryptString($validated['signature']) : null, // Store encrypted signature
                         // Status stays 'pending' - don't change it yet
                     ];
                 } elseif ($currentStage === 'recommendation_approver') {
@@ -471,6 +504,7 @@ class LeaveController extends Controller
                         'recommendation_approver_approved_by' => $user->id,
                         'recommendation_approver_approved_at' => now(),
                         'recommendation_approver_remarks' => $validated['approval_remarks'] ?? null,
+                        'recommendation_approver_signature' => !empty($validated['signature']) ? Crypt::encryptString($validated['signature']) : null, // Store encrypted signature
                         // Status stays 'pending' - don't change it yet
                     ];
                 } elseif ($currentStage === 'leave_approver') {
@@ -481,6 +515,7 @@ class LeaveController extends Controller
                         'leave_approver_approved_by' => $user->id,
                         'leave_approver_approved_at' => now(),
                         'leave_approver_remarks' => $validated['approval_remarks'] ?? null,
+                        'leave_approver_signature' => !empty($validated['signature']) ? Crypt::encryptString($validated['signature']) : null, // Store encrypted signature
                         'status' => 'approved',
                         'approved_by' => $user->id,
                         'approved_at' => now(),
@@ -613,6 +648,8 @@ class LeaveController extends Controller
     {
         try {
             $user = $request->user();
+            // Eager load roles to avoid N+1 query
+            $user->load('roles');
             $role = $user->roles->first()?->name ?? $user->role?->name;
             
             // Get all approval_name IDs where the current user is assigned

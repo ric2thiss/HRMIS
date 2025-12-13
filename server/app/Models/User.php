@@ -29,6 +29,7 @@ class User extends Authenticatable
         'email',
         'password',
         'profile_image',
+        'signature',
         'position_id',
         'role_id',
         'project_id',
@@ -214,4 +215,24 @@ class User extends Authenticatable
             }
         }
     }
+
+    /**
+     * Get the decrypted signature attribute
+     */
+    public function getSignatureAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+        
+        try {
+            // Try to decrypt the signature
+            return \Illuminate\Support\Facades\Crypt::decryptString($value);
+        } catch (\Exception $e) {
+            // If decryption fails (e.g., old unencrypted data), return as is
+            \Log::warning('Failed to decrypt signature for user ' . $this->id . ': ' . $e->getMessage());
+            return $value;
+        }
+    }
+
 }

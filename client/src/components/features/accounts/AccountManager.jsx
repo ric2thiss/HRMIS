@@ -314,7 +314,7 @@ function AccountManager() {
                                         {account.project?.project_code || 'N/A'}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {account.office?.name || 'N/A'}
+                                        {account.office?.code || 'N/A'}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">

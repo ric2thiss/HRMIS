@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, Printer, Download, Navigation } from 'lucide-react';
 import { mockLeaveCredits } from '../../../data/mockLeaveData';
 import { LEAVE_STATUS, LEAVE_STATUS_LABELS } from '../../../data/leaveTypes';
 import { useNotification } from '../../../hooks/useNotification';
 import { getMyLeaveApplications, updateLeaveApplication } from '../../../api/leave/leaveApplications';
 import Pagination from '../../common/Pagination';
+import LeavePdfViewModal from './LeavePdfViewModal';
 
 function MyLeaveList({ user }) {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ function MyLeaveList({ user }) {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [viewModalLeaveId, setViewModalLeaveId] = useState(null);
 
   useEffect(() => {
     loadLeaves();
@@ -190,26 +193,61 @@ function MyLeaveList({ user }) {
                     {getStatusBadge(leave.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex gap-2 items-center">
-                      <button
-                        onClick={() => navigate(`/leave-application/${leave.id}/track`)}
-                        className="text-blue-600 hover:text-blue-900 transition-colors"
-                        title="Track leave application"
-                      >
-                        Track
-                      </button>
-                      {leave.status === LEAVE_STATUS.PENDING && (
-                        <button
-                          onClick={() => handleCancel(leave.id)}
-                          className="text-red-600 hover:text-red-900 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                      {leave.status === LEAVE_STATUS.APPROVED && leave.approval_remarks && (
-                        <span className="text-xs text-gray-500" title={leave.approval_remarks}>
-                          ✓ Approved
-                        </span>
+                    <div className="flex gap-2 items-center flex-wrap">
+                      {leave.status === LEAVE_STATUS.APPROVED || leave.status === LEAVE_STATUS.REJECTED ? (
+                        <>
+                          <button
+                            onClick={() => setViewModalLeaveId(leave.id)}
+                            className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:text-blue-900 transition-colors border border-blue-600 rounded hover:bg-blue-50"
+                            title="View PDF"
+                          >
+                            <Eye size={16} />
+                            View
+                          </button>
+                          <button
+                            onClick={() => setViewModalLeaveId(leave.id)}
+                            className="flex items-center gap-1 px-3 py-1 text-gray-600 hover:text-gray-900 transition-colors border border-gray-600 rounded hover:bg-gray-50"
+                            title="Print PDF - Opens in modal"
+                          >
+                            <Printer size={16} />
+                            Print
+                          </button>
+                          <button
+                            onClick={() => setViewModalLeaveId(leave.id)}
+                            className="flex items-center gap-1 px-3 py-1 text-green-600 hover:text-green-900 transition-colors border border-green-600 rounded hover:bg-green-50"
+                            title="Download PDF - Opens in modal"
+                          >
+                            <Download size={16} />
+                            Download
+                          </button>
+                          <button
+                            onClick={() => navigate(`/leave-application/${leave.id}/track`)}
+                            className="flex items-center gap-1 px-3 py-1 text-purple-600 hover:text-purple-900 transition-colors border border-purple-600 rounded hover:bg-purple-50"
+                            title="Track leave application"
+                          >
+                            <Navigation size={16} />
+                            Track
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => navigate(`/leave-application/${leave.id}/track`)}
+                            className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:text-blue-900 transition-colors border border-blue-600 rounded hover:bg-blue-50"
+                            title="Track leave application"
+                          >
+                            <Navigation size={16} />
+                            Track
+                          </button>
+                          {leave.status === LEAVE_STATUS.PENDING && (
+                            <button
+                              onClick={() => handleCancel(leave.id)}
+                              className="px-3 py-1 text-red-600 hover:text-red-900 transition-colors border border-red-600 rounded hover:bg-red-50"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
@@ -229,6 +267,15 @@ function MyLeaveList({ user }) {
           itemsPerPage={itemsPerPage}
           totalItems={totalItems}
           onItemsPerPageChange={handleItemsPerPageChange}
+        />
+      )}
+
+      {/* PDF View Modal */}
+      {viewModalLeaveId && (
+        <LeavePdfViewModal
+          isOpen={!!viewModalLeaveId}
+          onClose={() => setViewModalLeaveId(null)}
+          leaveId={viewModalLeaveId}
         />
       )}
     </div>

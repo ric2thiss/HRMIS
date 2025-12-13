@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNotification } from '../../../hooks/useNotification';
+import { useAuth } from '../../../hooks/useAuth';
 import Calendar from '../../ui/Calendar/Calendar';
 import { getAllMasterLists } from '../../../api/master-lists/masterLists';
 import { createLeaveApplication, getLeaveTypes } from '../../../api/leave/leaveApplications';
+import SignatureModal from '../profile/SignatureModal';
+import updateProfile from '../../../api/user/updateProfile';
 
 function LeaveApplicationForm({ user }) {
   const { showSuccess, showError } = useNotification();
+  const { user: authUser, refreshUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [approvalNames, setApprovalNames] = useState([]);
   const [loadingApprovalNames, setLoadingApprovalNames] = useState(false);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [loadingLeaveTypes, setLoadingLeaveTypes] = useState(false);
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  const [pendingFormOpen, setPendingFormOpen] = useState(false);
   
   // Calendar state
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -226,20 +232,67 @@ function LeaveApplicationForm({ user }) {
     }
   };
 
+  // Handle opening the form - check for signature first
+  const handleOpenForm = () => {
+    // Check if user has a signature
+    const currentUser = authUser || user;
+    if (!currentUser?.signature) {
+      // Show notification explaining why signature is required
+      showError('You must have an e-signature before you can file a leave application. Please create your e-signature first.');
+      // Show signature modal
+      setIsSignatureModalOpen(true);
+      setPendingFormOpen(true);
+    } else {
+      // User has signature, open form directly
+      setIsOpen(true);
+    }
+  };
+
+  // Handle saving signature
+  const handleSaveSignature = async (newSignature) => {
+    try {
+      await updateProfile({ signature: newSignature });
+      await refreshUser(); // Refresh user data in auth store
+      showSuccess('E-signature saved successfully!');
+      setIsSignatureModalOpen(false);
+      
+      // If form was pending, open it now
+      if (pendingFormOpen) {
+        setIsOpen(true);
+        setPendingFormOpen(false);
+      }
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to save e-signature.');
+    }
+  };
+
   // If form is closed, show the button to open it
   if (!isOpen) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-800">File Leave Application</h2>
-          <button
-            onClick={() => setIsOpen(true)}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            + New Application
-          </button>
+      <>
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-gray-800">File Leave Application</h2>
+            <button
+              onClick={handleOpenForm}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              + New Application
+            </button>
+          </div>
         </div>
-      </div>
+
+        {/* Signature Modal */}
+        <SignatureModal
+          isOpen={isSignatureModalOpen}
+          onClose={() => {
+            setIsSignatureModalOpen(false);
+            setPendingFormOpen(false);
+          }}
+          onSave={handleSaveSignature}
+          currentSignature={authUser?.signature || user?.signature || ''}
+        />
+      </>
     );
   }
 
@@ -514,6 +567,17 @@ function LeaveApplicationForm({ user }) {
           </button>
         </div>
       </form>
+
+      {/* Signature Modal */}
+      <SignatureModal
+        isOpen={isSignatureModalOpen}
+        onClose={() => {
+          setIsSignatureModalOpen(false);
+          setPendingFormOpen(false);
+        }}
+        onSave={handleSaveSignature}
+        currentSignature={authUser?.signature || user?.signature || ''}
+      />
     </div>
   );
 }

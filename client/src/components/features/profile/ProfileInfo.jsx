@@ -84,6 +84,27 @@ function ProfileInfo({ user }) {
           </div>
         </div>
       </div>
+
+      {/* E-Signature Display */}
+      {user.signature && (
+        <div className="mt-6 pt-6 border-t">
+          <label className="block text-sm font-medium text-gray-500 mb-3">E-Signature</label>
+          <div className="border border-gray-300 rounded-lg p-4 bg-white max-w-md">
+            <img 
+              src={user.signature} 
+              alt="E-Signature" 
+              className="max-w-full h-auto object-contain"
+              onError={(e) => {
+                console.error('Error loading signature');
+                e.target.style.display = 'none';
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            This is your encrypted digital signature stored securely in the system.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

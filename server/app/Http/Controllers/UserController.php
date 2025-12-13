@@ -11,8 +11,19 @@ class UserController extends Controller
     {
         $currentUserId = auth()->id();
 
+        // Only load necessary fields and relationships to reduce payload
+        // Include profile_image and other fields needed by frontend
         $users = User::where('id', '!=', $currentUserId)
-                    ->with(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities'])
+                    ->select('id', 'employee_id', 'first_name', 'middle_initial', 'last_name', 'name', 'email', 'profile_image', 'position_id', 'role_id', 'project_id', 'office_id', 'is_locked', 'has_system_settings_access', 'created_at', 'updated_at')
+                    ->with([
+                        'role:id,name',
+                        'position:id,title',
+                        'project:id,name,project_code,status',
+                        'office:id,name,code',
+                        'roles:id,name',
+                        'employmentTypes:id,name',
+                        'specialCapabilities:id,name'
+                    ])
                     ->get();
 
         return response()->json([
@@ -165,7 +176,15 @@ class UserController extends Controller
 
         return response()->json([
             "message" => "Updated Successfully",
-            'user' => $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities'])
+            'user' => $user->load([
+                'role:id,name',
+                'position:id,title',
+                'project:id,name,project_code,status',
+                'office:id,name',
+                'roles:id,name',
+                'employmentTypes:id,name',
+                'specialCapabilities:id,name'
+            ])
         ]);
     }
 
@@ -201,7 +220,15 @@ class UserController extends Controller
             'message' => $validated['has_system_settings_access'] 
                 ? 'System settings access granted successfully' 
                 : 'System settings access revoked successfully',
-            'user' => $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities'])
+            'user' => $user->load([
+                'role:id,name',
+                'position:id,title',
+                'project:id,name,project_code,status',
+                'office:id,name',
+                'roles:id,name',
+                'employmentTypes:id,name',
+                'specialCapabilities:id,name'
+            ])
         ]);
     }
 
@@ -241,7 +268,15 @@ class UserController extends Controller
             'message' => $validated['is_locked'] 
                 ? 'Account locked successfully' 
                 : 'Account unlocked successfully',
-            'user' => $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities'])
+            'user' => $user->load([
+                'role:id,name',
+                'position:id,title',
+                'project:id,name,project_code,status',
+                'office:id,name',
+                'roles:id,name',
+                'employmentTypes:id,name',
+                'specialCapabilities:id,name'
+            ])
         ]);
     }
 

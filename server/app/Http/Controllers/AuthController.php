@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Crypt;
 use App\Models\User;
 use App\Models\LoginActivity;
 use App\Models\Office;
@@ -105,7 +106,15 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Registration successful',
-            'user' => $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities'])
+            'user' => $user->load([
+                'role:id,name',
+                'position:id,title',
+                'project:id,name,project_code,status',
+                'office:id,name',
+                'roles:id,name',
+                'employmentTypes:id,name',
+                'specialCapabilities:id,name'
+            ])
         ], 201);
     }
 
@@ -143,12 +152,20 @@ class AuthController extends Controller
             'user_agent' => $request->userAgent(),
         ]);
         
-        // Safely load relationships - handle cases where foreign keys might be null
+        // Only load necessary relationships with selected fields
         try {
-            $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities']);
+            $user->load([
+                'role:id,name',
+                'position:id,title',
+                'project:id,name,project_code,status',
+                'office:id,name',
+                'roles:id,name',
+                'employmentTypes:id,name',
+                'specialCapabilities:id,name'
+            ]);
         } catch (\Exception $e) {
             // If relationships fail to load, just load the basic ones
-            $user->load(['roles', 'employmentTypes']);
+            $user->load(['roles:id,name', 'employmentTypes:id,name']);
         }
         
         return response()->json([
@@ -179,11 +196,19 @@ class AuthController extends Controller
     {
         $user = $request->user();
         
-        // Safely load relationships
+        // Only load necessary relationships with selected fields
         try {
-            $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities']);
+            $user->load([
+                'role:id,name',
+                'position:id,title',
+                'project:id,name,project_code,status',
+                'office:id,name',
+                'roles:id,name',
+                'employmentTypes:id,name',
+                'specialCapabilities:id,name'
+            ]);
         } catch (\Exception $e) {
-            $user->load(['roles', 'employmentTypes']);
+            $user->load(['roles:id,name', 'employmentTypes:id,name']);
         }
         
         return response()->json($user);
@@ -212,11 +237,19 @@ class AuthController extends Controller
     {
         $user = $request->user();
         
-        // Safely load relationships
+        // Only load necessary relationships with selected fields
         try {
-            $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities']);
+            $user->load([
+                'role:id,name',
+                'position:id,title',
+                'project:id,name,project_code,status',
+                'office:id,name',
+                'roles:id,name',
+                'employmentTypes:id,name',
+                'specialCapabilities:id,name'
+            ]);
         } catch (\Exception $e) {
-            $user->load(['roles', 'employmentTypes']);
+            $user->load(['roles:id,name', 'employmentTypes:id,name']);
         }
         
         return response()->json([
@@ -228,7 +261,9 @@ class AuthController extends Controller
     public function updateProfile(Request $request)
     {
         $user = $request->user();
-        $currentUserRole = $user->roles()->first()?->name ?? $user->role?->name;
+        // Eager load roles to avoid N+1 query
+        $user->load('roles');
+        $currentUserRole = $user->roles->first()?->name ?? $user->role?->name;
 
         $validated = $request->validate([
             'first_name' => 'sometimes|required|string|max:255',
@@ -239,6 +274,7 @@ class AuthController extends Controller
             'password' => 'sometimes|nullable|string|min:6',
             'current_password' => 'required_with:password|string',
             'profile_image' => 'sometimes|nullable|string', // Base64 encoded image
+            'signature' => 'sometimes|nullable|string', // Base64 encoded signature
         ]);
 
         // Allow HR and Admin users to edit first_name and last_name
@@ -285,13 +321,32 @@ class AuthController extends Controller
             $user->profile_image = $validated['profile_image']; // Store base64 string
         }
 
+        // Update signature if provided - encrypt it for security
+        if (isset($validated['signature'])) {
+            if (!empty($validated['signature'])) {
+                // Encrypt the signature using Laravel's encryption
+                $user->signature = Crypt::encryptString($validated['signature']);
+            } else {
+                // If empty string, remove signature
+                $user->signature = null;
+            }
+        }
+
         $user->save();
 
-        // Safely load relationships
+        // Only load necessary relationships with selected fields
         try {
-            $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities']);
+            $user->load([
+                'role:id,name',
+                'position:id,title',
+                'project:id,name,project_code,status',
+                'office:id,name',
+                'roles:id,name',
+                'employmentTypes:id,name',
+                'specialCapabilities:id,name'
+            ]);
         } catch (\Exception $e) {
-            $user->load(['roles', 'employmentTypes']);
+            $user->load(['roles:id,name', 'employmentTypes:id,name']);
         }
         
         return response()->json([
@@ -471,11 +526,19 @@ class AuthController extends Controller
         $user->must_change_password = false;
         $user->save();
 
-        // Safely load relationships
+        // Only load necessary relationships with selected fields
         try {
-            $user->load(['role', 'position', 'project', 'office', 'roles', 'employmentTypes', 'specialCapabilities']);
+            $user->load([
+                'role:id,name',
+                'position:id,title',
+                'project:id,name,project_code,status',
+                'office:id,name',
+                'roles:id,name',
+                'employmentTypes:id,name',
+                'specialCapabilities:id,name'
+            ]);
         } catch (\Exception $e) {
-            $user->load(['roles', 'employmentTypes']);
+            $user->load(['roles:id,name', 'employmentTypes:id,name']);
         }
 
         return response()->json([

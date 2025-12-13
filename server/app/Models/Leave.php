@@ -42,6 +42,9 @@ class Leave extends Model
         'leave_approver_approved_by',
         'leave_approver_approved_at',
         'leave_approver_remarks',
+        'leave_credit_officer_signature',
+        'recommendation_approver_signature',
+        'leave_approver_signature',
     ];
 
     protected $casts = [
@@ -163,6 +166,57 @@ class Leave extends Model
     public function scopeApproved($query)
     {
         return $query->where('status', 'approved');
+    }
+
+    /**
+     * Get the decrypted leave credit officer signature
+     */
+    public function getLeaveCreditOfficerSignatureAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+        
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($value);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to decrypt leave credit officer signature for leave ' . $this->id . ': ' . $e->getMessage());
+            return $value;
+        }
+    }
+
+    /**
+     * Get the decrypted recommendation approver signature
+     */
+    public function getRecommendationApproverSignatureAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+        
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($value);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to decrypt recommendation approver signature for leave ' . $this->id . ': ' . $e->getMessage());
+            return $value;
+        }
+    }
+
+    /**
+     * Get the decrypted leave approver signature
+     */
+    public function getLeaveApproverSignatureAttribute($value)
+    {
+        if (!$value) {
+            return null;
+        }
+        
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($value);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to decrypt leave approver signature for leave ' . $this->id . ': ' . $e->getMessage());
+            return $value;
+        }
     }
 }
 

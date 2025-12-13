@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { getAttendance } from '../../../api/attendance/attendance';
 import { useNotificationStore } from '../../../stores/notificationStore';
@@ -64,35 +64,30 @@ function ViewAttendanceTable() {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const dtrPdfRef = useRef(null);
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
+  // Memoize page numbers calculation
+  const pageNumbers = useMemo(() => {
     const pages = [];
     const totalPages = pagination.last_page;
     const currentPage = pagination.current_page;
 
     if (totalPages <= 7) {
-      // Show all pages if 7 or fewer
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Show first page, last page, current page, and pages around current
       if (currentPage <= 3) {
-        // Near the start
         for (let i = 1; i <= 5; i++) {
           pages.push(i);
         }
         pages.push('...');
         pages.push(totalPages);
       } else if (currentPage >= totalPages - 2) {
-        // Near the end
         pages.push(1);
         pages.push('...');
         for (let i = totalPages - 4; i <= totalPages; i++) {
           pages.push(i);
         }
       } else {
-        // In the middle
         pages.push(1);
         pages.push('...');
         for (let i = currentPage - 1; i <= currentPage + 1; i++) {
@@ -103,29 +98,10 @@ function ViewAttendanceTable() {
       }
     }
     return pages;
-  };
+  }, [pagination.current_page, pagination.last_page]);
 
-  useEffect(() => {
-    loadAttendances();
-  }, [pagination.current_page, filters]);
-
-  // Load users list for HR
-  useEffect(() => {
-    if (isHR) {
-      loadUsers();
-    }
-  }, [isHR]);
-
-  const loadUsers = async () => {
-    try {
-      const usersList = await getAccounts();
-      setUsers(usersList);
-    } catch (error) {
-      console.error('Failed to load users:', error);
-    }
-  };
-
-  const loadAttendances = async () => {
+  // Memoize loadAttendances function
+  const loadAttendances = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -145,12 +121,13 @@ function ViewAttendanceTable() {
       
       if (response.attendances) {
         setAttendances(response.attendances.data || []);
-        setPagination({
+        setPagination(prev => ({
+          ...prev,
           current_page: response.attendances.current_page || 1,
           per_page: response.attendances.per_page || 50,
           total: response.attendances.total || 0,
           last_page: response.attendances.last_page || 1,
-        });
+        }));
       }
     } catch (error) {
       const message = error?.response?.data?.message || 'Failed to load attendance data';
@@ -158,10 +135,35 @@ function ViewAttendanceTable() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, pagination.per_page, pagination.current_page, showError]);
 
-  // DTR Processing Functions
-  const processAttendanceData = (attendances, startDay, endDay) => {
+  // Debounce filter changes to avoid too many API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      loadAttendances();
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [filters, pagination.current_page, pagination.per_page, loadAttendances]);
+
+  // Load users list for HR - memoized
+  const loadUsers = useCallback(async () => {
+    try {
+      const usersList = await getAccounts();
+      setUsers(usersList);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isHR) {
+      loadUsers();
+    }
+  }, [isHR, loadUsers]);
+
+  // Memoize DTR Processing Functions
+  const processAttendanceData = useCallback((attendances, startDay, endDay) => {
     const attendanceByDate = {};
     
     attendances.forEach(attendance => {
@@ -238,7 +240,7 @@ function ViewAttendanceTable() {
     });
 
     return days;
-  };
+  }, []);
 
   const handleSearchDTR = useCallback(async () => {
     if (!dtrFilters.selected_user_id) {
@@ -559,7 +561,8 @@ function ViewAttendanceTable() {
     }));
   };
 
-  const formatDateTime = (dateTime) => {
+  // Memoize format functions
+  const formatDateTime = useCallback((dateTime) => {
     if (!dateTime) return 'N/A';
     const date = new Date(dateTime);
     return date.toLocaleString('en-US', {
@@ -570,16 +573,16 @@ function ViewAttendanceTable() {
       minute: '2-digit',
       second: '2-digit',
     });
-  };
+  }, []);
 
-  const formatDate = (date) => {
+  const formatDate = useCallback((date) => {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
     });
-  };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -788,10 +791,7 @@ function ViewAttendanceTable() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      AC No.
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Employee ID
+                      AC NO./EMPLOYEE ID
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Name
@@ -815,43 +815,12 @@ function ViewAttendanceTable() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {attendances.map((attendance) => (
-                    <tr key={attendance.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {attendance.ac_no || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {attendance.employee_id || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {attendance.user?.name || 
-                         (attendance.user?.first_name && attendance.user?.last_name 
-                          ? `${attendance.user.first_name} ${attendance.user.last_name}`
-                          : attendance.name) || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(attendance.date)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {attendance.time || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDateTime(attendance.date_time)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          attendance.state?.toLowerCase().includes('in') 
-                            ? 'bg-green-100 text-green-800'
-                            : attendance.state?.toLowerCase().includes('out')
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {attendance.state || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {attendance.import_filename || 'N/A'}
-                      </td>
-                    </tr>
+                    <AttendanceRow 
+                      key={attendance.id} 
+                      attendance={attendance}
+                      formatDate={formatDate}
+                      formatDateTime={formatDateTime}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -887,7 +856,7 @@ function ViewAttendanceTable() {
 
                   {/* Page Number Buttons */}
                   <div className="flex gap-1">
-                    {getPageNumbers().map((page, index) => {
+                    {pageNumbers.map((page, index) => {
                       if (page === '...') {
                         return (
                           <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-500">
@@ -993,6 +962,67 @@ function ViewAttendanceTable() {
     </div>
   );
 }
+
+// Memoized Attendance Row Component
+const AttendanceRow = React.memo(({ attendance, formatDate, formatDateTime }) => {
+  const acNo = attendance.ac_no || '';
+  const employeeId = attendance.employee_id || '';
+  const combinedId = acNo && employeeId 
+    ? `${acNo} / ${employeeId}`
+    : acNo || employeeId || 'N/A';
+  
+  // Handle user name - check multiple sources
+  let userName = 'N/A';
+  if (attendance.user) {
+    userName = attendance.user.name || 
+      (attendance.user.first_name && attendance.user.last_name 
+        ? `${attendance.user.first_name} ${attendance.user.last_name}`
+        : null);
+  }
+  if (!userName || userName === 'N/A') {
+    userName = attendance.name || 'N/A';
+  }
+  
+  const stateClass = attendance.state?.toLowerCase().includes('in') 
+    ? 'bg-green-100 text-green-800'
+    : attendance.state?.toLowerCase().includes('out')
+    ? 'bg-red-100 text-red-800'
+    : 'bg-gray-100 text-gray-800';
+  
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {combinedId}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {userName}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {formatDate(attendance.date)}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {attendance.time || 'N/A'}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {formatDateTime(attendance.date_time)}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${stateClass}`}>
+          {attendance.state || 'N/A'}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {attendance.import_filename || 'N/A'}
+      </td>
+    </tr>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for better memoization
+  return prevProps.attendance.id === nextProps.attendance.id &&
+         prevProps.attendance.date === nextProps.attendance.date &&
+         prevProps.attendance.time === nextProps.attendance.time &&
+         prevProps.attendance.state === nextProps.attendance.state;
+});
 
 // DTR Sheet Component
 const DTRSheetComponent = React.memo(({ data }) => (

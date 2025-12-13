@@ -8,6 +8,7 @@ import { getMyPendingApprovals, approveLeaveApplication, getLeaveApplications } 
 import { useAuth } from '../../../hooks/useAuth';
 import { getUserRole } from '../../../utils/userHelpers';
 import { getAllMasterLists } from '../../../api/master-lists/masterLists';
+import LeaveApprovalModal from '../leave/LeaveApprovalModal';
 
 function ApprovalList() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ function ApprovalList() {
   const { user } = useAuth();
   const [approvals, setApprovals] = useState([]);
   const [selectedApproval, setSelectedApproval] = useState(null);
+  const [approvalModalLeave, setApprovalModalLeave] = useState(null);
   const [activeTab, setActiveTab] = useState('leave'); // 'leave' or 'pds'
   const [searchQuery, setSearchQuery] = useState('');
   const [leaveCount, setLeaveCount] = useState(0);
@@ -96,20 +98,24 @@ function ApprovalList() {
     setLeaveCount(approvals.length);
   }, [approvals]);
 
-  const handleApprove = async (approvalId) => {
-    if (window.confirm('Are you sure you want to approve this application?')) {
-      try {
-        await approveLeaveApplication(approvalId, {
-          status: 'approved',
-          approval_remarks: 'Approved'
-        });
-        showSuccess('Application approved successfully');
-        setSelectedApproval(null);
-        loadPendingApprovals(); // Reload the list
-      } catch (err) {
-        showError(err?.response?.data?.message || 'Failed to approve application');
-      }
+  const handleApprove = async (approvalData) => {
+    try {
+      await approveLeaveApplication(approvalData.id, {
+        status: 'approved',
+        approval_remarks: approvalData.approval_remarks || 'Approved',
+        signature: approvalData.signature
+      });
+      showSuccess('Application approved successfully');
+      setApprovalModalLeave(null);
+      setSelectedApproval(null);
+      loadPendingApprovals(); // Reload the list
+    } catch (err) {
+      showError(err?.response?.data?.message || 'Failed to approve application');
     }
+  };
+
+  const handleApproveClick = (approval) => {
+    setApprovalModalLeave(approval);
   };
 
   const handleReject = async (approvalId, remarks) => {
@@ -496,7 +502,7 @@ function ApprovalList() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleApprove(approval.id);
+                            handleApproveClick(approval);
                           }}
                           className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
                         >
@@ -531,6 +537,17 @@ function ApprovalList() {
         )}
           </>
         </div>
+      )}
+
+      {/* Approval Modal */}
+      {approvalModalLeave && (
+        <LeaveApprovalModal
+          isOpen={!!approvalModalLeave}
+          onClose={() => setApprovalModalLeave(null)}
+          onApprove={(data) => handleApprove({ ...approvalModalLeave, ...data })}
+          user={user}
+          leave={approvalModalLeave}
+        />
       )}
 
       {/* Reject Modal */}

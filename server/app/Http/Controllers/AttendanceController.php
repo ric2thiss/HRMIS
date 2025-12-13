@@ -111,20 +111,30 @@ class AttendanceController extends Controller
                         continue;
                     }
 
-                    // Try to find user by employee_id (AC No. might be employee_id)
-                    $user = User::where('employee_id', $acNo)->first();
+            // Try to find user by employee_id (AC No. might be employee_id)
+            // Use a cache to avoid repeated queries for the same employee_id
+            static $userCache = [];
+            $cacheKey = $acNo;
+            
+            if (!isset($userCache[$cacheKey])) {
+                $user = User::where('employee_id', $acNo)->first();
 
-                    // If not found, try to find by name (fuzzy match)
-                    if (!$user && $name) {
-                        $nameParts = explode(' ', $name);
-                        if (count($nameParts) >= 2) {
-                            $firstName = $nameParts[0];
-                            $lastName = end($nameParts);
-                            $user = User::where('first_name', 'like', "%$firstName%")
-                                ->where('last_name', 'like', "%$lastName%")
-                                ->first();
-                        }
+                // If not found, try to find by name (fuzzy match)
+                if (!$user && $name) {
+                    $nameParts = explode(' ', $name);
+                    if (count($nameParts) >= 2) {
+                        $firstName = $nameParts[0];
+                        $lastName = end($nameParts);
+                        $user = User::where('first_name', 'like', "%$firstName%")
+                            ->where('last_name', 'like', "%$lastName%")
+                            ->first();
                     }
+                }
+                
+                $userCache[$cacheKey] = $user;
+            } else {
+                $user = $userCache[$cacheKey];
+            }
 
                     // Create attendance record
                     Attendance::create([
@@ -179,9 +189,16 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $userRole = $user->roles()->first()?->name ?? $user->role?->name;
         
-        $query = Attendance::with(['user', 'importedBy']);
+        // Eager load roles to avoid N+1 query
+        $user->load('roles');
+        $userRole = $user->roles->first()?->name ?? $user->role?->name;
+        
+        // Only load necessary user fields to reduce payload
+        $query = Attendance::with([
+            'user:id,name,first_name,last_name,employee_id',
+            'importedBy:id,name,first_name,last_name'
+        ]);
 
         // If user is not HR or Admin, restrict to their own records only
         if ($userRole !== 'hr' && $userRole !== 'admin') {
