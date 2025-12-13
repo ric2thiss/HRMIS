@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ToggleSwitch from '../../ui/ToggleSwitch/ToggleSwitch';
-import { getMaintenanceStatus, updateMaintenanceMode } from '../../../api/system/maintenance-mode';
+import { getMaintenanceStatus, updateMaintenanceMode, getSystemVersion, updateSystemVersion } from '../../../api/system/maintenance-mode';
 import { useNotification } from '../../../hooks/useNotification';
 import api from '../../../api/axios';
 import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
@@ -11,6 +11,7 @@ function SystemSettings() {
   const [allowedLoginRoles, setAllowedLoginRoles] = useState([]);
   const [availableRoles, setAvailableRoles] = useState([]);
   const [message, setMessage] = useState('');
+  const [version, setVersion] = useState('1.0.0');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const isInitialMount = useRef(true);
@@ -30,6 +31,7 @@ function SystemSettings() {
         setMaintenanceMode(!!data.is_enabled);
         setAllowedLoginRoles(data.allowed_login_roles || ['admin', 'hr']);
         setMessage(data.message || '');
+        setVersion(data.version || '1.0.0');
       } catch (err) {
         setError('Failed to load system settings');
         showError('Failed to load system settings');
@@ -145,6 +147,31 @@ function SystemSettings() {
     }, 1000);
   };
 
+  // Debounce version updates
+  const versionUpdateTimeoutRef = useRef(null);
+
+  const handleVersionChange = (newVersion) => {
+    setVersion(newVersion);
+    
+    // Clear previous timeout
+    if (versionUpdateTimeoutRef.current) {
+      clearTimeout(versionUpdateTimeoutRef.current);
+    }
+
+    // Debounce: only save after user stops typing for 1 second
+    versionUpdateTimeoutRef.current = setTimeout(async () => {
+      try {
+        await updateSystemVersion(newVersion);
+        showSuccess('System version updated successfully');
+      } catch (err) {
+        showError('Failed to update system version.');
+        // Revert on error
+        const currentVersion = await getSystemVersion();
+        setVersion(currentVersion);
+      }
+    }, 1000);
+  };
+
   if (loading) {
     return <LoadingSpinner text="Loading system settings..." />;
   }
@@ -236,6 +263,24 @@ function SystemSettings() {
             </p>
           </div>
         )}
+
+        {/* System Version */}
+        <div className="p-4 border rounded-lg">
+          <label htmlFor="system-version" className="block text-sm font-medium text-gray-700 mb-2">
+            System Version
+          </label>
+          <input
+            id="system-version"
+            type="text"
+            value={version}
+            onChange={(e) => handleVersionChange(e.target.value)}
+            placeholder="Enter system version (e.g., '1.27.4')"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            This version will be displayed on the dashboard header.
+          </p>
+        </div>
       </div>
     </div>
   );

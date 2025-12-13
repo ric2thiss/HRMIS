@@ -5,11 +5,14 @@ import React from 'react';
 const PdsPrintView = ({ formData }) => {
     if (!formData) return null;
 
-    // Helper function to format date
+    // Helper function to format date as dd/mm/yyyy
     const formatDate = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
     };
 
     // Helper function to display checkbox selection
@@ -24,330 +27,510 @@ const PdsPrintView = ({ formData }) => {
     };
 
     return (
-        <div className="pds-official-print" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.4', color: '#000', padding: '15px 20px', maxWidth: '100%', width: '100%', margin: '0 auto', overflow: 'visible', wordWrap: 'break-word' }}>
-            {/* Official Form Header */}
-            <div style={{ textAlign: 'center', marginBottom: '15px', pageBreakAfter: 'auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 'bold', textAlign: 'left' }}>
+        <div style={{ padding: '0 1in', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+            <div className="pds-official-print" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt', lineHeight: '1.4', color: '#000', width: '100%', maxWidth: '100%', overflow: 'visible', wordWrap: 'break-word', border: '1px solid #000', boxSizing: 'border-box' }}>
+                {/* Official Form Header */}
+                <div style={{ marginBottom: '15px', pageBreakAfter: 'auto' }}>
+                    <div style={{ fontWeight: 'bold', textAlign: 'left', marginBottom: '8px', marginLeft: '10px' }}>
                         CS Form No. 212<br />
-                        Revised 2025
+                        <span style={{ fontStyle: 'italic', fontWeight: 'normal' }}>Revised 2025</span>
                     </div>
-                    <div style={{ textAlign: 'right', fontSize: '10px' }}>
-                        <div style={{ marginBottom: '5px' }}>
-                            <strong>1. CS ID No.</strong> <span style={{ fontSize: '9px' }}>(Do not fill up. For CSC use only)</span>
-                        </div>
-                        <div style={{ borderBottom: '2px solid #000', width: '120px', height: '20px', display: 'inline-block' }}></div>
-                    </div>
+                    <h1 style={{ fontSize: '26pt', fontWeight: '900', textTransform: 'uppercase', margin: '12px 0', letterSpacing: '2px', textAlign: 'center', lineHeight: '1.2', textDecoration: 'none' }}>
+                        PERSONAL DATA SHEET
+                    </h1>
                 </div>
-                <h1 style={{ fontSize: '24px', fontWeight: 'bold', textTransform: 'uppercase', margin: '10px 0', letterSpacing: '1px' }}>
-                    PERSONAL DATA SHEET
-                </h1>
-            </div>
 
-            {/* Warning Section */}
-            <div style={{ borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '8px', marginBottom: '15px', fontSize: '9px' }}>
-                <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                    WARNING: Any misrepresentation made in the Personal Data Sheet and the Work Experience Sheet shall cause the filing of administrative/criminal case/s against the person concerned.
-                </p>
-                <p style={{ marginBottom: '5px' }}>
-                    <strong>READ THE ATTACHED GUIDE TO FILLING OUT THE PERSONAL DATA SHEET (PDS) BEFORE ACCOMPLISHING THE PDS FORM.</strong>
-                </p>
-                <p>
-                    Print legibly. Tick appropriate boxes (☐) and use separate sheet if necessary. Indicate N/A if not applicable. DO NOT ABBREVIATE.
-                </p>
-            </div>
+                {/* Warning Section */}
+                <div style={{ padding: '8px', marginBottom: '15px', lineHeight: '1.5' }}>
+                    <i>
+                        <p style={{ marginBottom: '5px', lineHeight: '1.4' }}>
+                            <strong>WARNING:</strong> Any misrepresentation made in the Personal Data Sheet and the Work Experience Sheet shall cause the filing of administrative/criminal case/s against the person concerned.
+                        </p>
+                        <p style={{ marginBottom: '5px', fontWeight: 'bold', textTransform: 'uppercase', lineHeight: '1.4' }}>
+                            READ THE ATTACHED GUIDE TO FILLING OUT THE PERSONAL DATA SHEET (PDS) BEFORE ACCOMPLISHING THE PDS FORM.
+                        </p>
+                    </i>
+                    
+                    <p style={{ marginBottom: '0', lineHeight: '1.4' }}>
+                        Print legibly if accomplished through own handwriting. Tick appropriate box ( ) and use separate sheet if necessary. Indicate N/A if not applicable. <strong>DO NOT ABBREVIATE.</strong>
+                    </p>
+                </div>
 
-            {/* I. PERSONAL INFORMATION */}
-            <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+            {/* I. PERSONAL INFORMATION - Exact match to official form */}
+            <div style={{ pageBreakInside: 'avoid' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '5px', lineHeight: '1.5', border: '1px solid #000', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '12pt' }}>
                     I. PERSONAL INFORMATION
                 </div>
 
-                {/* 2. Name */}
-                <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>2. Name</div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', border: '1px solid #000' }}>
-                        <tbody>
-                            <tr>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', verticalAlign: 'top' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>SURNAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.surname || ''}</div>
-                                </td>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', verticalAlign: 'top' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>FIRST NAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.firstName || ''}</div>
-                                </td>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', verticalAlign: 'top' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>MIDDLE NAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.middleName || ''}</div>
-                                </td>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', verticalAlign: 'top' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>NAME EXTENSION (JR., SR.)</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.nameExtension || ''}</div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                {/* Name Fields Table - Full Width */}
+                <table style={{ width: '100%', fontSize: '12pt', marginBottom: '0', borderCollapse: 'collapse' }}>
+                    <tbody>
+                        {/* 1. SURNAME */}
+                        <tr>
+                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '20%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>1. SURNAME</div>
+                            </td>
+                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '80%', lineHeight: '1.5' }}>
+                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.surname || ''}</div>
+                            </td>
+                        </tr>
+                        {/* 2. FIRST NAME with NAME EXTENSION */}
+                        <tr>
+                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '20%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>2. FIRST NAME</div>
+                            </td>
+                            <td style={{ border: '1px solid #000', padding: '0', backgroundColor: '#fff', width: '80%' }}>
+                                <table style={{ width: '100%', margin: '0', borderCollapse: 'collapse' }}>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ borderRight: '1px solid #000', backgroundColor: '#fff', width: '70%', padding: '5px', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.firstName || ''}</div>
+                                            </td>
+                                            <td style={{ borderLeft: '1px solid #000', backgroundColor: '#fff', width: '30%', verticalAlign: 'top', padding: '5px', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', marginBottom: '2px', fontSize: '10pt', lineHeight: '1.5' }}>NAME EXTENSION (JR., SR)</div>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.nameExtension || ''}</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                        {/* MIDDLE NAME */}
+                        <tr>
+                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '15%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>MIDDLE NAME</div>
+                            </td>
+                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '85%', lineHeight: '1.5' }}>
+                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.middleName || ''}</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
 
-                {/* 3-6. Date of Birth, Place of Birth, Sex, Civil Status */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div>
-                        <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>3. DATE OF BIRTH (mm/dd/yyyy)</div>
-                        <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formatDate(formData.dateOfBirth)}</div>
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>4. PLACE OF BIRTH</div>
-                        <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.placeOfBirth || ''}</div>
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>5. SEX</div>
-                        <div style={{ display: 'flex', gap: '15px', marginTop: '5px', fontSize: '9px' }}>
-                            <span>{displayCheckbox('Male', formData.sex)} Male</span>
-                            <span>{displayCheckbox('Female', formData.sex)} Female</span>
-                        </div>
-                    </div>
-                </div>
+                {/* Two-Column Layout - Exact spacing and positioning matching official form */}
+                <table style={{ width: '100%', fontSize: '12pt', marginBottom: '0', borderCollapse: 'collapse' }}>
+                    <tbody>
+                        <tr>
+                            {/* LEFT COLUMN - Items 3-15 */}
+                            <td style={{ width: '50%', verticalAlign: 'top', padding: '0' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000' }}>
+                                    <tbody>
+                                        {/* 3. DATE OF BIRTH */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '40%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>3. DATE OF BIRTH</div>
+                                                <div style={{ color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>(dd/mm/yyyy)</div>                                                                                                                                                                                                      
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '60%', lineHeight: '1.5' }}>
+                                                <div style={{ minHeight: '18px', lineHeight: '1.5', fontSize: '12pt', color: '#000' }}>{formatDate(formData.dateOfBirth)}</div>
+                                            </td>
+                                        </tr>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '12px' }}>
-                    <div>
-                        <div style={{ fontSize: '9px', marginBottom: '5px', fontWeight: 'bold' }}>6. CIVIL STATUS</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', fontSize: '9px' }}>
-                            <div>{displayCheckbox('Single', formData.civilStatus)} Single</div>
-                            <div>{displayCheckbox('Married', formData.civilStatus)} Married</div>
-                            <div>{displayCheckbox('Widow/er', formData.civilStatus)} Widow/er</div>
-                            <div>{displayCheckbox('Separated', formData.civilStatus)} Separated</div>
-                            <div>{displayCheckbox('Solo Parent', formData.civilStatus)} Solo Parent</div>
-                            <div>
-                                {displayCheckbox('Others', formData.civilStatus)} Others: <span style={{ borderBottom: '1px solid #000', display: 'inline-block', minWidth: '100px' }}>{formData.civilStatusOthers || ''}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '9px', marginBottom: '5px', fontWeight: 'bold' }}>16. CITIZENSHIP</div>
-                        <div style={{ fontSize: '9px', marginBottom: '5px' }}>
-                            {displayCheckbox('Filipino', formData.citizenship)} Filipino
-                        </div>
-                        <div style={{ fontSize: '9px', marginBottom: '5px' }}>
-                            {displayCheckbox('Dual Citizenship', formData.citizenship)} Dual Citizenship
-                            {formData.citizenship === 'Dual Citizenship' && (
-                                <span style={{ marginLeft: '10px' }}>
-                                    {displayCheckbox('by birth', formData.dualCitizenshipType)} by birth
-                                    {displayCheckbox('by naturalization', formData.dualCitizenshipType)} by naturalization
-                                </span>
-                            )}
-                        </div>
-                        {formData.citizenship === 'Dual Citizenship' && (
-                            <div style={{ marginTop: '5px', fontSize: '9px' }}>
-                                <div>If holder of dual citizenship, please indicate the country:</div>
-                                <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px', marginTop: '3px' }}>
-                                    {formData.dualCitizenshipCountry || ''}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                        {/* 4. PLACE OF BIRTH */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>4. PLACE OF BIRTH</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.placeOfBirth || ''}</div>
+                                            </td>
+                                        </tr>
 
-                {/* 7-15. Measurements & ID Numbers */}
-                <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '10px' }}>Measurements & ID Numbers</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', fontSize: '9px' }}>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>7. HEIGHT (m)</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.height || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>8. WEIGHT (kg)</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.weight || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>9. BLOOD TYPE</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.bloodType || ''}</div>
-                        </div>
-                        <div style={{ gridColumn: 'span 2' }}>
-                            <div style={{ marginBottom: '2px' }}>10. GSIS ID NO.</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.gsisIdNo || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>11. PAG-IBIG ID NO.</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.pagIbigIdNo || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>12. PHILHEALTH NO.</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.philhealthNo || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>13. SSS NO.</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.sssNo || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>14. TIN NO.</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.tinNo || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>15. AGENCY EMPLOYEE NO.</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.agencyEmployeeNo || ''}</div>
-                        </div>
-                    </div>
-                </div>
+                                        {/* 5. SEX AT BIRTH */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>5. SEX AT BIRTH</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ display: 'flex', gap: '20px', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>
+                                                    <span>{displayCheckbox('Male', formData.sex)} Male</span>
+                                                    <span>{displayCheckbox('Female', formData.sex)} Female</span>
+                                                </div>
+                                            </td>
+                                        </tr>
 
-                {/* 17-18. Addresses */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '12px' }}>
-                    <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>17. RESIDENTIAL ADDRESS</div>
-                        <div style={{ fontSize: '9px' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '3px' }}>
-                                <div>
-                                    <div style={{ marginBottom: '2px' }}>House/Block/Lot No.</div>
-                                    <div style={{ borderBottom: '1px solid #000', minHeight: '16px' }}>{formData.resHouseNo || ''}</div>
-                                </div>
-                                <div>
-                                    <div style={{ marginBottom: '2px' }}>Street</div>
-                                    <div style={{ borderBottom: '1px solid #000', minHeight: '16px' }}>{formData.resStreet || ''}</div>
-                                </div>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '3px' }}>
-                                <div>
-                                    <div style={{ marginBottom: '2px' }}>Subdivision/Village</div>
-                                    <div style={{ borderBottom: '1px solid #000', minHeight: '16px' }}>{formData.resSubdivision || ''}</div>
-                                </div>
-                                <div>
-                                    <div style={{ marginBottom: '2px' }}>Barangay</div>
-                                    <div style={{ borderBottom: '1px solid #000', minHeight: '16px' }}>{formData.resBarangay || ''}</div>
-                                </div>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '3px' }}>
-                                <div>
-                                    <div style={{ marginBottom: '2px' }}>City/Municipality</div>
-                                    <div style={{ borderBottom: '1px solid #000', minHeight: '16px' }}>{formData.resCity || ''}</div>
-                                </div>
-                                <div>
-                                    <div style={{ marginBottom: '2px' }}>Province</div>
-                                    <div style={{ borderBottom: '1px solid #000', minHeight: '16px' }}>{formData.resProvince || ''}</div>
-                                </div>
-                            </div>
-                            <div>
-                                <div style={{ marginBottom: '2px' }}>ZIP CODE</div>
-                                <div style={{ borderBottom: '1px solid #000', minHeight: '16px' }}>{formData.resZipCode || ''}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>18. PERMANENT ADDRESS</div>
-                        {formData.sameAsResidential ? (
-                            <div style={{ fontSize: '9px', fontStyle: 'italic', padding: '10px', border: '1px dashed #000' }}>Same as Residential Address</div>
-                        ) : (
-                            <div style={{ fontSize: '9px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '3px' }}>
-                                    <div>
-                                        <div style={{ marginBottom: '2px' }}>House/Block/Lot No.</div>
-                                        <div style={{ borderBottom: '1px solid #000', minHeight: '16px', lineHeight: '16px', paddingBottom: '2px' }}>{formData.permHouseNo || ''}</div>
-                                    </div>
-                                    <div>
-                                        <div style={{ marginBottom: '2px' }}>Street</div>
-                                        <div style={{ borderBottom: '1px solid #000', minHeight: '16px', lineHeight: '16px', paddingBottom: '2px' }}>{formData.permStreet || ''}</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '3px' }}>
-                                    <div>
-                                        <div style={{ marginBottom: '2px' }}>Subdivision/Village</div>
-                                        <div style={{ borderBottom: '1px solid #000', minHeight: '16px', lineHeight: '16px', paddingBottom: '2px' }}>{formData.permSubdivision || ''}</div>
-                                    </div>
-                                    <div>
-                                        <div style={{ marginBottom: '2px' }}>Barangay</div>
-                                        <div style={{ borderBottom: '1px solid #000', minHeight: '16px', lineHeight: '16px', paddingBottom: '2px' }}>{formData.permBarangay || ''}</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '3px' }}>
-                                    <div>
-                                        <div style={{ marginBottom: '2px' }}>City/Municipality</div>
-                                        <div style={{ borderBottom: '1px solid #000', minHeight: '16px', lineHeight: '16px', paddingBottom: '2px' }}>{formData.permCity || ''}</div>
-                                    </div>
-                                    <div>
-                                        <div style={{ marginBottom: '2px' }}>Province</div>
-                                        <div style={{ borderBottom: '1px solid #000', minHeight: '16px', lineHeight: '16px', paddingBottom: '2px' }}>{formData.permProvince || ''}</div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div style={{ marginBottom: '2px' }}>ZIP CODE</div>
-                                    <div style={{ borderBottom: '1px solid #000', minHeight: '16px', lineHeight: '16px', paddingBottom: '2px' }}>{formData.permZipCode || ''}</div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                        {/* 6. CIVIL STATUS */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>6. CIVIL STATUS</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td style={{ border: 'none', padding: '0', verticalAlign: 'top', width: '50%' }}>
+                                                                <div style={{ marginBottom: '2px', fontSize: '12pt', lineHeight: '1.5' }}>{displayCheckbox('Single', formData.civilStatus)} Single</div>
+                                                                <div style={{ marginBottom: '2px', fontSize: '12pt', lineHeight: '1.5' }}>{displayCheckbox('Widowed', formData.civilStatus)} Widowed</div>
+                                                                <div style={{ marginBottom: '2px', fontSize: '12pt', lineHeight: '1.5' }}>
+                                                                    {displayCheckbox('Other/s', formData.civilStatus)} Other/s: <span style={{ borderBottom: '1px solid #000', display: 'inline-block', minWidth: '80px', marginLeft: '4px', paddingBottom: '2px' }}>{formData.civilStatusOthers || ''}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ border: 'none', padding: '0', verticalAlign: 'top', width: '50%' }}>
+                                                                <div style={{ marginBottom: '2px', fontSize: '12pt', lineHeight: '1.5' }}>{displayCheckbox('Married', formData.civilStatus)} Married</div>
+                                                                <div style={{ marginBottom: '2px', fontSize: '12pt', lineHeight: '1.5' }}>{displayCheckbox('Separated', formData.civilStatus)} Separated</div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </td>
+                                        </tr>
 
-                {/* 19-21. Contact Information */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div>
-                        <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>19. TELEPHONE NO.</div>
-                        <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.telephoneNo || ''}</div>
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>20. MOBILE NO.</div>
-                        <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.mobileNo || ''}</div>
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '9px', marginBottom: '2px', fontWeight: 'bold' }}>21. E-MAIL ADDRESS (if any)</div>
-                        <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.emailAddress || ''}</div>
-                    </div>
-                </div>
+                                        {/* 7. HEIGHT */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>7. HEIGHT (m)</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.height || ''}</div>
+                                            </td>
+                                        </tr>
+
+                                        {/* 8. WEIGHT */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>8. WEIGHT (kg)</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.weight || ''}</div>
+                                            </td>
+                                        </tr>
+
+                                        {/* 9. BLOOD TYPE */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>9. BLOOD TYPE</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.bloodType || ''}</div>
+                                            </td>
+                                        </tr>
+
+                                        {/* 10. UMID ID NO. */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>10. UMID ID NO.</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.umidIdNo || ''}</div>
+                                            </td>
+                                        </tr>
+
+                                        {/* 11. PAG-IBIG ID NO. */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>11. PAG-IBIG ID NO.</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.pagIbigIdNo || ''}</div>
+                                            </td>
+                                        </tr>
+
+                                        {/* 12. PHILHEALTH NO. */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>12. PHILHEALTH NO.</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.philhealthNo || ''}</div>
+                                            </td>
+                                        </tr>
+
+                                        {/* 13. PhilSys Number (PSN) */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>13. PhilSys Number (PSN)</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.philSysNumber || ''}</div>
+                                            </td>
+                                        </tr>
+
+                                        {/* 14. TIN NO. */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>14. TIN NO.</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.tinNo || ''}</div>
+                                            </td>
+                                        </tr>
+
+                                        {/* 15. AGENCY EMPLOYEE NO. */}
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '30%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>15. AGENCY EMPLOYEE NO.</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '70%', lineHeight: '1.5' }}>
+                                                <div style={{ color: '#000', fontSize: '12pt', lineHeight: '1.5', minHeight: '18px' }}>{formData.agencyEmployeeNo || ''}</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                            {/* RIGHT COLUMN - Items 16-21 */}
+                            <td style={{ width: '50%', verticalAlign: 'top', padding: '0' }}>
+                                {/* 16. CITIZENSHIP */}
+                                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: '0' }}>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '25%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>16. CITIZENSHIP</div>
+                                                <div style={{ fontSize: '10pt', color: '#000', lineHeight: '1.5', marginTop: '20px' }}>
+                                                    <div>If holder of dual citizenship,</div>
+                                                    <div style={{ marginTop: '60px' }}>please indicate the details.</div>
+                                                </div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '75%', lineHeight: '1.5' }}>
+                                                <div style={{ lineHeight: '1.5', color: '#000', marginBottom: '5px', fontSize: '12pt' }}>
+                                                    <div style={{ marginBottom: '3px', lineHeight: '1.5' }}>{displayCheckbox('Filipino', formData.citizenship)} Filipino</div>
+                                                    <div style={{ marginBottom: '3px', lineHeight: '1.5' }}>
+                                                        {displayCheckbox('Dual Citizenship', formData.citizenship)} Dual Citizenship
+                                                    </div>
+                                                    <div style={{ marginLeft: '20px', marginTop: '3px', lineHeight: '1.5' }}>
+                                                        {displayCheckbox('by birth', formData.dualCitizenshipType)} by birth
+                                                        <span style={{ marginLeft: '12px' }}>{displayCheckbox('by naturalization', formData.dualCitizenshipType)} by naturalization</span>
+                                                    </div>
+                                                </div>
+                                                <div style={{ color: '#000', marginTop: '5px', fontSize: '12pt' }}>
+                                                    <div style={{ marginBottom: '3px', lineHeight: '1.5' }}>Pls. indicate country:</div>
+                                                    <div style={{ borderBottom: '1px solid #000', paddingBottom: '2px', color: '#000', lineHeight: '1.5', minHeight: '18px' }}>
+                                                        {formData.dualCitizenshipCountry || ''}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                {/* 17. RESIDENTIAL ADDRESS */}
+                                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: '0' }}>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '25%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>17. RESIDENTIAL ADDRESS</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '75%', lineHeight: '1.5' }}>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px' }}>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td style={{ width: '50%', paddingRight: '4px', verticalAlign: 'top' }}>
+                                                                <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>House/Block/Lot No.</div>
+                                                                <div style={{ borderBottom: formData.resHouseNo ? '1px solid #000' : '', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.resHouseNo || '__________________'}</div>
+                                                            </td>
+                                                            <td style={{ width: '50%', paddingLeft: '4px', verticalAlign: 'top' }}>
+                                                                <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>Street</div>
+                                                                <div style={{ borderBottom: formData.resStreet ? '1px solid #000' : '', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.resStreet || '____________________'}</div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px' }}>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td style={{ width: '50%', paddingRight: '4px', verticalAlign: 'top' }}>
+                                                                <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>Subdivision/Village</div>
+                                                                <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.resSubdivision || 'Camella'}</div>
+                                                            </td>
+                                                            <td style={{ width: '50%', paddingLeft: '4px', verticalAlign: 'top' }}>
+                                                                <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>Barangay</div>
+                                                                <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.resBarangay || ''}</div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px' }}>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td style={{ width: '50%', paddingRight: '4px', verticalAlign: 'top' }}>
+                                                                <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>City/Municipality</div>
+                                                                <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.resCity || ''}</div>
+                                                            </td>
+                                                            <td style={{ width: '50%', paddingLeft: '4px', verticalAlign: 'top' }}>
+                                                                <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>Province</div>
+                                                                <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.resProvince || ''}</div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <div>
+                                                    <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>ZIP CODE</div>
+                                                    <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.resZipCode || ''}</div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                {/* 18. PERMANENT ADDRESS */}
+                                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: '0' }}>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '25%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>18. PERMANENT ADDRESS</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '75%', lineHeight: '1.5' }}>
+                                                {formData.sameAsResidential ? (
+                                                    <div style={{ fontSize: '10pt', fontStyle: 'italic', padding: '8px', border: '1px dashed #000', textAlign: 'center', color: '#000', lineHeight: '1.5' }}>Same as Residential Address</div>
+                                                ) : (
+                                                    <div>
+                                                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px' }}>
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td style={{ width: '50%', paddingRight: '4px', verticalAlign: 'top' }}>
+                                                                        <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>House/Block/Lot No.</div>
+                                                                        <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.permHouseNo || ''}</div>
+                                                                    </td>
+                                                                    <td style={{ width: '50%', paddingLeft: '4px', verticalAlign: 'top' }}>
+                                                                        <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>Street</div>
+                                                                        <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.permStreet || ''}</div>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px' }}>
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td style={{ width: '50%', paddingRight: '4px', verticalAlign: 'top' }}>
+                                                                        <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>Subdivision/Village</div>
+                                                                        <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.permSubdivision || ''}</div>
+                                                                    </td>
+                                                                    <td style={{ width: '50%', paddingLeft: '4px', verticalAlign: 'top' }}>
+                                                                        <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>Barangay</div>
+                                                                        <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.permBarangay || ''}</div>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px' }}>
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td style={{ width: '50%', paddingRight: '4px', verticalAlign: 'top' }}>
+                                                                        <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>City/Municipality</div>
+                                                                        <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.permCity || ''}</div>
+                                                                    </td>
+                                                                    <td style={{ width: '50%', paddingLeft: '4px', verticalAlign: 'top' }}>
+                                                                        <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>Province</div>
+                                                                        <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.permProvince || ''}</div>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                        <div>
+                                                            <div style={{ marginBottom: '2px', color: '#000', fontSize: '10pt', lineHeight: '1.5' }}>ZIP CODE</div>
+                                                            <div style={{ borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.permZipCode || ''}</div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                {/* 19. TELEPHONE NO. */}
+                                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: '0' }}>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '25%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>19. TELEPHONE NO.</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '75%', lineHeight: '1.5' }}>
+                                                <div style={{ minHeight: '18px', lineHeight: '1.5', fontSize: '12pt', color: '#000' }}>{formData.telephoneNo || ''}</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                {/* 20. MOBILE NO. */}
+                                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: '0' }}>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '25%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>20. MOBILE NO.</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '75%', lineHeight: '1.5' }}>
+                                                <div style={{ lineHeight: '1.5', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.mobileNo || ''}</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                {/* 21. E-MAIL ADDRESS */}
+                                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: '0' }}>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#f0f0f0', width: '25%', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#000', fontSize: '12pt', lineHeight: '1.5' }}>21. E-MAIL ADDRESS (if any)</div>
+                                            </td>
+                                            <td style={{ border: '1px solid #000', padding: '5px', backgroundColor: '#fff', width: '75%', lineHeight: '1.5' }}>
+                                                <div style={{ lineHeight: '1.5', color: '#000', fontSize: '12pt', minHeight: '18px' }}>{formData.emailAddress || ''}</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             {/* II. FAMILY BACKGROUND */}
             <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     II. FAMILY BACKGROUND
                 </div>
 
                 {/* 22. Spouse's Information */}
                 <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>22. SPOUSE'S SURNAME</div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', border: '1px solid #000', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>22. SPOUSE'S SURNAME</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12pt', border: '1px solid #000', marginBottom: '8px' }}>
                         <tbody>
                             <tr>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '3px' }}>SURNAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.spouseSurname || ''}</div>
+                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '3px', lineHeight: '1.5' }}>SURNAME</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.spouseSurname || ''}</div>
                                 </td>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px' }}>FIRST NAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.spouseFirstName || ''}</div>
+                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '2px', lineHeight: '1.5' }}>FIRST NAME</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.spouseFirstName || ''}</div>
                                 </td>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px' }}>MIDDLE NAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.spouseMiddleName || ''}</div>
+                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '2px', lineHeight: '1.5' }}>MIDDLE NAME</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.spouseMiddleName || ''}</div>
                                 </td>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px' }}>NAME EXTENSION</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.spouseExtension || ''}</div>
+                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '2px', lineHeight: '1.5' }}>NAME EXTENSION</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.spouseExtension || ''}</div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', fontSize: '9px' }}>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>OCCUPATION</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.spouseOccupation || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>EMPLOYER/BUSINESS NAME</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.spouseEmployer || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '2px' }}>BUSINESS ADDRESS</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.spouseBusinessAddress || ''}</div>
-                        </div>
-                    </div>
-                    <div style={{ marginTop: '5px', fontSize: '9px' }}>
-                        <div style={{ marginBottom: '2px' }}>TELEPHONE NO.</div>
-                        <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px', width: '200px' }}>{formData.spouseTelephone || ''}</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt', marginBottom: '5px' }}>
+                        <tbody>
+                            <tr>
+                                <td style={{ width: '33.33%', paddingRight: '5px', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                    <div style={{ marginBottom: '2px', lineHeight: '1.5' }}>OCCUPATION</div>
+                                    <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.spouseOccupation || ''}</div>
+                                </td>
+                                <td style={{ width: '33.33%', paddingLeft: '5px', paddingRight: '5px', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                    <div style={{ marginBottom: '2px', lineHeight: '1.5' }}>EMPLOYER/BUSINESS NAME</div>
+                                    <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.spouseEmployer || ''}</div>
+                                </td>
+                                <td style={{ width: '33.33%', paddingLeft: '5px', verticalAlign: 'top', lineHeight: '1.5' }}>
+                                    <div style={{ marginBottom: '2px', lineHeight: '1.5' }}>BUSINESS ADDRESS</div>
+                                    <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.spouseBusinessAddress || ''}</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div style={{ marginTop: '5px', fontSize: '10pt', lineHeight: '1.5' }}>
+                        <div style={{ marginBottom: '2px', lineHeight: '1.5' }}>TELEPHONE NO.</div>
+                        <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '1.5', paddingBottom: '2px', width: '200px', fontSize: '12pt' }}>{formData.spouseTelephone || ''}</div>
                     </div>
                 </div>
 
                 {/* 23. Children's Information */}
                 <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>23. NAME OF CHILDREN (Write full name and list all)</div>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>23. NAME OF CHILDREN (Write full name and list all)</div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', border: '1px solid #000' }}>
                         <thead>
                             <tr style={{ backgroundColor: '#f0f0f0' }}>
@@ -372,26 +555,26 @@ const PdsPrintView = ({ formData }) => {
                 </div>
 
                 {/* 24. Father's Information */}
-                <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>24. FATHER'S NAME</div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', border: '1px solid #000' }}>
+                <div style={{ marginBottom: '20px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>24. FATHER'S NAME</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12pt', border: '1px solid #000' }}>
                         <tbody>
                             <tr>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '3px' }}>SURNAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.fatherSurname || ''}</div>
+                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '3px', lineHeight: '1.5' }}>SURNAME</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.fatherSurname || ''}</div>
                                 </td>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px' }}>FIRST NAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.fatherFirstName || ''}</div>
+                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '2px', lineHeight: '1.5' }}>FIRST NAME</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.fatherFirstName || ''}</div>
                                 </td>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px' }}>MIDDLE NAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.fatherMiddleName || ''}</div>
+                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '2px', lineHeight: '1.5' }}>MIDDLE NAME</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.fatherMiddleName || ''}</div>
                                 </td>
-                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px' }}>NAME EXTENSION</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.fatherExtension || ''}</div>
+                                <td style={{ width: '25%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '2px', lineHeight: '1.5' }}>NAME EXTENSION</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.fatherExtension || ''}</div>
                                 </td>
                             </tr>
                         </tbody>
@@ -400,21 +583,21 @@ const PdsPrintView = ({ formData }) => {
 
                 {/* 25. Mother's Information */}
                 <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>25. MOTHER'S MAIDEN NAME</div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', border: '1px solid #000' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>25. MOTHER'S MAIDEN NAME</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12pt', border: '1px solid #000' }}>
                         <tbody>
                             <tr>
-                                <td style={{ width: '33%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '3px' }}>SURNAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.motherSurname || ''}</div>
+                                <td style={{ width: '33%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '3px', lineHeight: '1.5' }}>SURNAME</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.motherSurname || ''}</div>
                                 </td>
-                                <td style={{ width: '33%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px' }}>FIRST NAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.motherFirstName || ''}</div>
+                                <td style={{ width: '33%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '2px', lineHeight: '1.5' }}>FIRST NAME</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.motherFirstName || ''}</div>
                                 </td>
-                                <td style={{ width: '34%', padding: '5px', border: '1px solid #000' }}>
-                                    <div style={{ fontSize: '9px', marginBottom: '2px' }}>MIDDLE NAME</div>
-                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '18px', paddingBottom: '2px' }}>{formData.motherMiddleName || ''}</div>
+                                <td style={{ width: '34%', padding: '5px', border: '1px solid #000', lineHeight: '1.5' }}>
+                                    <div style={{ fontSize: '10pt', marginBottom: '2px', lineHeight: '1.5' }}>MIDDLE NAME</div>
+                                    <div style={{ minHeight: '18px', borderBottom: '1px solid #000', lineHeight: '1.5', paddingBottom: '2px', fontSize: '12pt' }}>{formData.motherMiddleName || ''}</div>
                                 </td>
                             </tr>
                         </tbody>
@@ -424,10 +607,10 @@ const PdsPrintView = ({ formData }) => {
 
             {/* III. EDUCATIONAL BACKGROUND */}
             <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     III. EDUCATIONAL BACKGROUND
                 </div>
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>26. LEVEL</div>
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>26. LEVEL</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', border: '1px solid #000' }}>
                     <thead>
                         <tr style={{ backgroundColor: '#f0f0f0' }}>
@@ -458,10 +641,10 @@ const PdsPrintView = ({ formData }) => {
 
             {/* IV. CIVIL SERVICE ELIGIBILITY */}
             <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     IV. CIVIL SERVICE ELIGIBILITY
                 </div>
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>27. CAREER SERVICE/RA 1080 (BOARD/BAR) UNDER SPECIAL LAWS/ CES/ CSEE BARANGAY ELIGIBILITY / DRIVER'S LICENSE</div>
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>27. CAREER SERVICE/RA 1080 (BOARD/BAR) UNDER SPECIAL LAWS/ CES/ CSEE BARANGAY ELIGIBILITY / DRIVER'S LICENSE</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', border: '1px solid #000' }}>
                     <thead>
                         <tr style={{ backgroundColor: '#f0f0f0' }}>
@@ -494,11 +677,11 @@ const PdsPrintView = ({ formData }) => {
             </div>
 
             {/* V. WORK EXPERIENCE */}
-            <div style={{ marginBottom: '120px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+            <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     V. WORK EXPERIENCE
                 </div>
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>28. INCLUDING PRIVATE EMPLOYMENT. STARTING WITH THE MOST RECENT</div>
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>28. INCLUDING PRIVATE EMPLOYMENT. STARTING WITH THE MOST RECENT</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', border: '1px solid #000' }}>
                     <thead>
                         <tr style={{ backgroundColor: '#f0f0f0' }}>
@@ -534,10 +717,10 @@ const PdsPrintView = ({ formData }) => {
 
             {/* VI. VOLUNTARY WORK */}
             <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     VI. VOLUNTARY WORK OR INVOLVEMENT IN CIVIC/NON-GOVERNMENT/PEOPLE/VOLUNTARY ORGANIZATIONS
                 </div>
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>29. INCLUDING PRIVATE EMPLOYMENT. STARTING WITH THE MOST RECENT</div>
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>29. INCLUDING PRIVATE EMPLOYMENT. STARTING WITH THE MOST RECENT</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', border: '1px solid #000', marginTop: '0', marginBottom: '0' }}>
                     <thead>
                         <tr style={{ backgroundColor: '#e5e7eb' }}>
@@ -570,10 +753,10 @@ const PdsPrintView = ({ formData }) => {
 
             {/* VII. LEARNING AND DEVELOPMENT */}
             <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     VII. LEARNING AND DEVELOPMENT (L&D) INTERVENTIONS/TRAINING PROGRAMS ATTENDED
                 </div>
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>30. STARTING WITH THE MOST RECENT (Write in full)</div>
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>30. STARTING WITH THE MOST RECENT (Write in full)</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', border: '1px solid #000' }}>
                     <thead>
                         <tr style={{ backgroundColor: '#f0f0f0' }}>
@@ -605,28 +788,32 @@ const PdsPrintView = ({ formData }) => {
 
             {/* VIII. OTHER INFORMATION */}
             <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     VIII. OTHER INFORMATION
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '12px' }}>
-                    <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>31. SPECIAL SKILLS and HOBBIES</div>
-                        <div style={{ border: '1px solid #000', minHeight: '80px', padding: '5px', fontSize: '9px' }}>{formData.skillsAndHobbies || ''}</div>
-                    </div>
-                    <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>32. NON-ACADEMIC DISTINCTIONS / RECOGNITION (Write in full)</div>
-                        <div style={{ border: '1px solid #000', minHeight: '80px', padding: '5px', fontSize: '9px' }}>{formData.distinctions || ''}</div>
-                    </div>
-                    <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>33. MEMBERSHIP IN ASSOCIATION/ORGANIZATION (Write in full)</div>
-                        <div style={{ border: '1px solid #000', minHeight: '80px', padding: '5px', fontSize: '9px' }}>{formData.membership || ''}</div>
-                    </div>
-                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '12px' }}>
+                    <tbody>
+                        <tr>
+                            <td style={{ width: '33.33%', paddingRight: '7.5px', verticalAlign: 'top' }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>31. SPECIAL SKILLS and HOBBIES</div>
+                                <div style={{ border: '1px solid #000', minHeight: '80px', padding: '5px', fontSize: '10pt', lineHeight: '1.5' }}>{formData.skillsAndHobbies || ''}</div>
+                            </td>
+                            <td style={{ width: '33.33%', paddingLeft: '7.5px', paddingRight: '7.5px', verticalAlign: 'top' }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>32. NON-ACADEMIC DISTINCTIONS / RECOGNITION (Write in full)</div>
+                                <div style={{ border: '1px solid #000', minHeight: '80px', padding: '5px', fontSize: '10pt', lineHeight: '1.5' }}>{formData.distinctions || ''}</div>
+                            </td>
+                            <td style={{ width: '33.33%', paddingLeft: '7.5px', verticalAlign: 'top' }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>33. MEMBERSHIP IN ASSOCIATION/ORGANIZATION (Write in full)</div>
+                                <div style={{ border: '1px solid #000', minHeight: '80px', padding: '5px', fontSize: '10pt', lineHeight: '1.5' }}>{formData.membership || ''}</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             {/* IX. YES/NO QUESTIONS */}
             <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     IX. YES/NO QUESTIONS
                 </div>
                 <div style={{ fontSize: '9px', lineHeight: '1.8' }}>
@@ -708,10 +895,10 @@ const PdsPrintView = ({ formData }) => {
 
             {/* X. REFERENCES */}
             <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     X. REFERENCES
                 </div>
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '10px' }}>41. REFERENCES (Person not related by consanguinity or affinity to applicant/appointee)</div>
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '12pt', lineHeight: '1.5' }}>41. REFERENCES (Person not related by consanguinity or affinity to applicant/appointee)</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', border: '1px solid #000' }}>
                     <thead>
                         <tr style={{ backgroundColor: '#f0f0f0' }}>
@@ -742,7 +929,7 @@ const PdsPrintView = ({ formData }) => {
 
             {/* XI. DECLARATION */}
             <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '11px' }}>
+                <div style={{ backgroundColor: '#e5e7eb', padding: '6px', border: '1px solid #000', fontWeight: 'bold', marginBottom: '10px', textTransform: 'uppercase', fontSize: '12pt', lineHeight: '1.5' }}>
                     XI. DECLARATION
                 </div>
                 
@@ -755,27 +942,29 @@ const PdsPrintView = ({ formData }) => {
                 </div>
 
                 {/* Government Issued ID and Signature Section */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '20px' }}>
-                    {/* Left Column - Government Issued ID */}
-                    <div style={{ fontSize: '9px' }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Government Issued ID (i.e. Passport, GSIS, SSS, PRC, Driver's License, etc.)</div>
-                        <div style={{ fontSize: '8px', marginBottom: '3px', fontStyle: 'italic' }}>PLEASE INDICATE ID Number and Date</div>
-                        <div style={{ marginBottom: '8px' }}>
-                            <div style={{ marginBottom: '3px' }}>Government Issued ID:</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.govtIdType || ''}</div>
-                        </div>
-                        <div style={{ marginBottom: '8px' }}>
-                            <div style={{ marginBottom: '3px' }}>ID/License/Passport No.:</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.govtIdNumber || ''}</div>
-                        </div>
-                        <div>
-                            <div style={{ marginBottom: '3px' }}>Date/Place of Issuance:</div>
-                            <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.govtIdIssuePlaceDate || ''}</div>
-                        </div>
-                    </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                    <tbody>
+                        <tr>
+                            {/* Left Column - Government Issued ID */}
+                            <td style={{ width: '50%', paddingRight: '15px', verticalAlign: 'top', fontSize: '9px' }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Government Issued ID (i.e. Passport, GSIS, SSS, PRC, Driver's License, etc.)</div>
+                                <div style={{ fontSize: '8px', marginBottom: '3px', fontStyle: 'italic' }}>PLEASE INDICATE ID Number and Date</div>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <div style={{ marginBottom: '3px' }}>Government Issued ID:</div>
+                                    <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.govtIdType || ''}</div>
+                                </div>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <div style={{ marginBottom: '3px' }}>ID/License/Passport No.:</div>
+                                    <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.govtIdNumber || ''}</div>
+                                </div>
+                                <div>
+                                    <div style={{ marginBottom: '3px' }}>Date/Place of Issuance:</div>
+                                    <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formData.govtIdIssuePlaceDate || ''}</div>
+                                </div>
+                            </td>
 
-                    {/* Right Column - Signature and Date */}
-                    <div style={{ fontSize: '9px' }}>
+                            {/* Right Column - Signature and Date */}
+                            <td style={{ width: '50%', paddingLeft: '15px', verticalAlign: 'top', fontSize: '9px' }}>
                         <div style={{ marginBottom: '8px' }}>
                             <div style={{ border: '2px solid #000', minHeight: '60px', padding: '5px', marginBottom: '5px', position: 'relative' }}>
                                 <div style={{ fontSize: '8px', color: '#666', position: 'absolute', top: '2px', left: '5px' }}>Signature (Sign inside the box)</div>
@@ -798,8 +987,10 @@ const PdsPrintView = ({ formData }) => {
                             <div style={{ marginBottom: '3px' }}>Date Accomplished</div>
                             <div style={{ borderBottom: '1px solid #000', minHeight: '18px', lineHeight: '18px', paddingBottom: '2px' }}>{formatDate(formData.dateAccomplished)}</div>
                         </div>
-                    </div>
-                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
 
                 {/* Photo and Thumbmark Section - Right Side */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '20px', marginBottom: '20px' }}>
@@ -863,6 +1054,7 @@ const PdsPrintView = ({ formData }) => {
                 <div style={{ textAlign: 'right', fontSize: '8px', marginTop: '20px', color: '#666' }}>
                     CS FORM 212 (Revised 2025). Page 4 of 4
                 </div>
+            </div>
             </div>
         </div>
     );

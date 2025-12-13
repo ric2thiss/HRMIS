@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../../hooks/useAuth";
 import AppLayout from '../../components/Layout/AppLayout';
 import TilesSection from '../../components/Tile/TilesSection';
+import LoadingScreen from '../../components/Loading/LoadingScreen';
 import { getUserRole } from '../../utils/userHelpers';
 
 function Dashboard() {
@@ -17,7 +18,7 @@ function Dashboard() {
 
   // Show full page loading only for initial auth check
   if (loading || !user) {
-    return null;
+    return <LoadingScreen />;
   }
 
   const role = getUserRole(user);

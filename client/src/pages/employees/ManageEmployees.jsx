@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../../hooks/useAuth";
 import AppLayout from '../../components/Layout/AppLayout';
 import EmployeeManager from '../../components/features/employees/EmployeeManager';
+import LoadingScreen from '../../components/Loading/LoadingScreen';
 
 function ManageEmployees() {
     const navigate = useNavigate();
@@ -24,7 +25,7 @@ function ManageEmployees() {
 
     // Show full page loading only for initial auth check
     if (loading || !user) {
-        return null;
+        return <LoadingScreen />;
     }
 
     const role = user?.roles?.[0]?.name;

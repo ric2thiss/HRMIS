@@ -26,6 +26,7 @@ class ProjectController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'project_code' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive,completed,on_hold',
             'project_manager' => 'nullable|string|max:255',
         ]);
@@ -53,6 +54,7 @@ class ProjectController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'project_code' => 'nullable|string|max:255',
             'status' => 'required|in:active,inactive,completed,on_hold',
             'project_manager' => 'nullable|string|max:255',
         ]);

@@ -5,6 +5,7 @@ import api from '../axios';
  * @param {string} firstName - User's first name
  * @param {string} middleInitial - User's middle initial (optional)
  * @param {string} lastName - User's last name
+ * @param {string} sex - User's sex (Male or Female)
  * @param {string} email - User's email address
  * @param {string} password - User's password
  * @param {number} positionId - Position ID to assign
@@ -15,13 +16,14 @@ import api from '../axios';
  * @param {number} officeId - Optional office ID to assign
  * @returns {Promise<Object>} Created user object
  */
-const createAccount = async (firstName, middleInitial, lastName, email, password, positionId, roleId, projectId, employmentTypeId, specialCapabilityIds = [], officeId = null) => {
+const createAccount = async (firstName, middleInitial, lastName, sex, email, password, positionId, roleId, projectId, employmentTypeId, specialCapabilityIds = [], officeId = null) => {
     await api.get("/sanctum/csrf-cookie");
 
     const payload = { 
         first_name: firstName,
         middle_initial: middleInitial || null,
         last_name: lastName,
+        sex: sex,
         email, 
         password, 
         position_id: positionId,

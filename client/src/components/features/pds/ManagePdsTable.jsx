@@ -1,49 +1,112 @@
 import React, { useState, useEffect } from 'react';
-import { getAllPds, getEmployeesWithoutPds, notifyEmployee, reviewPds, deletePds, returnPdsToOwner } from '../../../api/pds/pds';
+import { getAllPds, getEmployeesWithoutPds, notifyEmployee, reviewPds, deletePds, getPds } from '../../../api/pds/pds';
 import { useNotification } from '../../../hooks/useNotification';
+import { useAuth } from '../../../hooks/useAuth';
 import PdsReviewModal from './PdsReviewModal';
 import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
 
 function ManagePdsTable() {
     const { showSuccess, showError } = useNotification();
-    const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'draft', 'approved', 'without-pds'
+    const { user: currentUser } = useAuth();
+    const [activeFilter, setActiveFilter] = useState('for-approval'); // 'all', 'for-revision', 'for-approval', 'approved', 'declined', 'no-pds'
     const [pdsList, setPdsList] = useState([]);
     const [employeesWithoutPds, setEmployeesWithoutPds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedPds, setSelectedPds] = useState(null);
     const [notifying, setNotifying] = useState({});
+    const [searchQuery, setSearchQuery] = useState('');
+    const [viewingComments, setViewingComments] = useState(null);
+    const [printingPds, setPrintingPds] = useState(null);
+    const [pendingCount, setPendingCount] = useState(0);
+    const [allPdsCount, setAllPdsCount] = useState(0);
+    const [forRevisionCount, setForRevisionCount] = useState(0);
+    const [approvedCount, setApprovedCount] = useState(0);
+    const [declinedCount, setDeclinedCount] = useState(0);
+    const [noPdsCount, setNoPdsCount] = useState(0);
 
     useEffect(() => {
         loadData();
+        fetchAllCounts();
     }, [activeFilter]);
+
+    // Fetch all counts for notification badges
+    const fetchAllCounts = async () => {
+        try {
+            // Fetch all PDS for counting
+            const allResponse = await getAllPds();
+            const allPds = allResponse.pds || [];
+            
+            // Count by status
+            setAllPdsCount(allPds.length);
+            setPendingCount(allPds.filter(pds => pds.status === 'pending').length);
+            setForRevisionCount(allPds.filter(pds => pds.status === 'for-revision' || pds.status === 'declined').length);
+            setApprovedCount(allPds.filter(pds => pds.status === 'approved').length);
+            setDeclinedCount(allPds.filter(pds => pds.status === 'declined').length);
+            
+            // Fetch employees without PDS
+            try {
+                const noPdsResponse = await getEmployeesWithoutPds();
+                setNoPdsCount((noPdsResponse.employees || []).length);
+            } catch (err) {
+                console.error('Error fetching employees without PDS count:', err);
+                setNoPdsCount(0);
+            }
+        } catch (err) {
+            console.error('Error fetching counts:', err);
+            setAllPdsCount(0);
+            setPendingCount(0);
+            setForRevisionCount(0);
+            setApprovedCount(0);
+            setDeclinedCount(0);
+            setNoPdsCount(0);
+        }
+    };
 
     const loadData = async () => {
         try {
             setLoading(true);
             
-            if (activeFilter === 'without-pds') {
+            if (activeFilter === 'no-pds') {
                 const response = await getEmployeesWithoutPds();
                 setEmployeesWithoutPds(response.employees || []);
                 setPdsList([]);
             } else {
                 // Map frontend filter to backend status
                 let statusFilter = null;
-                if (activeFilter === 'draft') {
-                    statusFilter = 'draft';
+                if (activeFilter === 'all') {
+                    // All PDS tab: Fetch all PDS without status filter
+                    statusFilter = null;
+                } else if (activeFilter === 'for-revision') {
+                    statusFilter = 'declined';
+                } else if (activeFilter === 'for-approval') {
+                    statusFilter = 'pending';
                 } else if (activeFilter === 'approved') {
                     statusFilter = 'approved';
-                } else if (activeFilter === 'all') {
-                    statusFilter = null; // Get all
+                } else if (activeFilter === 'declined') {
+                    statusFilter = 'declined';
                 }
                 
                 const response = await getAllPds(statusFilter);
                 // Additional client-side filtering to ensure correct status
                 let filteredPds = response.pds || [];
-                if (activeFilter === 'draft') {
-                    filteredPds = filteredPds.filter(pds => pds.status === 'draft');
+                
+                if (activeFilter === 'all') {
+                    // All PDS tab: Show all PDS without filtering
+                    // No additional filtering needed
+                } else if (activeFilter === 'for-revision') {
+                    // For Revision tab: Show all for-revision and declined PDS
+                    filteredPds = filteredPds.filter(pds => pds.status === 'for-revision' || pds.status === 'declined');
+                } else if (activeFilter === 'for-approval') {
+                    // For Approval tab: Show all pending PDS
+                    filteredPds = filteredPds.filter(pds => pds.status === 'pending');
                 } else if (activeFilter === 'approved') {
+                    // Approved tab: Show all approved PDS
                     filteredPds = filteredPds.filter(pds => pds.status === 'approved');
+                } else if (activeFilter === 'declined') {
+                    // Declined tab: Show all declined PDS
+                    filteredPds = filteredPds.filter(pds => pds.status === 'declined');
                 }
+                
                 setPdsList(filteredPds);
                 setEmployeesWithoutPds([]);
             }
@@ -79,6 +142,7 @@ function ManagePdsTable() {
             }
             
             loadData(); // Refresh list
+            fetchAllCounts(); // Update all counts
             setSelectedPds(null);
         } catch (err) {
             console.error('Error reviewing PDS:', err);
@@ -95,79 +159,267 @@ function ManagePdsTable() {
             await deletePds(pdsId);
             showSuccess('PDS deleted successfully');
             loadData(); // Refresh list
+            fetchAllCounts(); // Update all counts
         } catch (err) {
             console.error('Error deleting PDS:', err);
             showError(err.response?.data?.message || 'Failed to delete PDS');
         }
     };
 
-    const handleReturnToOwner = async (pdsId, employeeName) => {
-        if (!window.confirm(`Are you sure you want to return the PDS to ${employeeName}? The status will be changed to draft so they can update it.`)) {
-            return;
-        }
-
+    const handlePrintPds = async (pdsId) => {
         try {
-            await returnPdsToOwner(pdsId);
-            showSuccess('PDS returned to owner successfully. Employee can now update it.');
-            loadData(); // Refresh list
+            setPrintingPds(pdsId);
+            
+            // Load full PDS data
+            const pdsData = await getPds(pdsId);
+            
+            if (!pdsData?.form_data) {
+                showError('PDS data not found or incomplete');
+                setPrintingPds(null);
+                return;
+            }
+
+            // Open the PDS in view mode - the modal has built-in print functionality
+            // We'll automatically trigger print after the modal opens
+            setSelectedPds({ ...pdsData, action: 'view', autoPrint: true });
+            
+            setPrintingPds(null);
         } catch (err) {
-            console.error('Error returning PDS:', err);
-            showError(err.response?.data?.message || 'Failed to return PDS to owner');
+            console.error('Error loading PDS for printing:', err);
+            showError(err.response?.data?.message || 'Failed to load PDS for printing');
+            setPrintingPds(null);
         }
     };
 
     const statusColors = {
         draft: 'bg-blue-100 text-blue-800',
         pending: 'bg-yellow-100 text-yellow-800',
+        'for-approval': 'bg-yellow-100 text-yellow-800',
         approved: 'bg-green-100 text-green-800',
         declined: 'bg-red-100 text-red-800',
+        'for-revision': 'bg-orange-100 text-orange-800',
     };
+    
+    // Helper function to format status display
+    const formatStatus = (status) => {
+        const statusMap = {
+            'draft': 'Draft',
+            'pending': 'For Approval',
+            'for-approval': 'For Approval',
+            'approved': 'Approved',
+            'declined': 'Declined',
+            'for-revision': 'For Revision',
+        };
+        return statusMap[status] || status?.toUpperCase() || 'UNKNOWN';
+    };
+
+    // Filter PDS list based on search query and selected PDS
+    const getFilteredPdsList = () => {
+        let filtered = pdsList;
+        
+        // First filter: show only selected PDS when viewing
+        if (selectedPds && selectedPds.action === 'view') {
+            filtered = filtered.filter(pds => pds.id === selectedPds.id);
+        }
+        
+        // Second filter: apply search query for all tabs
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter(pds => {
+                const name = (pds.user?.name || '').toLowerCase();
+                const email = (pds.user?.email || '').toLowerCase();
+                const employeeId = (pds.user?.employee_id || '').toLowerCase();
+                const status = (pds.status || '').toLowerCase();
+                
+                return name.includes(query) || 
+                       email.includes(query) || 
+                       employeeId.includes(query) ||
+                       status.includes(query);
+            });
+        }
+        
+        return filtered;
+    };
+
+    // Filter employees without PDS based on search query
+    const getFilteredEmployeesWithoutPds = () => {
+        if (!searchQuery.trim()) {
+            return employeesWithoutPds;
+        }
+        
+        const query = searchQuery.toLowerCase().trim();
+        return employeesWithoutPds.filter(employee => {
+            const name = (employee.name || '').toLowerCase();
+            const email = (employee.email || '').toLowerCase();
+            const employeeId = (employee.employee_id || '').toLowerCase();
+            const employmentType = ((employee.employmentTypes || employee.employment_types)?.[0]?.name || '').toLowerCase();
+            
+            return name.includes(query) || 
+                   email.includes(query) || 
+                   employeeId.includes(query) ||
+                   employmentType.includes(query);
+        });
+    };
+    
+    const displayedPdsList = getFilteredPdsList();
+    const displayedEmployeesWithoutPds = getFilteredEmployeesWithoutPds();
 
     return (
         <div className="space-y-6">
             {/* Filter Tabs */}
             <div className="bg-white rounded-xl shadow-lg p-4">
-                <div className="flex space-x-2 border-b border-gray-200">
-                    <button
-                        onClick={() => setActiveFilter('all')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                            activeFilter === 'all'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        All PDS
-                    </button>
-                    <button
-                        onClick={() => setActiveFilter('draft')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                            activeFilter === 'draft'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        Draft
-                    </button>
-                    <button
-                        onClick={() => setActiveFilter('approved')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                            activeFilter === 'approved'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        Completed
-                    </button>
-                    <button
-                        onClick={() => setActiveFilter('without-pds')}
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                            activeFilter === 'without-pds'
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        Employees Without PDS
-                    </button>
+                <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                    <div className="flex space-x-2 flex-wrap">
+                        <button
+                            onClick={() => {
+                                setActiveFilter('all');
+                            }}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors relative ${
+                                activeFilter === 'all'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            All PDS
+                            {allPdsCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                                    {allPdsCount > 99 ? '99+' : allPdsCount}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveFilter('for-revision');
+                            }}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors relative ${
+                                activeFilter === 'for-revision'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            For Revision
+                            {forRevisionCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                                    {forRevisionCount > 99 ? '99+' : forRevisionCount}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveFilter('for-approval');
+                            }}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors relative ${
+                                activeFilter === 'for-approval'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            For Approval
+                            {pendingCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                                    {pendingCount > 99 ? '99+' : pendingCount}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveFilter('approved');
+                            }}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors relative ${
+                                activeFilter === 'approved'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            Approved
+                            {approvedCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                                    {approvedCount > 99 ? '99+' : approvedCount}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveFilter('declined');
+                            }}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors relative ${
+                                activeFilter === 'declined'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            Declined
+                            {declinedCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                                    {declinedCount > 99 ? '99+' : declinedCount}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveFilter('no-pds');
+                            }}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors relative ${
+                                activeFilter === 'no-pds'
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            No PDS
+                            {noPdsCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                                    {noPdsCount > 99 ? '99+' : noPdsCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                    
+                    {/* Search Bar - Available in all tabs */}
+                    <div className="flex items-center space-x-2">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Search by name, email, employee ID..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                            />
+                            <svg
+                                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                            </svg>
+                        </div>
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="text-gray-500 hover:text-gray-700 p-1"
+                                title="Clear search"
+                            >
+                                <svg
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -175,14 +427,18 @@ function ManagePdsTable() {
             <div className="bg-white rounded-xl shadow-lg p-6">
                 {loading ? (
                     <LoadingSpinner text="Loading PDS data..." />
-                ) : activeFilter === 'without-pds' ? (
+                ) : activeFilter === 'no-pds' ? (
                     // Employees Without PDS Table
-                    employeesWithoutPds.length === 0 ? (
+                    displayedEmployeesWithoutPds.length === 0 ? (
                         <div className="text-center py-10 text-gray-500">
                             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <p className="mt-2">All employees have submitted their PDS</p>
+                            <p className="mt-2">
+                                {searchQuery.trim() 
+                                    ? 'No employees found matching your search' 
+                                    : 'All employees have submitted their PDS'}
+                            </p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -207,7 +463,7 @@ function ManagePdsTable() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {employeesWithoutPds.map((employee) => (
+                                    {displayedEmployeesWithoutPds.map((employee) => (
                                         <tr key={employee.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                 {employee.name}
@@ -238,12 +494,16 @@ function ManagePdsTable() {
                     )
                 ) : (
                     // PDS List Table
-                    pdsList.length === 0 ? (
+                    displayedPdsList.length === 0 ? (
                         <div className="text-center py-10 text-gray-500">
                             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <p className="mt-2">No PDS found</p>
+                            <p className="mt-2">
+                                {searchQuery.trim() 
+                                    ? 'No PDS found matching your search' 
+                                    : 'No PDS found'}
+                            </p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -271,7 +531,7 @@ function ManagePdsTable() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {pdsList.map((pds) => (
+                                    {displayedPdsList.map((pds) => (
                                         <tr key={pds.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="text-sm font-medium text-gray-900">
@@ -288,7 +548,7 @@ function ManagePdsTable() {
                                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                                     statusColors[pds.status] || 'bg-gray-100 text-gray-800'
                                                 }`}>
-                                                    {pds.status?.toUpperCase() || 'DRAFT'}
+                                                    {formatStatus(pds.status)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -317,6 +577,12 @@ function ManagePdsTable() {
                                                             Approve
                                                         </button>
                                                         <button
+                                                            onClick={() => setSelectedPds({ ...pds, action: 'for-revision' })}
+                                                            className="text-orange-600 hover:text-orange-900"
+                                                        >
+                                                            For Revision
+                                                        </button>
+                                                        <button
                                                             onClick={() => setSelectedPds({ ...pds, action: 'decline' })}
                                                             className="text-red-600 hover:text-red-900"
                                                         >
@@ -327,11 +593,12 @@ function ManagePdsTable() {
                                                 {pds.status === 'approved' && (
                                                     <>
                                                         <button
-                                                            onClick={() => handleReturnToOwner(pds.id, pds.user?.name || 'employee')}
-                                                            className="text-orange-600 hover:text-orange-900"
-                                                            title="Return to owner for updates"
+                                                            onClick={() => handlePrintPds(pds.id)}
+                                                            disabled={printingPds === pds.id}
+                                                            className="text-purple-600 hover:text-purple-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Print approved PDS"
                                                         >
-                                                            Return to Owner
+                                                            {printingPds === pds.id ? 'Printing...' : 'Print'}
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(pds.id, pds.user?.name || 'employee')}
@@ -341,6 +608,15 @@ function ManagePdsTable() {
                                                             Delete
                                                         </button>
                                                     </>
+                                                )}
+                                                {(pds.status === 'declined' || pds.status === 'for-revision') && (
+                                                    <button
+                                                        onClick={() => setViewingComments(pds)}
+                                                        className="text-purple-600 hover:text-purple-900"
+                                                        title="View comments"
+                                                    >
+                                                        View Comments
+                                                    </button>
                                                 )}
                                             </td>
                                         </tr>
@@ -352,14 +628,97 @@ function ManagePdsTable() {
                 )}
             </div>
 
-            {/* Review Modal */}
-            {selectedPds && (
+            {/* PDS View - Inline below tabs */}
+            {selectedPds && selectedPds.action === 'view' && (
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <PdsReviewModal
+                        pds={selectedPds}
+                        onClose={() => {
+                            setSelectedPds(null);
+                        }}
+                        onApprove={() => handleReview(selectedPds.id, 'approve')}
+                        onDecline={(comments) => handleReview(selectedPds.id, 'decline', comments)}
+                        onDeclineClick={() => {
+                            // Close view and open decline modal
+                            setSelectedPds({ ...selectedPds, action: 'decline' });
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Review Modal for Approve/Decline/For Revision */}
+            {selectedPds && selectedPds.action !== 'view' && (
                 <PdsReviewModal
                     pds={selectedPds}
-                    onClose={() => setSelectedPds(null)}
+                    onClose={() => {
+                        setSelectedPds(null);
+                    }}
                     onApprove={() => handleReview(selectedPds.id, 'approve')}
                     onDecline={(comments) => handleReview(selectedPds.id, 'decline', comments)}
+                    onForRevision={(comments) => handleReview(selectedPds.id, 'for-revision', comments)}
                 />
+            )}
+
+            {/* Comments Modal for Declined/For Revision PDS */}
+            {viewingComments && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold text-gray-900">
+                                    {viewingComments.status === 'for-revision' ? 'Revision Comments' : 'Decline Comments'} - {viewingComments.user?.name}
+                                </h3>
+                                <button
+                                    onClick={() => setViewingComments(null)}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            
+                            <div className="mb-4">
+                                <div className="mb-2">
+                                    <span className="text-sm font-medium text-gray-700">Employee:</span>
+                                    <span className="ml-2 text-sm text-gray-900">{viewingComments.user?.name}</span>
+                                </div>
+                                <div className="mb-2">
+                                    <span className="text-sm font-medium text-gray-700">Email:</span>
+                                    <span className="ml-2 text-sm text-gray-900">{viewingComments.user?.email}</span>
+                                </div>
+                                <div className="mb-4">
+                                    <span className="text-sm font-medium text-gray-700">Status:</span>
+                                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${
+                                        statusColors[viewingComments.status] || statusColors.declined
+                                    }`}>
+                                        {viewingComments.status === 'for-revision' ? 'FOR REVISION' : (viewingComments.status?.toUpperCase() || 'DECLINED')}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    {viewingComments.status === 'for-revision' ? 'Revision Comments' : 'Decline Comments'}
+                                </label>
+                                <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg min-h-[150px] max-h-[400px] overflow-y-auto">
+                                    <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                                        {viewingComments.hr_comments || viewingComments.comments || 'No comments provided.'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={() => setViewingComments(null)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

@@ -1,56 +1,224 @@
-import React, { useState } from 'react';
-import { mockLeaveApplications } from '../../../data/mockLeaveData';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LEAVE_STATUS, LEAVE_STATUS_LABELS } from '../../../data/leaveTypes';
 import { useNotification } from '../../../hooks/useNotification';
+import { getLeaveApplications, approveLeaveApplication } from '../../../api/leave/leaveApplications';
+import { useAuth } from '../../../hooks/useAuth';
+import { getUserRole } from '../../../utils/userHelpers';
+import { getAllMasterLists } from '../../../api/master-lists/masterLists';
+import Pagination from '../../common/Pagination';
 
 function ManageLeaveList() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { showSuccess, showError } = useNotification();
-  const [leaves, setLeaves] = useState(mockLeaveApplications);
+  const [leaves, setLeaves] = useState([]);
   const [filter, setFilter] = useState('all');
   const [selectedLeave, setSelectedLeave] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [userApprovalNameIds, setUserApprovalNameIds] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const filteredLeaves = leaves.filter(leave => {
-    if (filter === 'all') return true;
-    return leave.status === filter;
-  });
+  useEffect(() => {
+    loadLeaves();
+    if (user) {
+      loadUserApprovalNames();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, user]);
 
-  const handleApprove = (leaveId) => {
-    if (window.confirm('Are you sure you want to approve this leave application?')) {
-      setLeaves(prev => prev.map(leave => 
-        leave.id === leaveId
-          ? { 
-              ...leave, 
-              status: LEAVE_STATUS.APPROVED,
-              approved_by: 'Current User',
-              approved_date: new Date().toISOString().split('T')[0],
-              remarks: 'Approved'
-            }
-          : leave
-      ));
-      showSuccess('Leave application approved successfully');
-      setSelectedLeave(null);
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when filter changes
+  }, [filter]);
+
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when items per page changes
+  }, [itemsPerPage]);
+
+  const loadUserApprovalNames = async () => {
+    try {
+      const masterLists = await getAllMasterLists();
+      const approvalNames = masterLists.approval_names || [];
+      // Get approval name IDs where the current user is assigned
+      const ids = approvalNames
+        .filter(an => an.user_id === user?.id && an.is_active)
+        .map(an => an.id);
+      setUserApprovalNameIds(ids);
+    } catch (err) {
+      console.error('Failed to load user approval names:', err);
     }
   };
 
-  const handleReject = (leaveId, remarks) => {
+  const loadLeaves = async () => {
+    try {
+      setLoading(true);
+      const params = filter !== 'all' ? { status: filter } : {};
+      const data = await getLeaveApplications(params);
+      setLeaves(data);
+    } catch (err) {
+      showError(err?.response?.data?.message || 'Failed to load leave applications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter is already applied in the API call, but keep this for client-side filtering if needed
+  const filteredLeaves = leaves;
+
+  // Pagination calculations
+  const totalItems = filteredLeaves.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLeaves = filteredLeaves.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    // Scroll to top of table when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
+  const handleApprove = async (leaveId) => {
+    if (window.confirm('Are you sure you want to approve this leave application?')) {
+      try {
+        await approveLeaveApplication(leaveId, { 
+          status: 'approved',
+          approval_remarks: 'Approved'
+        });
+        showSuccess('Leave application approved successfully');
+        setSelectedLeave(null);
+        loadLeaves(); // Reload the list
+      } catch (err) {
+        showError(err?.response?.data?.message || 'Failed to approve leave application');
+      }
+    }
+  };
+
+  const handleReject = async (leaveId, remarks) => {
     if (!remarks || !remarks.trim()) {
       showError('Please provide a reason for rejection');
       return;
     }
 
-    setLeaves(prev => prev.map(leave => 
-      leave.id === leaveId
-        ? { 
-            ...leave, 
-            status: LEAVE_STATUS.REJECTED,
-            approved_by: 'Current User',
-            approved_date: new Date().toISOString().split('T')[0],
-            remarks: remarks
-          }
-        : leave
-    ));
-    showSuccess('Leave application rejected');
-    setSelectedLeave(null);
+    try {
+      await approveLeaveApplication(leaveId, { 
+        status: 'rejected',
+        approval_remarks: remarks
+      });
+      showSuccess('Leave application rejected');
+      setSelectedLeave(null);
+      loadLeaves(); // Reload the list
+    } catch (err) {
+      showError(err?.response?.data?.message || 'Failed to reject leave application');
+    }
+  };
+
+  // Check if user has already approved/rejected at their stage
+  const hasUserAlreadyDecided = (leave) => {
+    if (!user || !user.id) return false;
+
+    // Check if user has already approved at Stage 1
+    if (leave.leave_credit_officer_approved_by === user.id) {
+      return true;
+    }
+    // Check if user has already approved at Stage 2
+    if (leave.recommendation_approver_approved_by === user.id) {
+      return true;
+    }
+    // Check if user has already approved at Stage 3
+    if (leave.leave_approver_approved_by === user.id) {
+      return true;
+    }
+    return false;
+  };
+
+  // Check if it's the current user's turn to approve a leave application
+  // Sequence: Leave Credit Authorized Officer → Recommendation Officer → Leave Approver
+  // IMPORTANT: User can only approve ONCE at their assigned stage
+  const isUserTurnToApprove = (leave) => {
+    // If user has already decided at their stage, they cannot approve again
+    if (hasUserAlreadyDecided(leave)) {
+      return false;
+    }
+
+    const role = getUserRole(user);
+    
+    // HR/Admin can always approve (unless they already did)
+    if (role === 'hr' || role === 'admin') {
+      return true;
+    }
+
+    // If user has no approval name IDs, they cannot approve
+    if (!userApprovalNameIds || userApprovalNameIds.length === 0) {
+      return false;
+    }
+
+    // All leave types follow the 3-stage approval sequence
+    // Stage 1: Leave Credit Authorized Officer must approve first
+    if (!leave.leave_credit_officer_approved) {
+      // It's Stage 1 - check if user is the Leave Credit Authorized Officer
+      return userApprovalNameIds.includes(leave.leave_credit_authorized_officer_id);
+    }
+    
+    // Stage 2: Recommendation Officer can only approve after Stage 1
+    if (!leave.recommendation_approver_approved) {
+      // It's Stage 2 - check if user is the Recommendation Officer AND Stage 1 is approved
+      if (!leave.leave_credit_officer_approved) {
+        return false; // Stage 1 must be approved first
+      }
+      return userApprovalNameIds.includes(leave.recommendation_approver_id);
+    }
+    
+    // Stage 3: Leave Approver can only approve after Stage 2
+    if (!leave.leave_approver_approved) {
+      // It's Stage 3 - check if user is the Leave Approver AND Stages 1 & 2 are approved
+      if (!leave.leave_credit_officer_approved || !leave.recommendation_approver_approved) {
+        return false; // Previous stages must be approved first
+      }
+      return userApprovalNameIds.includes(leave.leave_approver_id);
+    }
+    
+    // All stages completed or user is not assigned as any approver
+    return false;
+  };
+
+  // Get current stage label
+  const getCurrentStageLabel = (leave) => {
+    if (!leave.leave_credit_officer_approved) {
+      return 'Stage 1: Leave Credit Officer';
+    } else if (!leave.recommendation_approver_approved) {
+      return 'Stage 2: Recommendation Approver';
+    } else if (!leave.leave_approver_approved) {
+      return 'Stage 3: Leave Approver';
+    }
+    return 'All Stages Completed';
+  };
+
+  // Get stage status summary
+  const getStageStatusSummary = (leave) => {
+    const stages = [];
+    if (leave.leave_credit_officer_approved) {
+      stages.push('✓ Stage 1');
+    } else {
+      stages.push('⏳ Stage 1');
+    }
+    if (leave.recommendation_approver_approved) {
+      stages.push('✓ Stage 2');
+    } else {
+      stages.push('⏸ Stage 2');
+    }
+    if (leave.leave_approver_approved) {
+      stages.push('✓ Stage 3');
+    } else {
+      stages.push('⏸ Stage 3');
+    }
+    return stages.join(' | ');
   };
 
   const getStatusBadge = (status) => {
@@ -100,7 +268,11 @@ function ManageLeaveList() {
         </div>
       </div>
 
-      {filteredLeaves.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-10 text-gray-500">
+          Loading leave applications...
+        </div>
+      ) : filteredLeaves.length === 0 ? (
         <div className="text-center py-10 text-gray-500">
           No leave applications found.
         </div>
@@ -113,21 +285,23 @@ function ManageLeaveList() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date Range</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Days</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Stage</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredLeaves.map((leave) => (
+              {paginatedLeaves.map((leave) => (
                 <tr key={leave.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{leave.employee_name}</div>
-                    <div className="text-xs text-gray-500">ID: {leave.employee_id}</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {leave.user?.first_name} {leave.user?.middle_initial} {leave.user?.last_name}
+                    </div>
+                    <div className="text-xs text-gray-500">ID: {leave.user?.employee_id || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{leave.leave_type}</div>
-                    <div className="text-xs text-gray-500">Code: {leave.leave_type_code}</div>
+                    <div className="text-sm font-medium text-gray-900">{leave.leave_type?.name || 'N/A'}</div>
+                    <div className="text-xs text-gray-500">Code: {leave.leave_type?.code || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
@@ -136,41 +310,73 @@ function ManageLeaveList() {
                     <div className="text-xs text-gray-500">to {new Date(leave.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {leave.days} {leave.days === 1 ? 'day' : 'days'}
+                    {leave.working_days} {leave.working_days === 1 ? 'day' : 'days'}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 max-w-xs truncate">{leave.reason}</div>
+                    <div className="text-sm">
+                      <div className="font-medium text-gray-900 mb-1">{getCurrentStageLabel(leave)}</div>
+                      <div className="text-xs text-gray-600">{getStageStatusSummary(leave)}</div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(leave.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {leave.status === LEAVE_STATUS.PENDING ? (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprove(leave.id)}
-                          className="text-green-600 hover:text-green-900 transition-colors"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => setSelectedLeave({ ...leave, action: 'reject' })}
-                          className="text-red-600 hover:text-red-900 transition-colors"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-500">
-                        {leave.approved_by && `By ${leave.approved_by}`}
-                      </span>
-                    )}
+                    <div className="flex gap-2 items-center">
+                      <button
+                        onClick={() => navigate(`/leave-application/${leave.id}/track`)}
+                        className="text-blue-600 hover:text-blue-900 transition-colors"
+                        title="View leave application details"
+                      >
+                        View
+                      </button>
+                      {leave.status === LEAVE_STATUS.PENDING && hasUserAlreadyDecided(leave) && (
+                        <span className="text-xs text-gray-500 italic" title="You have already processed this application">
+                          Already Processed
+                        </span>
+                      )}
+                      {leave.status === LEAVE_STATUS.PENDING && !hasUserAlreadyDecided(leave) && isUserTurnToApprove(leave) && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(leave.id)}
+                            className="text-green-600 hover:text-green-900 transition-colors"
+                            title="Approve this leave application"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => setSelectedLeave({ ...leave, action: 'reject' })}
+                            className="text-red-600 hover:text-red-900 transition-colors"
+                            title="Reject this leave application"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {leave.status === LEAVE_STATUS.PENDING && !hasUserAlreadyDecided(leave) && !isUserTurnToApprove(leave) && (
+                        <span className="text-xs text-gray-500" title="Waiting for previous approver or not your turn">
+                          Waiting...
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Pagination - Always show when not loading */}
+      {!loading && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onItemsPerPageChange={handleItemsPerPageChange}
+        />
       )}
 
       {/* Reject Modal */}
@@ -202,7 +408,7 @@ function RejectModal({ leave, onClose, onReject }) {
         
         <div className="mb-4">
           <p className="text-sm text-gray-600 mb-2">
-            <strong>{leave.employee_name}</strong> - {leave.leave_type} ({leave.days} days)
+            <strong>{leave.user?.first_name} {leave.user?.last_name}</strong> - {leave.leave_type?.name} ({leave.working_days} days)
           </p>
         </div>
 

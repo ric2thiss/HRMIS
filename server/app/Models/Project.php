@@ -9,6 +9,7 @@ class Project extends Model
 {
     protected $fillable = [
         'name',
+        'project_code',
         'status',
         'project_manager',
     ];

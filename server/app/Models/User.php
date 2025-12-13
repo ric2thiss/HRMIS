@@ -25,6 +25,7 @@ class User extends Authenticatable
         'first_name',
         'middle_initial',
         'last_name',
+        'sex',
         'email',
         'password',
         'profile_image',
@@ -33,6 +34,8 @@ class User extends Authenticatable
         'project_id',
         'office_id',
         'has_system_settings_access',
+        'is_locked',
+        'must_change_password',
     ];
 
     /**
@@ -56,6 +59,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'has_system_settings_access' => 'boolean',
+            'is_locked' => 'boolean',
+            'must_change_password' => 'boolean',
         ];
     }
 
@@ -80,12 +85,17 @@ class User extends Authenticatable
      */
     public function hasRole($roleName)
     {
-        // Check primary role first
-        if ($this->role && $this->role->name === $roleName) {
-            return true;
+        try {
+            // Check primary role first
+            if ($this->role && $this->role->name === $roleName) {
+                return true;
+            }
+            // Fallback to many-to-many check
+            return $this->roles()->where('name', $roleName)->exists();
+        } catch (\Exception $e) {
+            \Log::error('Error checking role: ' . $e->getMessage());
+            return false;
         }
-        // Fallback to many-to-many check
-        return $this->roles()->where('name', $roleName)->exists();
     }
 
     /**
@@ -151,6 +161,22 @@ class User extends Authenticatable
     public function personalDataSheet()
     {
         return $this->hasOne(PersonalDataSheet::class);
+    }
+
+    /**
+     * Get user's login activities
+     */
+    public function loginActivities()
+    {
+        return $this->hasMany(LoginActivity::class);
+    }
+
+    /**
+     * Get user's module access logs
+     */
+    public function moduleAccessLogs()
+    {
+        return $this->hasMany(ModuleAccessLog::class);
     }
 
     /**

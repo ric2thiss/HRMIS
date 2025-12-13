@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import AppLayout from '../../components/Layout/AppLayout';
 import MyLeaveList from '../../components/features/leave/MyLeaveList';
 import LeaveApplicationForm from '../../components/features/leave/LeaveApplicationForm';
+import LoadingScreen from '../../components/Loading/LoadingScreen';
 
 function MyLeave() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ function MyLeave() {
 
   // Show full page loading only for initial auth check
   if (loading || !user) {
-    return null;
+    return <LoadingScreen />;
   }
 
   return (

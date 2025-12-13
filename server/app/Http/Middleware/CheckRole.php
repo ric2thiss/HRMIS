@@ -21,24 +21,40 @@ class CheckRole
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $user = auth()->user();
-
-        // Check if user has any of the required roles
-        $hasRole = false;
-        foreach ($roles as $role) {
-            if ($user->hasRole($role)) {
-                $hasRole = true;
-                break;
+        try {
+            $user = auth()->user();
+            
+            // Ensure roles are loaded
+            if (!$user->relationLoaded('roles')) {
+                $user->load('roles');
             }
-        }
+            if (!$user->relationLoaded('role')) {
+                $user->load('role');
+            }
 
-        if (!$hasRole) {
+            // Check if user has any of the required roles
+            $hasRole = false;
+            foreach ($roles as $role) {
+                if ($user->hasRole($role)) {
+                    $hasRole = true;
+                    break;
+                }
+            }
+
+            if (!$hasRole) {
+                return response()->json([
+                    'message' => 'Unauthorized. You do not have permission to access this resource.'
+                ], 403);
+            }
+
+            return $next($request);
+        } catch (\Exception $e) {
+            \Log::error('CheckRole middleware error: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Unauthorized. You do not have permission to access this resource.'
-            ], 403);
+                'message' => 'Authorization check failed',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        return $next($request);
     }
 }
 

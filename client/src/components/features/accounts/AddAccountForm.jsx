@@ -6,6 +6,7 @@ function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loadin
     first_name: '',
     middle_initial: '',
     last_name: '',
+    sex: '',
     email: '',
     password: '',
     position_id: '',
@@ -61,9 +62,19 @@ function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loadin
     if (masterLists.projects?.length > 0 && !formData.project_id) {
       setFormData(prev => ({ ...prev, project_id: masterLists.projects[0].id }));
     }
-  }, [masterLists, formData.role_id, formData.position_id, formData.project_id]);
+    // Set default employment type to Plantilla (ID 1) - should be first in list after seeder fix
+    if (employmentTypes?.length > 0 && !formData.employment_type_id) {
+      const plantillaType = employmentTypes.find(et => 
+        et.name?.toLowerCase() === 'plantilla' || et.id === 1
+      );
+      if (plantillaType) {
+        setFormData(prev => ({ ...prev, employment_type_id: plantillaType.id }));
+      }
+    }
+  }, [masterLists, formData.role_id, formData.position_id, formData.project_id, employmentTypes, formData.employment_type_id]);
 
   // Check if selected employment type is Job Order (JO)
+  // Also ensure HR/Admin roles default to Plantilla
   useEffect(() => {
     const selectedEmployment = employmentTypes.find(et => et.id === parseInt(formData.employment_type_id));
     const isJO = selectedEmployment?.name === 'JO' || 
@@ -74,7 +85,22 @@ function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loadin
     if (!isJO) {
       setFormData(prev => ({ ...prev, special_capability_ids: [] }));
     }
-  }, [formData.employment_type_id, employmentTypes]);
+    
+    // If HR or Admin role is selected, ensure employment type is Plantilla
+    const selectedRole = masterLists.roles?.find(r => r.id === parseInt(formData.role_id));
+    if (selectedRole && (selectedRole.name?.toLowerCase() === 'hr' || selectedRole.name?.toLowerCase() === 'admin')) {
+      const plantillaType = employmentTypes.find(et => 
+        et.name?.toLowerCase() === 'plantilla' || et.id === 1
+      );
+      if (plantillaType && formData.employment_type_id !== plantillaType.id) {
+        setFormData(prev => ({ 
+          ...prev, 
+          employment_type_id: plantillaType.id,
+          special_capability_ids: [] // Clear special capabilities for Plantilla
+        }));
+      }
+    }
+  }, [formData.employment_type_id, formData.role_id, employmentTypes, masterLists.roles]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -116,6 +142,10 @@ function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loadin
     // Validate required fields
     if (!formData.first_name || !formData.last_name) {
       setMasterListsError('Please provide First Name and Last Name.');
+      return;
+    }
+    if (!formData.sex) {
+      setMasterListsError('Please select Sex.');
       return;
     }
     if (!formData.position_id || !formData.role_id || !formData.project_id) {
@@ -196,7 +226,23 @@ function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loadin
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Sex <span className="text-red-500">*</span></label>
+                <select 
+                  name="sex"
+                  value={formData.sex}
+                  onChange={handleChange}
+                  required 
+                  disabled={loading}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                >
+                  <option value="">Select Sex</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email <span className="text-red-500">*</span></label>
                 <input 
@@ -267,7 +313,7 @@ function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loadin
                   <option value="">Select a role</option>
                   {masterLists.roles?.map((role) => (
                     <option key={role.id} value={role.id}>
-                      {role.name}
+                      {role.name.charAt(0).toUpperCase() + role.name.slice(1).toLowerCase()}
                     </option>
                   ))}
                 </select>

@@ -117,7 +117,8 @@ class PersonalDataSheetController extends Controller
     }
 
     /**
-     * Update PDS (only if draft or declined)
+     * Update PDS (draft, declined, approved, or pending)
+     * When updating pending PDS, status changes to draft and removes from pending list
      */
     public function update(Request $request, $id)
     {
@@ -134,10 +135,11 @@ class PersonalDataSheetController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Can only update if draft or declined
-        if ($pds->status !== 'draft' && $pds->status !== 'declined') {
+        // Can update if draft, declined, approved, or pending
+        // When updating pending/declined/approved PDS, reset status to draft
+        if ($pds->status !== 'draft' && $pds->status !== 'declined' && $pds->status !== 'approved' && $pds->status !== 'pending') {
             return response()->json([
-                'message' => 'PDS can only be updated when status is draft or declined'
+                'message' => 'PDS can only be updated when status is draft, pending, declined, or approved'
             ], 400);
         }
 
@@ -151,10 +153,16 @@ class PersonalDataSheetController extends Controller
 
         $pds->form_data = $request->form_data;
         
-        // If updating a declined PDS, reset status to draft
-        if ($pds->status === 'declined') {
+        // If updating a pending, declined, or approved PDS, reset status to draft
+        // This removes it from pending/for approval list
+        if ($pds->status === 'pending' || $pds->status === 'declined' || $pds->status === 'approved') {
             $pds->status = 'draft';
             $pds->hr_comments = null;
+            // Clear review-related fields when returning to draft
+            $pds->submitted_at = null;
+            $pds->reviewed_by = null;
+            $pds->reviewed_at = null;
+            $pds->approved_at = null;
         }
         
         $pds->save();
@@ -173,10 +181,11 @@ class PersonalDataSheetController extends Controller
         $user = auth()->user();
         $userRole = $user->roles->first()->name ?? null;
 
-        // HR and Admin cannot submit PDS (they can only maintain drafts)
-        if ($userRole === 'hr' || $userRole === 'admin') {
+        // HR cannot submit PDS (they can only maintain drafts)
+        // Admin users can submit PDS like regular employees
+        if ($userRole === 'hr') {
             return response()->json([
-                'message' => 'HR and Admin users cannot submit PDS for approval. Your PDS will remain in draft status for record-keeping.'
+                'message' => 'HR users cannot submit PDS for approval. Your PDS will remain in draft status for record-keeping.'
             ], 403);
         }
 
@@ -191,10 +200,10 @@ class PersonalDataSheetController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Can only submit if draft or declined
-        if ($pds->status !== 'draft' && $pds->status !== 'declined') {
+        // Can only submit if draft, declined, or for-revision
+        if ($pds->status !== 'draft' && $pds->status !== 'declined' && $pds->status !== 'for-revision') {
             return response()->json([
-                'message' => 'PDS can only be submitted when status is draft or declined'
+                'message' => 'PDS can only be submitted when status is draft, declined, or for-revision'
             ], 400);
         }
 
@@ -236,8 +245,8 @@ class PersonalDataSheetController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'action' => 'required|in:approve,decline',
-            'comments' => 'required_if:action,decline|nullable|string|max:1000',
+            'action' => 'required|in:approve,decline,for-revision',
+            'comments' => 'required_if:action,decline|required_if:action,for-revision|nullable|string|max:1000',
         ]);
 
         if ($validator->fails()) {
@@ -257,6 +266,9 @@ class PersonalDataSheetController extends Controller
             
             // TODO: Send notification to user (email/push notification)
             // For now, the frontend will handle showing success message
+        } elseif ($request->action === 'for-revision') {
+            $pds->status = 'for-revision';
+            $pds->hr_comments = $request->comments;
         } else {
             $pds->status = 'declined';
             $pds->hr_comments = $request->comments;
@@ -264,14 +276,19 @@ class PersonalDataSheetController extends Controller
 
         $pds->save();
 
+        $actionMessage = $request->action === 'approve' ? 'approved' : ($request->action === 'for-revision' ? 'sent for revision' : 'declined');
+        $notificationMessage = $request->action === 'approve' 
+            ? 'Your PDS has been approved!'
+            : ($request->action === 'for-revision' 
+                ? 'Your PDS has been sent for revision. Please review the comments and update.'
+                : 'Your PDS has been declined. Please review the comments and update.');
+
         return response()->json([
-            'message' => 'PDS ' . $request->action . 'd successfully',
+            'message' => 'PDS ' . $actionMessage . ' successfully',
             'pds' => $pds->load(['user', 'reviewer']),
             'notification' => [
                 'type' => $request->action === 'approve' ? 'success' : 'info',
-                'message' => $request->action === 'approve' 
-                    ? 'Your PDS has been approved!'
-                    : 'Your PDS has been declined. Please review the comments and update.'
+                'message' => $notificationMessage
             ]
         ]);
     }

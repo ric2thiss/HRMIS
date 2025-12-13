@@ -9,29 +9,25 @@ function Header({ user, logout }) {
   // console.log(user.role?.name)
 
   return (
-    <header className="bg-white shadow-md p-3 flex items-center justify-between">
+    <header className="bg-white shadow-lg p-3 flex items-center justify-between sticky top-0 z-50">
       
-      {/* 🧭 Left Side: Menu/Logo and HRMIS Title */}
-      <div className="flex items-center">
+      {/* 🧭 Left Side: Logo, HRMIS Title, and Menu */}
+      <div className="flex items-center gap-x-20">
+        {/* Logo and HRMIS Title */}
+        <div className="flex items-center gap-2">
+          <img src={Logo} alt="DICT Logo" className="w-8 h-8" />
+          <h1 className="text-xl font-semibold text-gray-800">HRMIS</h1>
+        </div>
         
         {/* Conditional Element based on user state */}
         {user ? (
           // Logged In: Show Toggle Menu Icon
-          <label htmlFor="menu-toggle" className="mr-4 text-gray-600 hover:text-gray-800 p-1 rounded hover:bg-gray-100 cursor-pointer">
+          <label htmlFor="menu-toggle" className="ml-4 text-gray-600 hover:text-gray-800 p-1 rounded hover:bg-gray-100 cursor-pointer">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
           </label>
-        ) : (
-          // Logged Out: Show Placeholder Logo/Home Link
-        <Link to="/" className="mr-4 text-gray-600 hover:text-gray-800 p-1 rounded hover:bg-gray-100 font-bold text-lg hidden sm:block">
-            <span role="img" aria-label="home">
-                <img src={Logo} alt="HRMIS Logo" className="w-10 h-10 inline-block" />
-            </span>
-        </Link>
-        )}
-        
-        <h1 className="text-xl font-semibold text-gray-800">HRMIS</h1>
+        ) : null}
       </div>
       
       {/* 👤 Right Side: User Controls or Auth Links */}
@@ -61,6 +57,9 @@ function Header({ user, logout }) {
               </div>
             </details>
 
+            {/* Vertical Separator */}
+            <div className="h-6 w-px bg-gray-300"></div>
+
             {/* User Profile Dropdown */}
             <details className="relative">
               <summary className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 focus:outline-none cursor-pointer">
@@ -81,7 +80,8 @@ function Header({ user, logout }) {
 
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl z-50">
                 <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</Link>
-                {user.role?.name === "hr" && <Link to="/admin/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</Link>}
+                {user.role?.name === "hr" && <Link to="/hr/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</Link>}
+                {user.role?.name === "admin" && <Link to="/admin/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Admin Dashboard</Link>}
                 {/* <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</Link> */}
                 <a onClick={logout} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t mt-1 cursor-pointer">Logout</a>
               </div>

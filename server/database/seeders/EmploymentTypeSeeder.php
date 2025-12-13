@@ -16,10 +16,12 @@ class EmploymentTypeSeeder extends Seeder
         Employment::query()->delete();
         
         // Create only the two allowed employment types
-        Employment::create(['name' => 'JO']);
+        // IMPORTANT: Create Plantilla first so it gets ID 1 (for employee ID generation)
+        // Employee ID format: 1 = Plantilla, 2 = JO
         Employment::create(['name' => 'Plantilla']);
+        Employment::create(['name' => 'JO']);
         
-        $this->command->info('Employment types seeded: JO and Plantilla');
+        $this->command->info('Employment types seeded: Plantilla (ID 1) and JO (ID 2)');
     }
 }
 

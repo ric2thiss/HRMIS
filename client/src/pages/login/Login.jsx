@@ -7,17 +7,30 @@ import { useAuth } from "../../hooks/useAuth";
 import Header from "../../components/Header/Header"
 import Footer from "../../components/Footer/Footer"
 import Logo from "../../asset/DICT logo.svg"
+import LoadingSpinner from "../../components/Loading/LoadingSpinner"
+import api from "../../api/axios";
 
 // Removed import "../../styles/auth.css"
 
 function Login() {
     const navigate = useNavigate()
-    const { login } = useAuth(); 
+    const { login, user } = useAuth(); 
     const [email, setEmail] = useState('')
     const [showPassword, setShowPassword] = useState(false);
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("");
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (user) {
+            if (user.must_change_password) {
+                navigate('/force-change-password', { replace: true });
+            } else {
+                navigate('/dashboard', { replace: true });
+            }
+        }
+    }, [user, navigate]);
 
     // Minor fix: Changed etLoading to setLoading
     const handleLogin = async (e) => {
@@ -26,11 +39,24 @@ function Login() {
         setLoading(true);
 
         try {
-            // Replace with your actual login logic
             await login(email, password);
-            navigate('/dashboard');
+            // The login function in authStore already fetches user data
+            // Check user from store after a brief delay to ensure state is updated
+            setTimeout(() => {
+                // This will be handled by the useEffect that watches the user state
+            }, 100);
         } catch (err) {
-            setError("Invalid credentials. Please check your email and password.");
+            const status = err?.response?.status;
+            const message = err?.response?.data?.message;
+
+            if (status === 403 && message === 'Your account has been locked out! - HR') {
+                setError(message);
+                navigate('/locked-account');
+            } else if (message) {
+                setError(message);
+            } else {
+                setError("Invalid credentials. Please check your email and password.");
+            }
         } finally {
             setLoading(false); 
         }
@@ -103,7 +129,7 @@ function Login() {
                             </div>
                             
                             {/* Password Field */}
-                            <div className="relative">
+                            <div>
                                 <label 
                                     htmlFor="password" 
                                     className="block text-sm font-medium text-gray-700 mb-1"
@@ -111,26 +137,30 @@ function Login() {
                                     Password
                                 </label>
 
-                                <input
-                                    id="password"
-                                    type={showPassword ? "text" : "password"}
-                                    className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg 
-                                            focus:ring-blue-500 focus:border-blue-500 transition duration-150"
-                                    placeholder="Password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
+                                <div className="relative">
+                                    <input
+                                        id="password"
+                                        type={showPassword ? "text" : "password"}
+                                        className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg 
+                                                focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                                        placeholder="Password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
 
-                                {/* Icon button */}
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-[45px] transform -translate-y-1/2 
-                                            text-gray-500 hover:text-gray-700"
-                                >
-                                    {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
-                                </button>
+                                    {/* Icon button - only show when password has text */}
+                                    {password && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 
+                                                    text-gray-500 hover:text-gray-700"
+                                        >
+                                            {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Checkbox */}
@@ -165,11 +195,8 @@ function Login() {
                                 >
                                     {loading ? (
                                         <span className="flex items-center justify-center">
-                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Signing in…
+                                            <LoadingSpinner size="sm" inline={true} color="white" />
+                                            <span className="ml-2">Signing in…</span>
                                         </span>
                                     ) : (
                                         'Sign in'

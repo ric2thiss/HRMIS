@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import AppLayout from '../../components/Layout/AppLayout';
 import ManageLeaveList from '../../components/features/leave/ManageLeaveList';
+import LoadingScreen from '../../components/Loading/LoadingScreen';
 
 function ManageLeave() {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ function ManageLeave() {
 
   // Show full page loading only for initial auth check
   if (loading || !user) {
-    return null;
+    return <LoadingScreen />;
   }
 
   const role = user?.roles?.[0]?.name;

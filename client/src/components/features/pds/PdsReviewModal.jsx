@@ -2,24 +2,90 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getPds } from '../../../api/pds/pds';
 import PdsForm from '../../PdsForm/PdsForm';
 import PdsPrintView from '../../PdsForm/PdsPrintView';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import LoadingSpinner from '../../Loading/LoadingSpinner';
+import { generatePdsPdfUrl, downloadPdsPdf } from '../../../utils/pdsPdfGenerator';
 
-function PdsReviewModal({ pds, onClose, onApprove, onDecline }) {
+function PdsReviewModal({ pds, onClose, onApprove, onDecline, onForRevision, onDeclineClick }) {
     const [pdsData, setPdsData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [comments, setComments] = useState('');
     const printRef = useRef(null);
+    const pdfIframeRef = useRef(null);
+    const [pdfUrl, setPdfUrl] = useState(null);
+    const [generatingPdf, setGeneratingPdf] = useState(false);
 
     useEffect(() => {
+        // Clear previous PDF URL when pds changes
+        if (pdfUrl) {
+            URL.revokeObjectURL(pdfUrl);
+            setPdfUrl(null);
+        }
+        
         if (pds && pds.action === 'view') {
             // Always load full PDS data when viewing to ensure we have complete form_data including images
             loadPdsData();
-        } else if (pds && (pds.action === 'approve' || pds.action === 'decline')) {
-            // For approve/decline actions, use the pds data directly
+        } else if (pds && (pds.action === 'approve' || pds.action === 'decline' || pds.action === 'for-revision')) {
+            // For approve/decline/for-revision actions, use the pds data directly
             setPdsData(pds);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pds]);
+    
+    // Cleanup PDF URL on unmount
+    useEffect(() => {
+        return () => {
+            if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl);
+            }
+        };
+    }, [pdfUrl]);
+    
+    // Generate PDF when PDS data is loaded for view action
+    useEffect(() => {
+        if (pds?.action === 'view' && pdsData?.form_data && printRef.current && !pdfUrl && !generatingPdf && !loading) {
+            generatePdfForView();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pdsData?.form_data, pds?.action, loading]);
+
+    // Auto-print when PDF is ready and autoPrint flag is set
+    useEffect(() => {
+        if (pds?.autoPrint && pdfUrl && !generatingPdf && !loading) {
+            // Small delay to ensure PDF is fully loaded
+            const timer = setTimeout(() => {
+                handlePrint();
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pdfUrl, pds?.autoPrint, generatingPdf, loading]);
+    
+    const generatePdfForView = async () => {
+        if (!printRef.current || generatingPdf) return;
+        
+        try {
+            setGeneratingPdf(true);
+            // Show print view temporarily for PDF generation
+            printRef.current.style.display = 'block';
+            printRef.current.style.visibility = 'visible';
+            
+            // Wait for content to render
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Generate PDF URL
+            const url = await generatePdsPdfUrl(printRef.current);
+            setPdfUrl(url);
+            
+            // Hide print view after PDF generation
+            printRef.current.style.display = 'none';
+            printRef.current.style.visibility = 'hidden';
+        } catch (error) {
+            console.error('Error generating PDF for view:', error);
+            setGeneratingPdf(false);
+        } finally {
+            setGeneratingPdf(false);
+        }
+    };
 
     const loadPdsData = async () => {
         if (!pds?.id) return;
@@ -53,100 +119,135 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline }) {
 
     const handleDecline = () => {
         if (!comments.trim()) {
-            alert('Please provide a reason for declining');
             return;
         }
         onDecline(comments);
     };
 
-    const handlePrint = () => {
-        if (!printRef.current) return;
-        
-        // Show print view and hide screen view before printing
-        printRef.current.style.display = 'block';
-        printRef.current.style.visibility = 'visible';
-        
-        const screenView = document.querySelector('.pds-screen-view');
-        if (screenView) {
-            screenView.style.display = 'none';
+    const handleForRevision = () => {
+        if (!comments.trim()) {
+            return;
         }
-        
-        // Add a class to body to help with print styling
-        document.body.classList.add('printing-pds');
-        
-        // Small delay to ensure content is rendered
-        setTimeout(() => {
-            window.print();
-            
-            // Restore original display state after printing
-            setTimeout(() => {
-                printRef.current.style.display = 'none';
-                printRef.current.style.visibility = '';
-                
-                if (screenView) {
-                    screenView.style.display = 'block';
+        onForRevision(comments);
+    };
+
+    const handlePrint = async () => {
+        try {
+            // If PDF is already loaded in iframe, use it for printing
+            if (pdfUrl && pdfIframeRef.current) {
+                try {
+                    // Try to print from the existing iframe
+                    pdfIframeRef.current.contentWindow.print();
+                    return;
+                } catch (error) {
+                    console.log('Could not print from iframe, trying alternative method:', error);
                 }
+            }
+            
+            // Use existing PDF URL if available, otherwise generate new one
+            let urlToPrint = pdfUrl;
+            
+            if (!urlToPrint) {
+                if (!printRef.current) return;
                 
-                document.body.classList.remove('printing-pds');
-            }, 100);
-        }, 200);
+                // Show print view temporarily for PDF generation
+                printRef.current.style.display = 'block';
+                printRef.current.style.visibility = 'visible';
+                
+                // Wait for content to render
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Generate PDF blob URL
+                urlToPrint = await generatePdsPdfUrl(printRef.current);
+                
+                // Hide print view after PDF generation
+                printRef.current.style.display = 'none';
+                printRef.current.style.visibility = 'hidden';
+            }
+            
+            // Create a temporary iframe for printing
+            const printIframe = document.createElement('iframe');
+            printIframe.style.position = 'absolute';
+            printIframe.style.width = '1px';
+            printIframe.style.height = '1px';
+            printIframe.style.left = '-9999px';
+            printIframe.style.top = '-9999px';
+            printIframe.style.border = 'none';
+            
+            document.body.appendChild(printIframe);
+            
+            // Set PDF source
+            printIframe.src = urlToPrint;
+            
+            // Wait for PDF to load and then print
+            const printFromIframe = () => {
+                try {
+                    if (printIframe.contentWindow) {
+                        printIframe.contentWindow.focus();
+                        printIframe.contentWindow.print();
+                        
+                        // Clean up after printing
+                        setTimeout(() => {
+                            if (printIframe.parentNode) {
+                                document.body.removeChild(printIframe);
+                            }
+                        }, 1000);
+                    }
+                } catch (error) {
+                    console.error('Error printing from iframe:', error);
+                    // Fallback: open in new window
+                    const printWindow = window.open(urlToPrint, '_blank');
+                    if (printWindow) {
+                        printWindow.onload = () => {
+                            setTimeout(() => {
+                                printWindow.print();
+                            }, 500);
+                        };
+                    }
+                    // Clean up iframe
+                    if (printIframe.parentNode) {
+                        document.body.removeChild(printIframe);
+                    }
+                }
+            };
+            
+            // Try printing when iframe loads
+            printIframe.onload = () => {
+                setTimeout(printFromIframe, 500);
+            };
+            
+            // Fallback: try printing after a delay even if onload doesn't fire
+            setTimeout(() => {
+                if (printIframe.parentNode) {
+                    printFromIframe();
+                }
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Error printing PDF:', error);
+            alert('Failed to print PDF. Please try again.');
+        }
     };
 
     const handleDownloadPDF = async () => {
         if (!printRef.current) return;
 
         try {
-            // Show print view and hide screen view for PDF generation
+            // Show print view temporarily for PDF generation
             printRef.current.style.display = 'block';
-            const screenView = document.querySelector('.pds-screen-view');
-            if (screenView) {
-                screenView.style.display = 'none';
-            }
+            printRef.current.style.visibility = 'visible';
             
-            // Wait a bit to ensure all content is rendered
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            const canvas = await html2canvas(printRef.current, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff',
-                windowWidth: printRef.current.scrollWidth,
-                windowHeight: printRef.current.scrollHeight,
-                scrollX: 0,
-                scrollY: 0,
-            });
-
-            // Restore original display state
-            printRef.current.style.display = 'none';
-            if (screenView) {
-                screenView.style.display = 'block';
-            }
-
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgWidth = 210; // A4 width in mm
-            const pageHeight = 297; // A4 height in mm
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-            let heightLeft = imgHeight;
-            let position = 0;
-
-            // Add first page
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-
-            // Add additional pages if needed
-            while (heightLeft > 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-            }
-
+            // Wait for content to render
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             const fileName = `PDS_${pds.user?.name?.replace(/\s+/g, '_') || 'Employee'}_${new Date().toISOString().split('T')[0]}.pdf`;
-            pdf.save(fileName);
-        } catch (err) {
-            console.error('Error generating PDF:', err);
+            await downloadPdsPdf(printRef.current, fileName);
+            
+            // Hide print view after PDF generation
+            printRef.current.style.display = 'none';
+            printRef.current.style.visibility = 'hidden';
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
             alert('Failed to generate PDF. Please try again.');
         }
     };
@@ -198,6 +299,77 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline }) {
                                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                             >
                                 Approve
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (pds.action === 'for-revision') {
+        // Check if PDS status is pending
+        const currentStatus = pdsData?.status || pds?.status;
+        if (currentStatus !== 'pending') {
+            return (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                        <div className="p-6">
+                            <h3 className="text-xl font-medium text-gray-900 mb-4">Cannot Send for Revision</h3>
+                            <p className="text-gray-600 mb-6">
+                                This PDS cannot be sent for revision because it is not in <strong>pending</strong> status. 
+                                Current status: <strong>{currentStatus || 'unknown'}</strong>
+                            </p>
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={onClose}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+                <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                    <div className="p-6">
+                        <h3 className="text-xl font-medium text-gray-900 mb-4">Send PDS for Revision</h3>
+                        <div className="mb-4">
+                            <p className="text-sm text-gray-600 mb-2">
+                                Employee: <strong>{pds.user?.name}</strong>
+                            </p>
+                        </div>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Revision Comments <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={comments}
+                                onChange={(e) => setComments(e.target.value)}
+                                rows="4"
+                                required
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                placeholder="Please provide comments for revision..."
+                            />
+                        </div>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleForRevision}
+                                disabled={!comments.trim()}
+                                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Send for Revision
                             </button>
                         </div>
                     </div>
@@ -277,96 +449,100 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline }) {
         );
     }
 
-    // View mode - show full PDS
+    // View mode - show PDF in iframe (inline container)
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-            {/* Backdrop - covers entire screen */}
-            <div 
-                className="fixed inset-0 bg-black bg-opacity-50" 
-                onClick={onClose}
-            ></div>
-            
-            {/* Modal Content */}
-            <div className="relative min-h-screen px-4 py-8 flex items-start justify-center">
-                <div 
-                    className="bg-white max-w-7xl w-full mx-auto my-8 relative z-10 overflow-x-hidden"
-                    style={{ boxShadow: 'none' }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    {/* Header with buttons - hidden when printing */}
-                    <div className="flex justify-between items-center mb-6 p-6 border-b no-print">
-                        <h3 className="text-2xl font-bold text-gray-900">
-                            PDS Review - {pds.user?.name}
-                        </h3>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={handleDownloadPDF}
-                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                            >
-                                Download PDF
-                            </button>
-                            <button
-                                onClick={handlePrint}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                            >
-                                Print
-                            </button>
-                            <button
-                                onClick={onClose}
-                                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-
-                    {loading ? (
-                        <p className="text-center text-gray-500 py-10">Loading PDS...</p>
-                    ) : (pdsData?.form_data || pds?.form_data) ? (
-                        <div className="space-y-4 overflow-x-hidden">
-                            {/* PDS Form - printable area for PDF/Print (hidden on screen, shown when printing) */}
-                            <div ref={printRef} className="pds-printable-area bg-white overflow-x-auto print-only" style={{ display: 'none', padding: '10px', width: '100%' }}>
-                                <PdsPrintView formData={pdsData?.form_data || pds.form_data} />
-                            </div>
-                            {/* PDS Form - normal view for screen (hidden when printing) */}
-                            <div className="pds-screen-view">
-                                <PdsForm 
-                                    key={pdsData?.id || pds?.id || 'pds-view'} 
-                                    initialData={pdsData?.form_data || pds.form_data} 
-                                    readOnly={true} 
-                                />
-                            </div>
-                            
-                            {/* Action buttons - hidden when printing - only show for pending PDS */}
-                            {(pdsData?.status === 'pending' || pds?.status === 'pending') && (
-                                <div className="flex justify-end gap-3 pt-4 border-t no-print p-6">
-                                    <button
-                                        onClick={() => {
-                                            onClose();
-                                            // Trigger decline modal by setting action
-                                            setTimeout(() => {
-                                                const declinePds = { ...pds, action: 'decline' };
-                                                // This will be handled by parent component
-                                            }, 100);
-                                        }}
-                                        className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                                    >
-                                        Decline
-                                    </button>
-                                    <button
-                                        onClick={handleApprove}
-                                        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                                    >
-                                        Approve
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <p className="text-center text-gray-500 py-10">Failed to load PDS data</p>
-                    )}
+        <div className="w-full flex flex-col bg-white">
+            {/* Header with buttons */}
+            <div className="flex justify-between items-center p-4 border-b bg-white">
+                <h3 className="text-xl font-bold text-gray-900">
+                    PDS Review - {pds.user?.name}
+                </h3>
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleDownloadPDF}
+                        disabled={generatingPdf || !pdfUrl}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                        {generatingPdf ? 'Generating...' : 'Download PDF'}
+                    </button>
+                    <button
+                        onClick={handlePrint}
+                        disabled={generatingPdf || !pdfUrl}
+                        data-pds-print-button
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                        Print
+                    </button>
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
+                    >
+                        Close
+                    </button>
                 </div>
             </div>
+
+            {/* Hidden print view for PDF generation */}
+            <div ref={printRef} className="pds-printable-area bg-white" style={{ display: 'none', padding: '10px', width: '100%', position: 'absolute', left: '-9999px' }}>
+                {pdsData?.form_data || pds?.form_data ? (
+                    <PdsPrintView formData={pdsData?.form_data || pds.form_data} />
+                ) : null}
+            </div>
+
+            {/* Content Area */}
+            {loading ? (
+                <div className="flex items-center justify-center py-20">
+                    <LoadingSpinner size="lg" text="Loading PDS..." />
+                </div>
+            ) : generatingPdf ? (
+                <div className="flex items-center justify-center py-20">
+                    <LoadingSpinner size="lg" text="Generating PDF..." />
+                </div>
+            ) : pdfUrl ? (
+                <div className="w-full" style={{ height: '800px' }}>
+                    {/* PDF Viewer in iframe */}
+                    <iframe
+                        ref={pdfIframeRef}
+                        src={pdfUrl}
+                        className="w-full h-full border-0"
+                        title="PDS PDF Viewer"
+                    />
+                </div>
+            ) : (pdsData?.form_data || pds?.form_data) ? (
+                <div className="flex items-center justify-center py-20">
+                    <LoadingSpinner size="lg" text="Preparing PDF view..." />
+                </div>
+            ) : (
+                <div className="flex items-center justify-center py-20">
+                    <p className="text-center text-gray-500">Failed to load PDS data</p>
+                </div>
+            )}
+            
+            {/* Action buttons - only show for pending PDS */}
+            {(pdsData?.status === 'pending' || pds?.status === 'pending') && (
+                <div className="flex justify-end gap-3 p-4 border-t bg-white">
+                    <button
+                        onClick={() => {
+                            if (onDeclineClick) {
+                                // Call the callback to trigger decline modal in parent
+                                onDeclineClick();
+                            } else {
+                                // Fallback: close and let parent handle it
+                                onClose();
+                            }
+                        }}
+                        className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                    >
+                        Decline
+                    </button>
+                    <button
+                        onClick={handleApprove}
+                        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                    >
+                        Approve
+                    </button>
+                </div>
+            )}
 
             {/* Print Styles */}
             <style>{`

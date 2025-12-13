@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../../hooks/useAuth";
 import AppLayout from '../../components/Layout/AppLayout';
 import SystemSettingsComponent from '../../components/features/system/SystemSettings';
+import LoadingScreen from '../../components/Loading/LoadingScreen';
 import { hasSystemSettingsAccess } from '../../utils/userHelpers';
 
 function SystemSettingsPage() {
@@ -22,7 +23,7 @@ function SystemSettingsPage() {
 
   // Show full page loading only for initial auth check
   if (loading || !user) {
-    return null;
+    return <LoadingScreen />;
   }
 
   if (!hasSystemSettingsAccess(user)) {

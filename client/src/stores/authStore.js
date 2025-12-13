@@ -77,6 +77,44 @@ const setupInterceptor = (get) => {
         await logout();
       }
 
+      // Handle 403 Forbidden for locked accounts
+      // Don't handle password change requirement here - let axios interceptor handle it
+      if (error.response?.status === 403) {
+        const message = error.response?.data?.message;
+        const mustChangePassword = error.response?.data?.must_change_password;
+        const requestUrl = originalRequest?.url || '';
+        
+        // Skip handling if it's a password change requirement (let axios interceptor handle it)
+        // Skip handling for /api/user endpoint to prevent clearing user state
+        if (mustChangePassword || requestUrl.includes('/api/user')) {
+          return Promise.reject(error);
+        }
+        
+        if (message === 'Your account has been locked out! - HR') {
+          if (!isForceLoggingOut) {
+            try {
+              get().setIsForceLoggingOut(true);
+              // Perform a best-effort logout without re-triggering interceptors
+              await api.post(
+                '/api/logout',
+                {},
+                {
+                  withCredentials: true,
+                  headers: { 'X-Skip-Interceptor': 'true' },
+                }
+              );
+            } catch (err) {
+              console.error('Error during forced logout for locked account:', err);
+            } finally {
+              get().setUser(null);
+              get().setIsForceLoggingOut(false);
+              // Redirect to locked account information page
+              window.location.replace('/locked-account');
+            }
+          }
+        }
+      }
+
       return Promise.reject(error);
     }
   );

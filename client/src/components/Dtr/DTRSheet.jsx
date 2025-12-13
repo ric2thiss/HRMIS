@@ -1,7 +1,11 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas'; // 1. Import html2canvas
 import jsPDF from 'jspdf';           // 2. Import jspdf
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { getAttendance } from '../../api/attendance/attendance';
+import { useNotificationStore } from '../../stores/notificationStore';
+import LoadingSpinner from '../Loading/LoadingSpinner';
 
 
 // --- Auxiliary Data ---
@@ -16,11 +20,20 @@ const MONTHS = [
 const PERIODS = [
     { value: '1-15', name: '1st Half (Days 1-15)' },
     { value: '16-31', name: '2nd Half (Days 16-31)' },
+    { value: 'whole-month', name: 'Whole Month' },
 ];
+
+// Helper function to get last day of month
+const getLastDayOfMonth = (year, month) => {
+    return new Date(year, month, 0).getDate();
+};
 
 // --- DTR Component ---
 
 const DTR = () => {
+    const { user } = useAuth();
+    const showError = useNotificationStore((state) => state.showError);
+    
     // State for user selections
     const [year, setYear] = useState(CURRENT_YEAR.toString());
     const [month, setMonth] = useState(MONTHS[new Date().getMonth()].value);
@@ -28,56 +41,185 @@ const DTR = () => {
     
     // State to hold the DTR data object
     const [dtrContent, setDtrContent] = useState(null);
+    const [loading, setLoading] = useState(false);
     const pdfRef = useRef(null); // Reference for the printable DTR area
 
     // --- Actions ---
 
-    const handleSearch = useCallback(() => {
+    const processAttendanceData = (attendances, startDay, endDay, selectedMonth, selectedYear) => {
+        // Group attendance by date
+        const attendanceByDate = {};
         
-        // 1. Robust Input Validation
-        if (!year || !month || !period || !period.includes('-')) {
-            alert('Please select valid Year, Month, and Period.');
-            return;
-        }
+        attendances.forEach(attendance => {
+            const date = new Date(attendance.date);
+            const day = date.getDate();
+            
+            if (day >= startDay && day <= endDay) {
+                if (!attendanceByDate[day]) {
+                    attendanceByDate[day] = [];
+                }
+                attendanceByDate[day].push(attendance);
+            }
+        });
 
-        const parts = period.split('-');
-        if (parts.length !== 2) {
-             alert('Invalid period format. Please refresh.');
-             return;
-        }
-
-        const [startDayStr, endDayStr] = parts;
-        const startDay = parseInt(startDayStr);
-        const endDay = parseInt(endDayStr);
-        
-        if (isNaN(startDay) || isNaN(endDay)) {
-            alert('Error parsing period days. Please select a valid period.');
-            return;
-        }
-
-        // 2. Simulated DTR Data Generation
+        // Process each day
         const days = Array.from({ length: endDay - startDay + 1 }, (_, i) => {
             const dayNum = startDay + i;
+            const dayAttendances = attendanceByDate[dayNum] || [];
+            
+            // Sort by time
+            dayAttendances.sort((a, b) => {
+                const timeA = a.time || '00:00:00';
+                const timeB = b.time || '00:00:00';
+                return timeA.localeCompare(timeB);
+            });
+
+            // Determine AM IN, AM OUT, PM IN, PM OUT
+            let am_in = '';
+            let am_out = '';
+            let pm_in = '';
+            let pm_out = '';
+
+            dayAttendances.forEach(attendance => {
+                const time = attendance.time || '00:00:00';
+                const timeHour = parseInt(time.split(':')[0]);
+                const state = (attendance.state || '').toLowerCase();
+                
+                // AM period (before 12:00)
+                if (timeHour < 12) {
+                    if (state.includes('in') || state.includes('check in')) {
+                        if (!am_in) am_in = time.substring(0, 5); // HH:MM format
+                    } else if (state.includes('out') || state.includes('check out')) {
+                        am_out = time.substring(0, 5);
+                    }
+                } 
+                // PM period (12:00 and after)
+                else {
+                    if (state.includes('in') || state.includes('check in')) {
+                        if (!pm_in) pm_in = time.substring(0, 5);
+                    } else if (state.includes('out') || state.includes('check out')) {
+                        pm_out = time.substring(0, 5);
+                    }
+                }
+            });
+
+            // Calculate total hours
+            let totalHours = 0;
+            if (am_in && am_out) {
+                const amHours = calculateHours(am_in, am_out);
+                totalHours += amHours;
+            }
+            if (pm_in && pm_out) {
+                const pmHours = calculateHours(pm_in, pm_out);
+                totalHours += pmHours;
+            }
+
             return {
                 day: dayNum,
-                am_in: `08:00`, 
-                am_out: '12:00',
-                pm_in: `01:00`, 
-                pm_out: '05:00',
-                total_hours: '8.0'
+                am_in: am_in || '',
+                am_out: am_out || '',
+                pm_in: pm_in || '',
+                pm_out: pm_out || '',
+                total_hours: totalHours > 0 ? totalHours.toFixed(1) : ''
             };
         });
 
-        // 3. Update state to display DTR
-        setDtrContent({ 
-            employeeName: "JUAN DELA CRUZ",
-            monthYear: `${MONTHS.find(m => m.value === month).name}, ${year}`,
-            period: `${startDay} - ${endDay}`,
-            days: days,
-            dateGenerated: new Date().toLocaleDateString(),
-        });
+        return days;
+    };
 
-    }, [year, month, period]);
+    const calculateHours = (timeIn, timeOut) => {
+        const [inHour, inMin] = timeIn.split(':').map(Number);
+        const [outHour, outMin] = timeOut.split(':').map(Number);
+        
+        const inMinutes = inHour * 60 + inMin;
+        const outMinutes = outHour * 60 + outMin;
+        
+        const diffMinutes = outMinutes - inMinutes;
+        return diffMinutes / 60; // Convert to hours
+    };
+
+    const handleSearch = useCallback(async () => {
+        
+        // 1. Robust Input Validation
+        if (!year || !month || !period) {
+            showError('Please select valid Year, Month, and Period.');
+            return;
+        }
+
+        if (!user) {
+            showError('User information not available.');
+            return;
+        }
+
+        let startDay, endDay;
+        
+        if (period === 'whole-month') {
+            startDay = 1;
+            endDay = getLastDayOfMonth(parseInt(year), parseInt(month));
+        } else {
+            if (!period.includes('-')) {
+                showError('Invalid period format. Please refresh.');
+                return;
+            }
+            
+            const parts = period.split('-');
+            if (parts.length !== 2) {
+                showError('Invalid period format. Please refresh.');
+                return;
+            }
+
+            const [startDayStr, endDayStr] = parts;
+            startDay = parseInt(startDayStr);
+            endDay = parseInt(endDayStr);
+            
+            if (isNaN(startDay) || isNaN(endDay)) {
+                showError('Error parsing period days. Please select a valid period.');
+                return;
+            }
+        }
+
+        // Calculate date range
+        const startDate = `${year}-${month}-${String(startDay).padStart(2, '0')}`;
+        const endDate = `${year}-${month}-${String(endDay).padStart(2, '0')}`;
+
+        setLoading(true);
+        try {
+            // Fetch attendance data for the user
+            const response = await getAttendance({
+                user_id: user.id,
+                start_date: startDate,
+                end_date: endDate,
+                per_page: 1000, // Get all records for the period
+            });
+
+            const attendances = response.attendances?.data || [];
+            
+            // Process attendance data
+            const days = processAttendanceData(attendances, startDay, endDay, month, year);
+
+            // Get employee name
+            const employeeName = user.name || 
+                (user.first_name && user.last_name 
+                    ? `${user.first_name} ${user.last_name}`.toUpperCase()
+                    : 'EMPLOYEE NAME');
+
+            // Update state to display DTR
+            setDtrContent({ 
+                employeeName: employeeName,
+                monthYear: `${MONTHS.find(m => m.value === month).name}, ${year}`,
+                period: period === 'whole-month' ? 'Whole Month' : `${startDay} - ${endDay}`,
+                days: days,
+                dateGenerated: new Date().toLocaleDateString(),
+            });
+
+        } catch (error) {
+            const message = error?.response?.data?.message || 'Failed to load attendance data';
+            showError(message);
+        } finally {
+            setLoading(false);
+        }
+
+    }, [year, month, period, user, showError]);
 
 
     const handlePrint = useCallback(() => {
@@ -217,7 +359,13 @@ const DTR = () => {
             <div className="pt-4">
                 <h2 className="text-lg font-bold text-gray-800 mb-2">DTR Preview</h2>
                 
-                {!dtrContent && (
+                {loading && (
+                    <div className="flex justify-center items-center py-10">
+                        <LoadingSpinner text="Loading attendance data..." />
+                    </div>
+                )}
+                
+                {!loading && !dtrContent && (
                     <div className="p-8 text-center border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
                         Select filter options and click "Search DTR" to view the report here.
                     </div>

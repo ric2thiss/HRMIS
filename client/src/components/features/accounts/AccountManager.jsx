@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import AddAccountForm from "./AddAccountForm";
+import EditAccountModal from "./EditAccountModal";
 import api from "../../../api/axios";
 import createAccount from "../../../api/user/create_account";
 import deleteAccount from "../../../api/user/delete_account";
 import toggleSystemSettingsAccess from "../../../api/user/toggleSystemSettingsAccess";
+import toggleLock from "../../../api/user/toggleLock";
 import LoadingSpinner from "../../../components/Loading/LoadingSpinner";
 import { useAuth } from "../../../hooks/useAuth";
 import { getUserRole } from "../../../utils/userHelpers";
@@ -19,6 +21,7 @@ function AccountManager() {
     const [roles, setRoles] = useState([]);
     const [employmentTypes, setEmploymentTypes] = useState([]);
     const [isFormVisible, setIsFormVisible] = useState(false);
+    const [editingAccount, setEditingAccount] = useState(null);
     const [loading, setLoading] = useState(false);
     const [initializing, setInitializing] = useState(true);
     const [error, setError] = useState(null);
@@ -62,6 +65,7 @@ function AccountManager() {
                     first_name,
                     middle_initial || '',
                     last_name,
+                    newAccountData.sex,
                     email,
                     password,
                     newAccountData.position_id,
@@ -72,22 +76,31 @@ function AccountManager() {
                     newAccountData.office_id || null
                 );
 
+                // Build account name for success message
+                const accountName = `${first_name} ${middle_initial || ''} ${last_name}`.trim() || email;
+
                 // Refresh accounts list after creation
                 const usersRes = await api.get("/api/users");
                 setAccounts(usersRes.data.users || []);
 
                 setIsFormVisible(false);
+                setError(null);
+                
+                // Show success notification
+                showSuccess(`Account created successfully for ${accountName}. The user will be required to change their password on first login.`);
             } catch (err) {
                 const message =
                     err?.response?.data?.message ||
                     err.message ||
-                    "Unexpected error.";
-                setError(`Registration Failed: ${message}`);
+                    "Unexpected error occurred while creating the account.";
+                const errorMessage = `Registration Failed: ${message}`;
+                setError(errorMessage);
+                showError(errorMessage);
             } finally {
                 setLoading(false);
             }
         },
-        []
+        [showSuccess, showError]
     );
 
     const handleCancel = useCallback(() => {
@@ -97,21 +110,77 @@ function AccountManager() {
 
     const handleAction = async (accountId, action) => {
         if (action === "Delete") {
+            const account = accounts.find(acc => acc.id === accountId);
+            const accountName = account 
+                ? `${account.first_name || ''} ${account.last_name || ''}`.trim() || account.name || 'this account'
+                : 'this account';
+            
             const confirmDelete = window.confirm(
-                "Are you sure you want to delete this account?"
+                `Are you sure you want to delete ${accountName}? This action cannot be undone.`
             );
             if (!confirmDelete) return;
 
             try {
+                setLoading(true);
                 await deleteAccount(accountId);
                 setAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
+                showSuccess('Account deleted successfully');
+                setError(null);
             } catch (err) {
                 const message =
                     err?.response?.data?.message || err.message || "Delete failed.";
+                showError(message);
                 setError(message);
+            } finally {
+                setLoading(false);
             }
         } else if (action === "Edit") {
-            setError("Edit functionality not yet implemented");
+            const account = accounts.find(acc => acc.id === accountId);
+            if (account) {
+                setEditingAccount(account);
+            }
+        }
+    };
+
+    const handleAccountUpdate = (updatedAccount) => {
+        setAccounts((prev) =>
+            prev.map((acc) => (acc.id === updatedAccount.id ? updatedAccount : acc))
+        );
+        setEditingAccount(null);
+    };
+
+    const handleCloseEditModal = () => {
+        setEditingAccount(null);
+        setError(null);
+    };
+
+    const handleToggleLock = async (accountId, currentLockStatus) => {
+        const account = accounts.find(acc => acc.id === accountId);
+        const accountName = account 
+            ? `${account.first_name || ''} ${account.last_name || ''}`.trim() || account.name || 'this account'
+            : 'this account';
+        
+        const action = currentLockStatus ? 'unlock' : 'lock';
+        const confirmAction = window.confirm(
+            `Are you sure you want to ${action} ${accountName}? ${currentLockStatus ? 'The user will be able to login again.' : 'The user will be forced to logout and cannot login.'}`
+        );
+        if (!confirmAction) return;
+
+        try {
+            setLoading(true);
+            const updatedUser = await toggleLock(accountId, !currentLockStatus);
+            setAccounts((prev) =>
+                prev.map((acc) => (acc.id === accountId ? updatedUser : acc))
+            );
+            showSuccess(`Account ${action}ed successfully`);
+            setError(null);
+        } catch (err) {
+            const message =
+                err?.response?.data?.message || err.message || `${action} failed.`;
+            showError(message);
+            setError(message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -195,13 +264,16 @@ function AccountManager() {
                                     Role
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                    Project
+                                    Project Code
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                     Office
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                     Type
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Status
                                 </th>
                                 {isAdmin && (
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -233,10 +305,13 @@ function AccountManager() {
                                         {account.position?.title || 'N/A'}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {account.role?.name || account.roles?.[0]?.name || "No role"}
+                                        {(() => {
+                                            const role = account.role?.name || account.roles?.[0]?.name || "No role";
+                                            return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+                                        })()}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {account.project?.name || 'N/A'}
+                                        {account.project?.project_code || 'N/A'}
                                     </td>
                                     <td className="px-6 py-4">
                                         {account.office?.name || 'N/A'}
@@ -244,6 +319,15 @@ function AccountManager() {
                                     <td className="px-6 py-4">
                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                             {(account.employmentTypes || account.employment_types)?.[0]?.name || "N/A"}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                            account.is_locked 
+                                                ? 'bg-red-100 text-red-800' 
+                                                : 'bg-green-100 text-green-800'
+                                        }`}>
+                                            {account.is_locked ? 'Locked' : 'Active'}
                                         </span>
                                     </td>
                                     {isAdmin && (
@@ -267,18 +351,34 @@ function AccountManager() {
                                         </td>
                                     )}
                                     <td className="px-6 py-4 text-sm font-medium">
-                                        <button
-                                            onClick={() => handleAction(account.id, "Edit")}
-                                            className="text-indigo-600 hover:text-indigo-900 mr-4"
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            onClick={() => handleAction(account.id, "Delete")}
-                                            className="text-red-600 hover:text-red-900"
-                                        >
-                                            Delete
-                                        </button>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <button
+                                                onClick={() => handleAction(account.id, "Edit")}
+                                                className="text-indigo-600 hover:text-indigo-900"
+                                                disabled={loading}
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleToggleLock(account.id, account.is_locked)}
+                                                disabled={loading}
+                                                className={`${
+                                                    account.is_locked 
+                                                        ? 'text-green-600 hover:text-green-900' 
+                                                        : 'text-yellow-600 hover:text-yellow-900'
+                                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                title={account.is_locked ? 'Click to unlock account' : 'Click to lock account'}
+                                            >
+                                                {account.is_locked ? 'Unlock' : 'Lock'}
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction(account.id, "Delete")}
+                                                className="text-red-600 hover:text-red-900"
+                                                disabled={loading}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             )})}
@@ -298,6 +398,16 @@ function AccountManager() {
                     />,
                     document.body
                 )}
+
+            {editingAccount &&
+                <EditAccountModal
+                    account={editingAccount}
+                    onClose={handleCloseEditModal}
+                    onUpdate={handleAccountUpdate}
+                    loading={loading}
+                    employmentTypes={employmentTypes}
+                />
+            }
         </div>
     );
 }

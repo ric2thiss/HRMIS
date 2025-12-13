@@ -1,7 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../../hooks/useNotification';
-import { getMyPds, createPds, updatePds, submitPds } from '../../api/pds/pds';
+import { getMyPds, createPds, updatePds, submitPds, getPds } from '../../api/pds/pds';
+import { generatePdsPdfUrl } from '../../utils/pdsPdfGenerator';
+import PdsPrintView from './PdsPrintView';
+import SignatureInput from './SignatureInput';
 
 // --- INITIAL STATE DEFINITION ---
 // This large object holds the data for ALL form fields (approx 100+).
@@ -80,6 +83,20 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
     const [loading, setLoading] = useState(!initialData);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [printing, setPrinting] = useState(false);
+    const [pdsData, setPdsData] = useState(null);
+    const printRef = useRef(null);
+    const printIframeRef = useRef(null);
+    const pdfUrlRef = useRef(null);
+    const pdfGeneratedForPdsIdRef = useRef(null);
+
+    // Initialize pdsData with current pds if available
+    useEffect(() => {
+        // Update pdsData when pds prop changes (e.g., after save/refresh)
+        if (pds?.form_data) {
+            setPdsData(pds);
+        }
+    }, [pds]);
 
     // Update formData when initialData changes
     useEffect(() => {
@@ -136,7 +153,9 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
     }, [showError, initialData]);
 
     // Check if form is editable
-    const isEditable = !readOnly && (!pds || pds.status === 'draft' || pds.status === 'declined');
+    // Allow editing for draft, pending, declined, and approved
+    // When updating pending PDS, status will change to draft and remove from pending list
+    const isEditable = !readOnly && (!pds || pds.status === 'draft' || pds.status === 'pending' || pds.status === 'declined' || pds.status === 'approved');
     const isApproved = pds?.status === 'approved';
     const isPending = pds?.status === 'pending';
     const isDeclined = pds?.status === 'declined';
@@ -281,9 +300,157 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
         }
     };
 
-    // Print PDS (for approved PDS)
-    const handlePrint = () => {
-        window.print();
+    // Print PDS (for approved PDS) - using PDF generation like PdsStatusTable
+    const handlePrint = async () => {
+        // Prevent multiple simultaneous print attempts
+        if (printing) {
+            console.log('Print already in progress, skipping...');
+            return;
+        }
+        
+        if (!pds?.id) {
+            showError('PDS data not available');
+            return;
+        }
+
+        try {
+            setPrinting(true);
+
+            // Clean up any existing iframe from previous attempts
+            if (printIframeRef.current && printIframeRef.current.parentNode) {
+                document.body.removeChild(printIframeRef.current);
+                printIframeRef.current = null;
+            }
+
+            let pdfUrl = pdfUrlRef.current;
+            
+            // Check if we need to regenerate PDF (no cache or different PDS)
+            const needsRegeneration = !pdfUrl || (pdfGeneratedForPdsIdRef.current !== pds.id);
+
+            // Only regenerate PDF if we don't have a cached one for this PDS
+            if (needsRegeneration) {
+                // Load PDS data only if needed
+                let fullPdsData = pdsData;
+                if (!fullPdsData || !fullPdsData.form_data) {
+                    fullPdsData = await getPds(pds.id);
+                    if (!fullPdsData?.form_data) {
+                        showError('PDS form data not available');
+                        setPrinting(false);
+                        return;
+                    }
+                    setPdsData(fullPdsData);
+                    // Wait briefly for React to update
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // Ensure print view ref is available
+                if (!printRef.current) {
+                    showError('Print view not ready. Please refresh the page and try again.');
+                    setPrinting(false);
+                    return;
+                }
+
+                // Check if form data is rendered (with retry)
+                let formDataElement = null;
+                let attempts = 0;
+                while (attempts < 5 && !formDataElement) {
+                    formDataElement = printRef.current.querySelector('.pds-official-print');
+                    if (!formDataElement) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        attempts++;
+                    }
+                }
+
+                if (!formDataElement) {
+                    showError('PDS content not ready. Please refresh the page and try again.');
+                    setPrinting(false);
+                    return;
+                }
+
+                // Show print view temporarily for PDF generation
+                printRef.current.style.display = 'block';
+                printRef.current.style.visibility = 'visible';
+                printRef.current.style.position = 'absolute';
+                printRef.current.style.left = '-9999px';
+                printRef.current.style.top = '0';
+                printRef.current.style.width = '210mm';
+                printRef.current.style.backgroundColor = '#ffffff';
+
+                // Wait for content to render
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Generate PDF blob URL
+                pdfUrl = await generatePdsPdfUrl(printRef.current);
+                pdfUrlRef.current = pdfUrl;
+                pdfGeneratedForPdsIdRef.current = pds.id;
+
+                // Hide print view after PDF generation
+                printRef.current.style.display = 'none';
+                printRef.current.style.visibility = 'hidden';
+            }
+
+            // Create a hidden iframe to load PDF and trigger print dialog
+            const printIframe = document.createElement('iframe');
+            printIframe.style.position = 'fixed';
+            printIframe.style.width = '1px';
+            printIframe.style.height = '1px';
+            printIframe.style.left = '-9999px';
+            printIframe.style.top = '-9999px';
+            printIframe.style.border = 'none';
+            printIframe.style.opacity = '0';
+            printIframe.style.pointerEvents = 'none';
+
+            printIframeRef.current = printIframe;
+            document.body.appendChild(printIframe);
+
+            // Function to trigger print
+            const triggerPrint = () => {
+                try {
+                    if (printIframe.contentWindow) {
+                        printIframe.contentWindow.focus();
+                        printIframe.contentWindow.print();
+                    }
+                    setPrinting(false);
+                } catch (error) {
+                    console.error('Error triggering print:', error);
+                    showError('Failed to trigger print dialog. Please try again.');
+                    setPrinting(false);
+                }
+            };
+
+            // Wait for PDF to load in iframe
+            printIframe.onload = () => {
+                setTimeout(triggerPrint, 300);
+            };
+
+            // Set PDF source
+            printIframe.src = pdfUrl;
+
+            // Fallback timeout
+            setTimeout(() => {
+                if (printIframe.parentNode) {
+                    triggerPrint();
+                }
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error printing PDS:', error);
+            showError(`Failed to generate PDF: ${error.message || 'Unknown error'}. Please try again.`);
+            
+            // Hide print view if it's still visible
+            if (printRef.current) {
+                printRef.current.style.display = 'none';
+                printRef.current.style.visibility = 'hidden';
+            }
+            
+            // Clean up on error
+            if (printIframeRef.current && printIframeRef.current.parentNode) {
+                document.body.removeChild(printIframeRef.current);
+                printIframeRef.current = null;
+            }
+        } finally {
+            setPrinting(false);
+        }
     };
 
     if (loading) {
@@ -342,7 +509,7 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                             )}
                             {isPending && (
                                 <p className="text-sm text-gray-600 mt-1">
-                                    Your PDS is pending review. You cannot edit it until it is reviewed.
+                                    Your PDS is pending review. You can update it, but doing so will change the status back to draft and remove it from the pending list.
                                 </p>
                             )}
                             {isApproved && (
@@ -354,9 +521,10 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                         {isApproved && (
                             <button
                                 onClick={handlePrint}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                disabled={printing}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Print PDS
+                                {printing ? 'Generating PDF...' : 'Print PDS'}
                             </button>
                         )}
                     </div>
@@ -676,12 +844,14 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                                 >
                                     {saving ? 'Saving...' : pds ? 'Save Changes' : 'Save Draft'}
                                 </button>
-                                {pds && (pds.status === 'draft' || pds.status === 'declined') && (
+                                {/* Submit button - show for draft, declined, or approved (after update) */}
+                                {pds && (pds.status === 'draft' || pds.status === 'declined' || pds.status === 'approved') && (
                                     <button
                                         onClick={handleSubmit}
-                                        disabled={submitting || saving}
+                                        disabled={submitting || saving || pds.status === 'pending'}
                                         type="button"
                                         className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                                        title={pds.status === 'pending' ? 'Cannot submit while under review' : 'Submit for Approval'}
                                     >
                                         {submitting ? 'Submitting...' : 'Submit for Approval'}
                                     </button>
@@ -850,6 +1020,27 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
             `}</style>
             {/* Optional: Display formData for debugging */}
             {/* <pre className="mt-4 text-xs bg-gray-100 p-2">{JSON.stringify(formData, null, 2)}</pre> */}
+            
+            {/* Hidden print view for PDF generation - always render if PDS exists */}
+            {pds?.id && (
+                <div 
+                    ref={printRef} 
+                    style={{ 
+                        display: 'none', 
+                        visibility: 'hidden',
+                        position: 'absolute',
+                        left: '-9999px',
+                        top: '0',
+                        width: '210mm',
+                        backgroundColor: '#ffffff'
+                    }}
+                    key={pdsData?.id || pds?.id}
+                >
+                    {(pdsData?.form_data || pds?.form_data || formData) && (
+                        <PdsPrintView formData={pdsData?.form_data || pds?.form_data || formData} />
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -1385,47 +1576,13 @@ const DeclarationAndOath = React.memo(({ formData, handleChange, handleImageUplo
                 <input type="text" name="dateAccomplished" value={formData.dateAccomplished || ''} onChange={handleChange} placeholder="Date Accomplished" disabled={!isEditable} className="mt-1 block w-full p-2 border-b-2 border-gray-800 bg-transparent text-sm text-center disabled:opacity-50" />
                 <p className="text-center text-xs text-gray-500 pt-1">Date Accomplished</p>
             </div>
-            {/* Signature Upload */}
+            {/* Signature Input - Upload or Draw */}
             <div className="col-span-1">
-                <div className="h-20 border border-gray-400 bg-white relative">
-                    {formData?.signature && formData.signature.trim() !== '' ? (
-                        <div className="relative w-full h-full">
-                            <img 
-                                src={formData.signature} 
-                                alt="Signature" 
-                                className="w-full h-full object-contain"
-                                onError={(e) => {
-                                    console.error('Error loading signature:', formData.signature?.substring(0, 50));
-                                    e.target.style.display = 'none';
-                                }}
-                            />
-                            {isEditable && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleChange({ target: { name: 'signature', value: '' } })}
-                                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                                    title="Remove signature"
-                                >
-                                    ×
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-gray-50 transition-colors">
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleImageUpload(e, 'signature')}
-                                disabled={!isEditable}
-                                className="hidden"
-                            />
-                            <svg className="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                            <span className="text-xs text-gray-500 text-center">Signature<br />Click to upload</span>
-                        </label>
-                    )}
-                </div>
+                <SignatureInput
+                    value={formData?.signature || ''}
+                    onChange={handleChange}
+                    isEditable={isEditable}
+                />
             </div>
             <div className="col-span-1">
                 <div className="h-20 border border-gray-400 flex items-center justify-center bg-white">

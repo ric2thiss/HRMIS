@@ -9,6 +9,7 @@ function ProjectsTable() {
   const [editingProject, setEditingProject] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
+    project_code: '',
     status: 'active',
     project_manager: ''
   });
@@ -45,7 +46,7 @@ function ProjectsTable() {
       }
       setIsFormVisible(false);
       setEditingProject(null);
-      setFormData({ name: '', status: 'active', project_manager: '' });
+      setFormData({ name: '', project_code: '', status: 'active', project_manager: '' });
       loadProjects();
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
@@ -58,6 +59,7 @@ function ProjectsTable() {
     setEditingProject(project);
     setFormData({
       name: project.name || '',
+      project_code: project.project_code || '',
       status: project.status || 'active',
       project_manager: project.project_manager || ''
     });
@@ -82,7 +84,7 @@ function ProjectsTable() {
   const handleCancel = () => {
     setIsFormVisible(false);
     setEditingProject(null);
-    setFormData({ name: '', status: 'active', project_manager: '' });
+    setFormData({ name: '', project_code: '', status: 'active', project_manager: '' });
   };
 
   const getStatusBadgeClass = (status) => {
@@ -120,8 +122,9 @@ function ProjectsTable() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Code</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Manager</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project Focal</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
@@ -129,6 +132,9 @@ function ProjectsTable() {
               {projects.map((project) => (
                 <tr key={project.id}>
                   <td className="px-6 py-4 whitespace-nowrap font-medium">{project.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {project.project_code || 'N/A'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(project.status)}`}>
                       {project.status?.toUpperCase() || 'N/A'}
@@ -189,6 +195,18 @@ function ProjectsTable() {
               </div>
 
               <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Project Code</label>
+                <input
+                  type="text"
+                  value={formData.project_code}
+                  onChange={(e) => setFormData({ ...formData, project_code: e.target.value })}
+                  disabled={loading}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  placeholder="e.g., DTP-2025"
+                />
+              </div>
+
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Status <span className="text-red-500">*</span></label>
                 <select
                   value={formData.status}
@@ -205,14 +223,14 @@ function ProjectsTable() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Project Manager</label>
+                <label className="block text-sm font-medium text-gray-700">Project Focal</label>
                 <input
                   type="text"
                   value={formData.project_manager}
                   onChange={(e) => setFormData({ ...formData, project_manager: e.target.value })}
                   disabled={loading}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  placeholder="Project manager name"
+                  placeholder="Project focal name"
                 />
               </div>
 

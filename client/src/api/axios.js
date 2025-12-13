@@ -51,6 +51,21 @@ api.interceptors.response.use(
         
         // Handle 403 Forbidden
         if (error.response?.status === 403) {
+            const message = error.response?.data?.message;
+            const mustChangePassword = error.response?.data?.must_change_password;
+            const requestUrl = error.config?.url || '';
+            
+            // Don't redirect for /api/user endpoint - let the component handle it
+            // Don't redirect if already on the password change page
+            if (mustChangePassword && 
+                message?.includes('change your password') &&
+                !requestUrl.includes('/api/user') &&
+                !requestUrl.includes('/api/logout') &&
+                window.location.pathname !== '/force-change-password') {
+                window.location.replace('/force-change-password');
+                return Promise.reject(error);
+            }
+            
             // Could show access denied message
         }
 

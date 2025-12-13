@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Data Sheet (CS Form No. 212) - Replica</title>
+    <style>
+        /* Basic Reset and Global Styles */
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.4;
+    font-size: 10px; /* Small font size common in forms */
+    margin: 20px;
+    background-color: #f4f4f4;
+}
+
+.pds-form-container {
+    max-width: 900px;
+    margin: 0 auto;
+    background-color: white;
+    border: 2px solid black; /* Main form border */
+    padding: 15px;
+}
+
+/* Header Styling */
+.pds-header {
+    text-align: center;
+    border-bottom: 2px solid black;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.pds-form-no {
+    text-align: left;
+    font-size: 9px;
+    font-weight: bold;
+}
+
+.pds-revision {
+    text-align: left;
+    font-size: 8px;
+    margin-bottom: 10px;
+}
+
+.pds-header h1 {
+    font-size: 16px;
+    margin: 0;
+    padding: 5px 0;
+}
+
+/* Warning and Instructions */
+.pds-instructions {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+}
+
+.pds-warning {
+    color: red;
+    font-size: 9px;
+    margin: 0 0 5px 0;
+}
+
+.pds-read {
+    font-size: 10px;
+    margin: 0;
+}
+
+/* Section Heading Styling */
+.pds-section-heading {
+    background-color: #ccc;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 3px 5px;
+    border: 1px solid black;
+    margin: 5px 0;
+}
+
+/* --- Main Two-Column Layout --- */
+.pds-body-grid {
+    display: flex;
+    border: 1px solid black; /* Enclosing border for the main two sections */
+    min-height: 800px; /* Gives space for fields */
+}
+
+.pds-left-column, .pds-right-column {
+    padding: 0;
+}
+
+.pds-left-column {
+    width: 45%; /* Proportionally wider than the right column in the original form */
+    border-right: 1px solid black;
+}
+
+.pds-right-column {
+    width: 55%;
+}
+
+/* Left Column Rows */
+.form-row {
+    display: flex;
+    /* Use grid for precise control of label/input layout */
+    display: grid;
+    grid-template-columns: 35% 65%; /* Label width vs Input width */
+    border-bottom: 1px solid black;
+    min-height: 35px; /* Ensures height for fields */
+}
+
+.form-row:last-child {
+    border-bottom: none; /* Remove bottom border for the last element in the column */
+}
+
+.row-label {
+    background-color: #eee;
+    border-right: 1px solid black;
+    padding: 5px;
+    font-size: 9px;
+    font-weight: bold;
+    display: flex;
+    align-items: center; /* Vertically center content */
+    line-height: 1.1;
+}
+
+.form-input {
+    border: none;
+    padding: 5px;
+    width: calc(100% - 10px);
+    font-size: 10px;
+}
+
+.date-input {
+    border-bottom: none; /* Example for fields that span multiple lines/rows in the form */
+}
+
+.name-extension {
+    /* Special positioning for the name extension */
+    grid-column: 2 / 3;
+    font-size: 8px;
+    text-align: right;
+    padding-right: 5px;
+    margin-top: -10px;
+}
+
+/* Wide Rows (for Checkboxes/Radio buttons) */
+.wide-row {
+    grid-template-columns: 35% 65%; /* Same structure, but content differs */
+}
+
+.radio-group, .checkbox-grid {
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 10px;
+}
+
+/* --- Right Column Grouping (16-21) --- */
+
+.right-row-group {
+    border-bottom: 1px solid black;
+    padding: 5px;
+}
+
+.right-row-group .row-label {
+    background-color: #eee;
+    border: 1px solid black;
+    padding: 3px 5px;
+    font-weight: bold;
+    font-size: 9px;
+    margin-bottom: 5px;
+}
+
+/* Citizenship (16) */
+.citizenship-options {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 5px;
+}
+
+.dual-options {
+    border-top: 1px solid black;
+    padding-top: 5px;
+}
+
+.note-line {
+    font-size: 8px;
+    margin-top: 5px;
+}
+
+.country-input {
+    border: none;
+    border-bottom: 1px solid black;
+    width: 50px;
+}
+
+/* Address Fields (17 & 18) */
+.address-fields {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr) 100px; /* Two inputs, plus ZIP */
+    gap: 0;
+}
+
+.address-fields input {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 3px;
+    font-size: 10px;
+    margin: 0;
+}
+
+.addr-line-1 {
+    grid-column: span 1;
+}
+
+.addr-line-2 {
+    grid-column: span 1;
+}
+
+.addr-line-3 {
+    grid-column: span 1;
+}
+
+.zip-label {
+    background-color: #eee;
+    border: 1px solid black;
+    padding: 3px 5px;
+    font-weight: bold;
+    font-size: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zip-input {
+    grid-column: 3 / 4;
+}
+
+/* Contact Information (19-21) */
+.contact-group {
+    border-bottom: none;
+}
+
+.contact-row {
+    display: grid;
+    grid-template-columns: 35% 65%;
+    border-bottom: 1px solid black;
+}
+
+.contact-row:last-child {
+    border-bottom: none;
+}
+
+.contact-row .row-label {
+    background-color: #eee;
+    border-right: 1px solid black;
+    border: none; /* Overrides .right-row-group .row-label for clean lines */
+    border-right: 1px solid black;
+    display: flex;
+    align-items: center;
+    padding-left: 5px;
+}
+
+.contact-row .form-input {
+    border-bottom: none;
+}
+
+.bottom-spacer {
+    margin-top: 15px;
+}
+
+/* End of Form Body */
+.pds-right-column > .right-row-group:last-child {
+    border-bottom: none;
+}
+    </style>
+    </head>
+<body>
+
+    <div class="pds-form-container">
+        <div class="pds-header">
+            <div class="pds-form-no">CS Form No. 212</div>
+            <div class="pds-revision">REVISED 2025</div>
+            <h1>PERSONAL DATA SHEET</h1>
+        </div>
+
+        <div class="pds-instructions">
+            <p class="pds-warning">
+                <strong>WARNING:</strong> Any misrepresentation made in the Personal Data Sheet and the Work Experience Sheet shall cause the filing of administrative/criminal case/s against the person concerned.
+            </p>
+            <p class="pds-read">
+                <strong>READ THE ATTACHED GUIDE TO FILLING OUT THE PERSONAL DATA SHEET (PDS) BEFORE ACCOMPLISHING THE PDS FORM.</strong>
+                <br>
+                Print legibly if accomplished through own handwriting. Tick appropriate box(es) <input type="checkbox" checked disabled> and use separate sheet if necessary. Indicate **N/A** if not applicable. **DO NOT ABBREVIATE.**
+            </p>
+        </div>
+
+        <div class="pds-section-heading">
+            I. PERSONAL INFORMATION
+        </div>
+
+        <div class="pds-body-grid">
+
+            <div class="pds-left-column">
+                <div class="form-row">
+                    <label for="surname" class="row-label">1. SURNAME</label>
+                    <input type="text" id="surname" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="firstname" class="row-label">2. FIRST NAME</label>
+                    <input type="text" id="firstname" class="form-input">
+                    <span class="name-extension">NAME EXTENSION (JR., SR.)</span>
+                </div>
+                <div class="form-row">
+                    <label for="middlename" class="row-label">MIDDLE NAME</label>
+                    <input type="text" id="middlename" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="dob" class="row-label">3. DATE OF BIRTH<br>(dd/mm/yyyy)</label>
+                    <input type="text" id="dob" class="form-input date-input">
+                </div>
+                <div class="form-row">
+                    <label for="pob" class="row-label">4. PLACE OF BIRTH</label>
+                    <input type="text" id="pob" class="form-input">
+                </div>
+                <div class="form-row wide-row">
+                    <label for="sex" class="row-label">5. SEX AT BIRTH</label>
+                    <div class="radio-group">
+                        <input type="checkbox" id="male" name="sex"><label for="male">Male</label>
+                        <input type="checkbox" id="female" name="sex"><label for="female">Female</label>
+                    </div>
+                </div>
+                <div class="form-row wide-row">
+                    <label for="civilstatus" class="row-label">6. CIVIL STATUS</label>
+                    <div class="checkbox-grid">
+                        <input type="checkbox" id="single"><label for="single">Single</label>
+                        <input type="checkbox" id="married"><label for="married">Married</label>
+                        <input type="checkbox" id="widowed"><label for="widowed">Widowed</label>
+                        <input type="checkbox" id="separated"><label for="separated">Separated</label>
+                        <input type="checkbox" id="other"><label for="other">Other/s:</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <label for="height" class="row-label">7. HEIGHT (m)</label>
+                    <input type="text" id="height" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="weight" class="row-label">8. WEIGHT (kg)</label>
+                    <input type="text" id="weight" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="bloodtype" class="row-label">9. BLOOD TYPE</label>
+                    <input type="text" id="bloodtype" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="umid" class="row-label">10. UMID ID NO.</label>
+                    <input type="text" id="umid" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="pagibig" class="row-label">11. PAG-IBIG ID NO.</label>
+                    <input type="text" id="pagibig" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="philhealth" class="row-label">12. PHILHEALTH NO.</label>
+                    <input type="text" id="philhealth" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="philsys" class="row-label">13. PhilSys Number (PSN):</label>
+                    <input type="text" id="philsys" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="tin" class="row-label">14. TIN NO.</label>
+                    <input type="text" id="tin" class="form-input">
+                </div>
+                <div class="form-row">
+                    <label for="agencyemployee" class="row-label">15. AGENCY EMPLOYEE NO.</label>
+                    <input type="text" id="agencyemployee" class="form-input">
+                </div>
+            </div>
+
+            <div class="pds-right-column">
+                <div class="right-row-group citizenship">
+                    <div class="row-label">16. CITIZENSHIP</div>
+                    <div class="citizenship-options">
+                        <input type="radio" id="filipino" name="citizenship"><label for="filipino">Filipino</label>
+                        <input type="radio" id="dual" name="citizenship"><label for="dual">Dual Citizenship</label>
+                    </div>
+
+                    <div class="dual-options">
+                        <input type="radio" id="bybirth" name="dual_type"><label for="bybirth">by birth</label>
+                        <input type="radio" id="bynaturalization" name="dual_type"><label for="bynaturalization">by naturalization</label>
+                        <div class="note-line">
+                            If holder of dual citizenship, please indicate the details.
+                            Pts. indicate country: <input type="text" class="country-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="right-row-group address-group">
+                    <div class="row-label">17. RESIDENTIAL ADDRESS</div>
+                    <div class="address-fields">
+                        <input type="text" placeholder="House/Block/Lot No." class="addr-line-1">
+                        <input type="text" placeholder="Street" class="addr-line-1">
+                        <input type="text" placeholder="Subdivision/Village" class="addr-line-2">
+                        <input type="text" placeholder="Barangay" class="addr-line-2">
+                        <input type="text" placeholder="City/Municipality" class="addr-line-3">
+                        <input type="text" placeholder="Province" class="addr-line-3">
+                        <label for="zipres" class="zip-label">ZIP CODE</label>
+                        <input type="text" id="zipres" class="zip-input">
+                    </div>
+                </div>
+
+                <div class="right-row-group address-group">
+                    <div class="row-label">18. PERMANENT ADDRESS</div>
+                    <div class="address-fields">
+                        <input type="text" placeholder="House/Block/Lot No." class="addr-line-1">
+                        <input type="text" placeholder="Street" class="addr-line-1">
+                        <input type="text" placeholder="Subdivision/Village" class="addr-line-2">
+                        <input type="text" placeholder="Barangay" class="addr-line-2">
+                        <input type="text" placeholder="City/Municipality" class="addr-line-3">
+                        <input type="text" placeholder="Province" class="addr-line-3">
+                        <label for="zipperm" class="zip-label">ZIP CODE</label>
+                        <input type="text" id="zipperm" class="zip-input">
+                    </div>
+                </div>
+
+                <div class="right-row-group contact-group">
+                    <div class="contact-row">
+                        <label for="telno" class="row-label">19. TELEPHONE NO.</label>
+                        <input type="text" id="telno" class="form-input">
+                    </div>
+                    <div class="contact-row">
+                        <label for="mobileno" class="row-label">20. MOBILE NO.</label>
+                        <input type="text" id="mobileno" class="form-input">
+                    </div>
+                    <div class="contact-row">
+                        <label for="email" class="row-label">21. E-MAIL ADDRESS (if any)</label>
+                        <input type="text" id="email" class="form-input">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="pds-section-heading bottom-spacer">
+            II. FAMILY BACKGROUND
+        </div>
+        </div>
+
+</body>
+</html>

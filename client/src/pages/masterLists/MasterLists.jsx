@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import AppLayout from "../../components/Layout/AppLayout";
 import MasterListsManager from "../../components/features/masterLists/MasterListsManager";
+import LoadingScreen from "../../components/Loading/LoadingScreen";
 import { getUserRole } from "../../utils/userHelpers";
 
 function MasterLists() {
@@ -24,7 +25,7 @@ function MasterLists() {
   }, [loading, user, navigate]);
 
   if (loading || !user) {
-    return null;
+    return <LoadingScreen />;
   }
 
   const role = getUserRole(user);

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import AppLayout from "../../components/Layout/AppLayout";
 import AccountManager from "../../components/features/accounts/AccountManager";
+import LoadingScreen from "../../components/Loading/LoadingScreen";
 
 function ManageAccount() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ function ManageAccount() {
 
     if (user) {
       const role = user?.roles?.[0]?.name;
-      if (role !== 'hr' && role !== 'admin') {
+      if (role !== 'hr') {
         navigate("/dashboard");
       }
     }
@@ -24,11 +25,11 @@ function ManageAccount() {
 
   // Show full page loading only for initial auth check
   if (loading || !user) {
-    return null;
+    return <LoadingScreen />;
   }
 
   const role = user?.roles?.[0]?.name;
-  if (role !== 'hr' && role !== 'admin') {
+  if (role !== 'hr') {
     return null;
   }
 

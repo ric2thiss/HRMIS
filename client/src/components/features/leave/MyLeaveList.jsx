@@ -1,35 +1,76 @@
 import React, { useState, useEffect } from 'react';
-import { mockLeaveApplications, mockLeaveCredits } from '../../../data/mockLeaveData';
+import { useNavigate } from 'react-router-dom';
+import { mockLeaveCredits } from '../../../data/mockLeaveData';
 import { LEAVE_STATUS, LEAVE_STATUS_LABELS } from '../../../data/leaveTypes';
 import { useNotification } from '../../../hooks/useNotification';
+import { getMyLeaveApplications, updateLeaveApplication } from '../../../api/leave/leaveApplications';
+import Pagination from '../../common/Pagination';
 
 function MyLeaveList({ user }) {
+  const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
   const [leaves, setLeaves] = useState([]);
   const [leaveCredits, setLeaveCredits] = useState(mockLeaveCredits);
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
-    // Filter leaves for current user
-    const userLeaves = mockLeaveApplications.filter(
-      leave => leave.employee_id === user.employee_id
-    );
-    setLeaves(userLeaves);
-  }, [user]);
+    loadLeaves();
+  }, [filter]);
 
-  const filteredLeaves = leaves.filter(leave => {
-    if (filter === 'all') return true;
-    return leave.status === filter;
-  });
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when filter changes
+  }, [filter]);
 
-  const handleCancel = (leaveId) => {
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when items per page changes
+  }, [itemsPerPage]);
+
+  const loadLeaves = async () => {
+    try {
+      setLoading(true);
+      const params = filter !== 'all' ? { status: filter } : {};
+      const data = await getMyLeaveApplications(params);
+      setLeaves(data);
+    } catch (err) {
+      showError(err?.response?.data?.message || 'Failed to load leave applications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter is already applied in the API call, but keep this for client-side filtering if needed
+  const filteredLeaves = leaves;
+
+  // Pagination calculations
+  const totalItems = filteredLeaves.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLeaves = filteredLeaves.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    // Scroll to top of table when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
+  const handleCancel = async (leaveId) => {
     if (window.confirm('Are you sure you want to cancel this leave application?')) {
-      setLeaves(prev => prev.map(leave => 
-        leave.id === leaveId && leave.status === LEAVE_STATUS.PENDING
-          ? { ...leave, status: LEAVE_STATUS.CANCELLED }
-          : leave
-      ));
-      showSuccess('Leave application cancelled successfully');
+      try {
+        await updateLeaveApplication(leaveId, { status: 'cancelled' });
+        showSuccess('Leave application cancelled successfully');
+        loadLeaves(); // Reload the list
+      } catch (err) {
+        showError(err?.response?.data?.message || 'Failed to cancel leave application');
+      }
     }
   };
 
@@ -101,7 +142,11 @@ function MyLeaveList({ user }) {
       </div>
 
       {/* Leave Applications Table */}
-      {filteredLeaves.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-10 text-gray-500">
+          Loading leave applications...
+        </div>
+      ) : filteredLeaves.length === 0 ? (
         <div className="text-center py-10 text-gray-500">
           No leave applications found.
         </div>
@@ -113,17 +158,18 @@ function MyLeaveList({ user }) {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date Range</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Days</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Approver</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredLeaves.map((leave) => (
+              {paginatedLeaves.map((leave) => (
                 <tr key={leave.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{leave.leave_type}</div>
-                    <div className="text-xs text-gray-500">Code: {leave.leave_type_code}</div>
+                    <div className="text-sm font-medium text-gray-900">{leave.leave_type?.name || 'N/A'}</div>
+                    <div className="text-xs text-gray-500">Code: {leave.leave_type?.code || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
@@ -132,34 +178,58 @@ function MyLeaveList({ user }) {
                     <div className="text-xs text-gray-500">to {new Date(leave.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {leave.days} {leave.days === 1 ? 'day' : 'days'}
+                    {leave.working_days} {leave.working_days === 1 ? 'day' : 'days'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{leave.leave_approver?.name || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 max-w-xs truncate">{leave.reason}</div>
+                    <div className="text-sm text-gray-900 max-w-xs truncate">{leave.remarks || 'No remarks'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(leave.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {leave.status === LEAVE_STATUS.PENDING && (
+                    <div className="flex gap-2 items-center">
                       <button
-                        onClick={() => handleCancel(leave.id)}
-                        className="text-red-600 hover:text-red-900 transition-colors"
+                        onClick={() => navigate(`/leave-application/${leave.id}/track`)}
+                        className="text-blue-600 hover:text-blue-900 transition-colors"
+                        title="Track leave application"
                       >
-                        Cancel
+                        Track
                       </button>
-                    )}
-                    {leave.status === LEAVE_STATUS.APPROVED && leave.remarks && (
-                      <span className="text-xs text-gray-500" title={leave.remarks}>
-                        ✓ Approved
-                      </span>
-                    )}
+                      {leave.status === LEAVE_STATUS.PENDING && (
+                        <button
+                          onClick={() => handleCancel(leave.id)}
+                          className="text-red-600 hover:text-red-900 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      {leave.status === LEAVE_STATUS.APPROVED && leave.approval_remarks && (
+                        <span className="text-xs text-gray-500" title={leave.approval_remarks}>
+                          ✓ Approved
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Pagination - Always show when not loading */}
+      {!loading && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
+          onItemsPerPageChange={handleItemsPerPageChange}
+        />
       )}
     </div>
   );

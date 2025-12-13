@@ -13,10 +13,11 @@ import api from '../axios';
  * @param {number} data.roleId - Role ID
  * @param {number} data.projectId - Project ID
  * @param {number} [data.officeId] - Office ID (optional)
+ * @param {number} [data.employmentTypeId] - Employment Type ID (optional)
  * @param {number[]} [data.specialCapabilityIds] - Optional array of special capability IDs
  * @returns {Promise<Object>} Updated user object
  */
-const updateAccount = async (userId, { firstName, middleInitial, lastName, email, password, positionId, roleId, projectId, officeId, specialCapabilityIds }) => {
+const updateAccount = async (userId, { firstName, middleInitial, lastName, email, password, positionId, roleId, projectId, officeId, employmentTypeId, specialCapabilityIds }) => {
     await api.get('/sanctum/csrf-cookie');
 
     const payload = { 
@@ -32,6 +33,11 @@ const updateAccount = async (userId, { firstName, middleInitial, lastName, email
     // Include office_id if provided
     if (officeId !== undefined) {
         payload.office_id = officeId || null;
+    }
+    
+    // Include employment_type_id if provided
+    if (employmentTypeId !== undefined) {
+        payload.employment_type_id = employmentTypeId;
     }
     
     if (password) {

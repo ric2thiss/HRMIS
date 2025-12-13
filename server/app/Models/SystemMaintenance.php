@@ -12,6 +12,7 @@ class SystemMaintenance extends Model
         'is_enabled',
         'allowed_login_roles',
         'message',
+        'version',
         'enabled_by',
         'started_at',
         'ended_at'

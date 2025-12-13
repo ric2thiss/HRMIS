@@ -41,6 +41,11 @@ function ProfileInfo({ user }) {
             <label className="block text-sm font-medium text-gray-500 mb-1">Email Address</label>
             <p className="text-lg text-gray-800">{user.email || 'N/A'}</p>
           </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-1">Sex</label>
+            <p className="text-lg font-semibold text-gray-800">{user.sex || 'N/A'}</p>
+          </div>
         </div>
         
         <div className="space-y-4">
@@ -62,7 +67,7 @@ function ProfileInfo({ user }) {
             <label className="block text-sm font-medium text-gray-500 mb-1">Project Affiliation</label>
             <p className="text-lg text-gray-800">
               {user.project?.name || 'N/A'}
-              {user.project?.status && ` (${user.project.status})`}
+              {user.project?.status && ` (${user.project.project_code})`}
             </p>
           </div>
           

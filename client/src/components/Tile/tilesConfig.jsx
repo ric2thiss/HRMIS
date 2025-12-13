@@ -32,7 +32,7 @@ export const tilesConfig = [
     title: "Manage PDS",
     link: "/manage-pds",
     icon: <PDSIcon />,
-    roles: ["hr", "admin"]
+    roles: ["hr"]
   },
   {
     title: "My DTR",
@@ -45,6 +45,12 @@ export const tilesConfig = [
     link: "/import-attendance",
     icon: <ImportIcon />,
     roles: ["hr"]
+  },
+  {
+    title: "View Attendance",
+    link: "/view-attendance",
+    icon: <DTRIcon />,
+    roles: ["hr", "admin"]
   },
   {
     title: "Manage Leave Application",
@@ -68,12 +74,12 @@ export const tilesConfig = [
     title: "System Settings",
     link: "/system-settings",
     icon: <SettingsIcon />,
-    roles: ["admin", "hr"] // Admin always, HR if granted
+    roles: ["admin"] // Admin only
   },
   {
     title: "Master Lists",
     link: "/master-lists",
     icon: <SettingsIcon />,
-    roles: ["hr", "admin"]
+    roles: ["hr"] // HR only
   }
 ];

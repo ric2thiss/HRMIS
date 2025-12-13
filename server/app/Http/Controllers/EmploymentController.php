@@ -25,4 +25,6 @@ class EmploymentController extends Controller
             "data" => $employment
         ], 201);
     }
+
+    
 }

@@ -98,9 +98,9 @@ export const submitPds = async (id) => {
 export const reviewPds = async (id, action, comments = null) => {
     await api.get("/sanctum/csrf-cookie");
     
-    // Build request payload - only include comments if declining
+    // Build request payload - include comments if declining or for-revision
     const payload = { action };
-    if (action === 'decline' && comments) {
+    if ((action === 'decline' || action === 'for-revision') && comments) {
         payload.comments = comments;
     }
     

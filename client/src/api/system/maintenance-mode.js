@@ -26,4 +26,26 @@ const updateMaintenanceMode = async (isEnabled, message, allowedLoginRoles = [])
     return res.data;
 };
 
-export { getMaintenanceStatus, updateMaintenanceMode };
+/**
+ * Get system version
+ * @returns {Promise<string>} System version
+ */
+const getSystemVersion = async () => {
+    const res = await api.get('/api/system-version');
+    return res.data.version;
+};
+
+/**
+ * Update system version
+ * @param {string} version - System version string
+ * @returns {Promise<Object>} Response data
+ */
+const updateSystemVersion = async (version) => {
+    await api.get('/sanctum/csrf-cookie');
+    const res = await api.put('/api/system-version', {
+        version: version,
+    });
+    return res.data;
+};
+
+export { getMaintenanceStatus, updateMaintenanceMode, getSystemVersion, updateSystemVersion };

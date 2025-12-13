@@ -10,6 +10,62 @@
     transition: transform 0.3s ease-in-out, width 0.3s ease-in-out, padding 0.3s ease-in-out;
     transform: translateX(0);
     width: 16rem; /* w-64 equivalent */
+    
+    /* Reserve space for scrollbar (thin) - always takes up space but is transparent */
+    scrollbar-width: thin; /* Firefox - always reserves space */
+    scrollbar-color: transparent transparent; /* Firefox - transparent by default */
+    -ms-overflow-style: scrollbar; /* IE and Edge - always reserves space */
+}
+
+/* Always reserve space for scrollbar track (WebKit browsers) */
+#sidebar::-webkit-scrollbar {
+    width: 8px; /* Always reserves 8px space */
+    display: block; /* Always visible to reserve space */
+}
+
+/* Transparent track by default */
+#sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Transparent thumb by default */
+#sidebar::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+/* Show scrollbar thumb on hover (desktop) */
+#sidebar:hover {
+    scrollbar-color: rgba(156, 163, 175, 0.5) transparent; /* Firefox - visible thumb */
+}
+
+#sidebar:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+}
+
+#sidebar:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(107, 114, 128, 0.7);
+}
+
+/* Show scrollbar when actively scrolling (for mobile/touch devices) */
+#sidebar.sidebar-scrolling {
+    scrollbar-color: rgba(156, 163, 175, 0.7) transparent; /* Firefox - visible thumb */
+}
+
+#sidebar.sidebar-scrolling::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.7);
+}
+
+/* For touch devices - show scrollbar when scrolling */
+@media (hover: none) and (pointer: coarse) {
+    #sidebar.sidebar-scrolling {
+        scrollbar-color: rgba(156, 163, 175, 0.7) transparent;
+    }
+    
+    #sidebar.sidebar-scrolling::-webkit-scrollbar-thumb {
+        background-color: rgba(156, 163, 175, 0.7);
+    }
 }
 
 #menu-toggle:checked ~ div#app-container > main #sidebar {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getUserRole, hasSystemSettingsAccess } from '../../utils/userHelpers';
 
@@ -6,13 +6,47 @@ import './Sidebar.css'
 
 function Sidebar({ user, role: roleProp }) {
   const location = useLocation();
+  const sidebarRef = useRef(null);
   // Use prop if provided, otherwise get from user
   const role = roleProp || getUserRole(user);
 
-  console.log(user)
+  // Handle scrollbar visibility on mobile during scrolling
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+
+    let scrollTimeout;
+    let isScrolling = false;
+
+    const handleScroll = () => {
+      if (!isScrolling) {
+        isScrolling = true;
+        sidebar.classList.add('sidebar-scrolling');
+      }
+
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        isScrolling = false;
+        sidebar.classList.remove('sidebar-scrolling');
+      }, 1000); // Hide scrollbar 1 second after scrolling stops
+    };
+
+    sidebar.addEventListener('scroll', handleScroll, { passive: true });
+    sidebar.addEventListener('touchmove', handleScroll, { passive: true });
+
+    return () => {
+      sidebar.removeEventListener('scroll', handleScroll);
+      sidebar.removeEventListener('touchmove', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
   
   return (
-    <aside id="sidebar" className="w-64 bg-white p-4 flex flex-col shadow-lg flex-shrink-0 overflow-y-auto">
+    <aside 
+      id="sidebar" 
+      ref={sidebarRef}
+      className="w-64 bg-white p-4 flex flex-col shadow-lg flex-shrink-0 overflow-y-auto"
+    >
             
         <div className="mb-6 p-4 border rounded-lg flex justify-center">
             {user.profile_image ? (
@@ -55,12 +89,12 @@ function Sidebar({ user, role: roleProp }) {
             <div className="p-3 border rounded-lg bg-gray-50">
                 <p className="text-xs text-gray-500">PROJECT:</p>
                 <p className="font-medium text-sm sidebar-content">
-                    {user.project?.name || 'N/A'}
+                    {user.project?.project_code || 'N/A'}
                 </p>
             </div>
             <div className="p-3 border rounded-lg bg-gray-50">
                 <p className="text-xs text-gray-500">OFFICE:</p>
-                <p className="font-medium text-sm sidebar-content">REGION13</p>
+                <p className="font-medium text-sm sidebar-content">{user.office?.name || 'N/A'} ({user.office?.code || 'N/A'})</p>
             </div>
         </div>
 
@@ -104,8 +138,8 @@ function Sidebar({ user, role: roleProp }) {
                 </div>
             </details>
 
-            {/* HR/Admin Navigation */}
-            {(role === 'hr' || role === 'admin') && (
+            {/* HR only Navigation */}
+            {role === 'hr' && (
                 <details className="relative">
                     <summary className="flex items-center justify-between w-full p-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 cursor-pointer">
                         <span className="flex items-center">
@@ -162,15 +196,6 @@ function Sidebar({ user, role: roleProp }) {
                         }`}>
                             Import Attendance
                         </Link>
-                        {hasSystemSettingsAccess(user) && (
-                            <Link to="/system-settings" className={`block p-2 text-sm rounded-lg transition-colors ${
-                                location.pathname === '/system-settings' 
-                                    ? 'bg-blue-100 text-blue-700 font-medium' 
-                                    : 'text-gray-600 hover:bg-gray-100'
-                            }`}>
-                                System Settings
-                            </Link>
-                        )}
                         <Link to="/master-lists" className={`block p-2 text-sm rounded-lg transition-colors ${
                             location.pathname === '/master-lists' 
                                 ? 'bg-blue-100 text-blue-700 font-medium' 
@@ -180,6 +205,21 @@ function Sidebar({ user, role: roleProp }) {
                         </Link>
                     </div>
                 </details>
+            )}
+
+            {/* Admin only Navigation */}
+            {role === 'admin' && (
+                <Link to="/system-settings" className={`flex items-center p-2 rounded-lg text-sm font-medium ${
+                    location.pathname === '/system-settings' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'text-gray-600 hover:bg-gray-100'
+                }`}>
+                    <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    SYSTEM SETTINGS
+                </Link>
             )}
         </nav>
 

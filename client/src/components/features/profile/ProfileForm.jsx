@@ -1,24 +1,37 @@
 import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useNotification } from '../../../hooks/useNotification';
 import updateProfile from '../../../api/user/updateProfile';
+import { getUserRole } from '../../../utils/userHelpers';
 
 function ProfileForm({ user, onUpdate }) {
   const { showSuccess, showError } = useNotification();
+  const userRole = getUserRole(user);
+  const isHR = userRole === 'hr' || userRole === 'admin';
   const [formData, setFormData] = useState({
-    name: user.name || '',
-    email: user.email || '',
+    first_name: user.first_name || '',
+    last_name: user.last_name || '',
+    middle_initial: user.middle_initial || '',
+    sex: user.sex || '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
   const [profileImage, setProfileImage] = useState(user.profile_image || '');
   const [loading, setLoading] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmPassword: false,
+  });
 
   // Sync form data and profile image when user prop changes
   useEffect(() => {
     setFormData({
-      name: user.name || '',
-      email: user.email || '',
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      middle_initial: user.middle_initial || '',
+      sex: user.sex || '',
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',
@@ -60,6 +73,7 @@ function ProfileForm({ user, onUpdate }) {
     reader.readAsDataURL(file);
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -67,6 +81,11 @@ function ProfileForm({ user, onUpdate }) {
     try {
       // Validate password if changing
       if (formData.newPassword) {
+        if (!formData.currentPassword) {
+          showError('Current password is required to change password');
+          setLoading(false);
+          return;
+        }
         if (formData.newPassword.length < 6) {
           showError('New password must be at least 6 characters');
           setLoading(false);
@@ -79,11 +98,24 @@ function ProfileForm({ user, onUpdate }) {
         }
       }
 
-      // Prepare update payload
-      const updatePayload = {
-        name: formData.name,
-        email: formData.email,
-      };
+      // Prepare update payload - password, profile image, and name fields (for HR/Admin)
+      const updatePayload = {};
+
+      // Add name fields and sex if HR/Admin and they've changed
+      if (isHR) {
+        if (formData.first_name !== (user.first_name || '')) {
+          updatePayload.first_name = formData.first_name;
+        }
+        if (formData.last_name !== (user.last_name || '')) {
+          updatePayload.last_name = formData.last_name;
+        }
+        if (formData.middle_initial !== (user.middle_initial || '')) {
+          updatePayload.middle_initial = formData.middle_initial || null;
+        }
+        if (formData.sex !== (user.sex || '')) {
+          updatePayload.sex = formData.sex;
+        }
+      }
 
       // Add password if changing
       if (formData.newPassword) {
@@ -96,6 +128,14 @@ function ProfileForm({ user, onUpdate }) {
         updatePayload.profile_image = profileImage || '';
       }
 
+      // Only submit if there's something to update
+      if (!updatePayload.password && !updatePayload.profile_image && 
+          !updatePayload.first_name && !updatePayload.last_name && !updatePayload.middle_initial && !updatePayload.sex) {
+        showError('Please make a change to update your profile');
+        setLoading(false);
+        return;
+      }
+
       // Call API
       const updatedUser = await updateProfile(updatePayload);
       
@@ -104,18 +144,48 @@ function ProfileForm({ user, onUpdate }) {
         onUpdate(updatedUser);
       }
       
-      showSuccess('Profile updated successfully');
-      setFormData(prev => ({
-        ...prev,
+      // Show appropriate success message
+      const updates = [];
+      if (updatePayload.first_name || updatePayload.last_name || updatePayload.middle_initial) {
+        updates.push('name');
+      }
+      if (updatePayload.sex) {
+        updates.push('sex');
+      }
+      if (updatePayload.password) {
+        updates.push('password');
+      }
+      if (updatePayload.profile_image) {
+        updates.push('profile image');
+      }
+      
+      if (updates.length > 0) {
+        showSuccess(`${updates.join(', ')} updated successfully`);
+      }
+      
+      setFormData({
+        first_name: updatedUser.first_name || '',
+        last_name: updatedUser.last_name || '',
+        middle_initial: updatedUser.middle_initial || '',
+        sex: updatedUser.sex || '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
-      }));
+      });
     } catch (error) {
-      showError(error.response?.data?.message || 'Failed to update profile. Please try again.');
+      showError(error.response?.data?.message || 'Failed to update password. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to get full name
+  const getFullName = () => {
+    if (user.first_name || user.last_name) {
+      const parts = [user.first_name, user.middle_initial, user.last_name].filter(Boolean);
+      return parts.join(' ');
+    }
+    return user.name || 'N/A';
   };
 
   return (
@@ -167,82 +237,208 @@ function ProfileForm({ user, onUpdate }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+        {/* Profile Information - Editable for HR/Admin */}
+        <div className="border-b pb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Profile Information</h3>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          {isHR ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Middle Initial
+                </label>
+                <input
+                  type="text"
+                  name="middle_initial"
+                  value={formData.middle_initial}
+                  onChange={handleChange}
+                  maxLength="10"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sex <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-1 flex items-center space-x-4">
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      name="sex"
+                      value="Male"
+                      checked={formData.sex === 'Male'}
+                      onChange={handleChange}
+                      required
+                      className="form-radio h-4 w-4 text-blue-600"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Male</span>
+                  </label>
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      name="sex"
+                      value="Female"
+                      checked={formData.sex === 'Female'}
+                      onChange={handleChange}
+                      required
+                      className="form-radio h-4 w-4 text-blue-600"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Female</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-500 mb-2">
+                  Email Address
+                </label>
+                <div className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700">
+                  {user.email || 'N/A'}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-2">
+                  Full Name
+                </label>
+                <div className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700">
+                  {getFullName()}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-2">
+                  Email Address
+                </label>
+                <div className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700">
+                  {user.email || 'N/A'}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-2">
+                  Sex
+                </label>
+                <div className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700">
+                  {user.sex || 'N/A'}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="border-t pt-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Change Password</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Change Password </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Current Password
               </label>
-              <input
-                type="password"
-                name="currentPassword"
-                value={formData.currentPassword}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Leave empty if not changing"
-              />
+              <div className="relative">
+                <input
+                  type={showPasswords.currentPassword ? "text" : "password"}
+                  name="currentPassword"
+                  value={formData.currentPassword}
+                  onChange={handleChange}
+                  placeholder="Old Password"
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {formData.currentPassword && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords(prev => ({ ...prev, currentPassword: !prev.currentPassword }))}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPasswords.currentPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                )}
+              </div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 New Password
               </label>
-              <input
-                type="password"
-                name="newPassword"
-                value={formData.newPassword}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Min. 6 characters"
-              />
+              <div className="relative">
+                <input
+                  type={showPasswords.newPassword ? "text" : "password"}
+                  name="newPassword"
+                  value={formData.newPassword}
+                  onChange={handleChange}
+                  minLength={6}
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Min. 6 characters"
+                />
+                {formData.newPassword && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords(prev => ({ ...prev, newPassword: !prev.newPassword }))}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPasswords.newPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                )}
+              </div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Confirm Password
               </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Confirm new password"
-              />
+              <div className="relative">
+                <input
+                  type={showPasswords.confirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Confirm new password"
+                />
+                {formData.confirmPassword && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords(prev => ({ ...prev, confirmPassword: !prev.confirmPassword }))}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPasswords.confirmPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+          {/* <p className="text-sm text-gray-500 mt-2">Leave password fields empty if you only want to update your profile image.</p> */}
         </div>
 
         <div className="flex justify-end gap-4">
@@ -250,8 +446,10 @@ function ProfileForm({ user, onUpdate }) {
             type="button"
             onClick={() => {
               setFormData({
-                name: user.name || '',
-                email: user.email || '',
+                first_name: user.first_name || '',
+                last_name: user.last_name || '',
+                middle_initial: user.middle_initial || '',
+                sex: user.sex || '',
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: '',
@@ -264,7 +462,16 @@ function ProfileForm({ user, onUpdate }) {
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (
+              profileImage === (user.profile_image || '') && 
+              !formData.newPassword &&
+              (!isHR || (
+                formData.first_name === (user.first_name || '') &&
+                formData.last_name === (user.last_name || '') &&
+                formData.middle_initial === (user.middle_initial || '') &&
+                formData.sex === (user.sex || '')
+              ))
+            )}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Updating...' : 'Update Profile'}

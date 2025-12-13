@@ -65,7 +65,8 @@ function Pds() {
   }
 
   const role = user?.roles?.[0]?.name;
-  const isHR = role === 'hr' || role === 'admin';
+  const isHR = role === 'hr';
+  const isAdmin = role === 'admin';
 
   return (
     <AppLayout user={user} logout={logout} loading={loading} title="My PDS">
@@ -76,7 +77,7 @@ function Pds() {
           {isHR && (
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
               <p className="text-sm text-blue-700">
-                <strong>Note:</strong> As HR/Admin, you can maintain your own PDS for record-keeping. This PDS will remain in draft status and cannot be submitted for approval.
+                <strong>Note:</strong> As HR, you can maintain your own PDS for record-keeping. This PDS will remain in draft status and cannot be submitted for approval.
               </p>
             </div>
           )}
@@ -86,6 +87,7 @@ function Pds() {
               onUpdate={handleUpdate}
               onRefresh={handleRefresh}
               isHR={isHR}
+              isAdmin={isAdmin}
             />
           )}
           {showForm && (

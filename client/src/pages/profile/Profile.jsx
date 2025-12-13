@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import AppLayout from '../../components/Layout/AppLayout';
 import ProfileForm from '../../components/features/profile/ProfileForm';
 import ProfileInfo from '../../components/features/profile/ProfileInfo';
+import LoadingScreen from '../../components/Loading/LoadingScreen';
 
 function Profile() {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ function Profile() {
 
   // Show full page loading only for initial auth check
   if (loading || !user) {
-    return null;
+    return <LoadingScreen />;
   }
 
   return (

@@ -2,10 +2,11 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import AppLayout from '../../components/Layout/AppLayout';
-import ApprovalList from '../../components/features/approval/ApprovalList';
-import AdminDashboard from '../../components/features/dashboard/Dashboard'
+import AdminDashboardComponent from '../../components/features/adminDashboard/AdminDashboard';
+import LoadingScreen from '../../components/Loading/LoadingScreen';
+import { getUserRole } from '../../utils/userHelpers';
 
-function adminDashboard() {
+function AdminDashboard() {
   const navigate = useNavigate();
   const { user, logout, loading } = useAuth();
 
@@ -16,8 +17,8 @@ function adminDashboard() {
     }
 
     if (user) {
-      const role = user?.roles?.[0]?.name;
-      if (role !== 'hr') {
+      const role = getUserRole(user);
+      if (role !== 'admin') {
         navigate("/dashboard");
       }
     }
@@ -25,21 +26,20 @@ function adminDashboard() {
 
   // Show full page loading only for initial auth check
   if (loading || !user) {
-    return null;
+    return <LoadingScreen />;
   }
 
-  const role = user?.roles?.[0]?.name;
-  if (role !== 'hr') {
+  const role = getUserRole(user);
+  if (role !== 'admin') {
     return null;
   }
 
   return (
     <AppLayout user={user} logout={logout} loading={loading} title="Admin Dashboard">
-      {/* <ApprovalList /> */}
-      <AdminDashboard />
+      <AdminDashboardComponent />
     </AppLayout>
   );
 }
 
-export default adminDashboard;
+export default AdminDashboard;
 

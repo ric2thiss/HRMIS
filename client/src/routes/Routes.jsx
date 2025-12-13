@@ -15,11 +15,16 @@ import MaintenanceMode from '../pages/maintenance-mode/MaintenanceMode'
 import Profile from '../pages/profile/Profile'
 import MyLeave from '../pages/leave/MyLeave'
 import ManageLeave from '../pages/leave/ManageLeave'
+import LeaveTracking from '../pages/leave/LeaveTracking'
 import MyApproval from '../pages/approval/MyApproval'
 import ImportAttendance from '../pages/attendance/ImportAttendance'
+import ViewAttendance from '../pages/attendance/ViewAttendance'
 import ManagePds from '../pages/pds/ManagePds'
 import MasterLists from '../pages/masterLists/MasterLists'
 import AdminDashboard from "../pages/adminDashboard/adminDashboard";
+import HrDashboard from "../pages/hrDashboard/HrDashboard";
+import LockedAccount from '../pages/lockedAccount/LockedAccount';
+import ForceChangePassword from '../pages/forceChangePassword/ForceChangePassword';
 
 export default function Routers() {
     return (
@@ -32,6 +37,16 @@ export default function Routers() {
               </GuestRoute>
           } />
 
+          {/* Locked account info page (public) */}
+          <Route path="/locked-account" element={<LockedAccount />} />
+
+          {/* Force change password page (protected, but accessible when password change required) */}
+          <Route path="/force-change-password" element={
+              <ProtectedRoute>
+                  <ForceChangePassword />
+              </ProtectedRoute>
+          } />
+
           <Route path="/dashboard" element={
               <ProtectedRoute>
                   <Dashboard />
@@ -42,6 +57,12 @@ export default function Routers() {
           <Route path="/my-leave" element={
               <ProtectedRoute>
                   <MyLeave />
+              </ProtectedRoute>
+          } />
+
+          <Route path="/leave-application/:id/track" element={
+              <ProtectedRoute>
+                  <LeaveTracking />
               </ProtectedRoute>
           } />
 
@@ -63,57 +84,70 @@ export default function Routers() {
               </ProtectedRoute>
           } />
 
-          {/* HR/Admin routes */}
+          {/* HR only routes */}
           <Route path="/manage-employees" element={
-              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+              <RoleProtectedRoute allowedRoles={['hr']}>
                   <ManageEmployees />
               </RoleProtectedRoute>
           } />
 
           <Route path="/manage-accounts" element={
-              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+              <RoleProtectedRoute allowedRoles={['hr']}>
                   <ManageAccount />
               </RoleProtectedRoute>
           } />
 
-          <Route path="/system-settings" element={
-              <ProtectedRoute>
-                  <SystemSettingsPage />
-              </ProtectedRoute>
-          } />
-
           <Route path="/master-lists" element={
-              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+              <RoleProtectedRoute allowedRoles={['hr']}>
                   <MasterLists />
               </RoleProtectedRoute>
           } />
 
           <Route path="/my-approval" element={
-              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+              <ProtectedRoute>
                   <MyApproval />
-              </RoleProtectedRoute>
+              </ProtectedRoute>
           } />
 
           <Route path="/manage-pds" element={
-              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+              <RoleProtectedRoute allowedRoles={['hr']}>
                   <ManagePds />
               </RoleProtectedRoute>
           } />
 
           <Route path="/manage-leave" element={
-              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+              <RoleProtectedRoute allowedRoles={['hr']}>
                   <ManageLeave />
               </RoleProtectedRoute>
           } />
 
           <Route path="/import-attendance" element={
-              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+              <RoleProtectedRoute allowedRoles={['hr']}>
                   <ImportAttendance />
               </RoleProtectedRoute>
           } />
 
-          <Route path="/admin/dashboard" element={
+          <Route path="/view-attendance" element={
+              <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
+                  <ViewAttendance />
+              </RoleProtectedRoute>
+          } />
+
+          {/* Admin only routes */}
+          <Route path="/system-settings" element={
+              <RoleProtectedRoute allowedRoles={['admin']}>
+                  <SystemSettingsPage />
+              </RoleProtectedRoute>
+          } />
+
+          <Route path="/hr/dashboard" element={
             <RoleProtectedRoute allowedRoles={["hr"]}>
+                <HrDashboard />
+            </RoleProtectedRoute>
+          }/>
+
+          <Route path="/admin/dashboard" element={
+            <RoleProtectedRoute allowedRoles={["admin"]}>
                 <AdminDashboard />
             </RoleProtectedRoute>
           }/>
