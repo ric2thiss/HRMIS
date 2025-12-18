@@ -1,0 +1,246 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { getUserRole } from '../utils/userHelpers';
+
+// Import all API functions
+import { getAllPds, getEmployeesWithoutPds } from '../api/pds/pds';
+import { getMyPendingApprovals, getLeaveApplications } from '../api/leave/leaveApplications';
+import { getAllMasterLists } from '../api/master-lists/masterLists';
+import { checkIfApprover } from '../api/master-lists/approvalNames';
+
+// Import query keys
+import { pdsQueryKeys } from './usePdsData';
+import { approvalQueryKeys } from './useApprovalData';
+
+/**
+ * Global prefetch hook - prefetches all critical data after login
+ * This runs in the background to populate cache for all modules
+ */
+export const useGlobalPrefetch = () => {
+  const queryClient = useQueryClient();
+
+  /**
+   * Prefetch all data based on user role
+   * Runs after login to cache everything users might need
+   */
+  const prefetchAllData = async (user) => {
+    if (!user) return;
+
+    const role = getUserRole(user);
+    const isHROrAdmin = role === 'hr' || role === 'admin';
+
+    console.log('🚀 Starting global data prefetch for role:', role);
+
+    try {
+      // Create an array of prefetch promises
+      const prefetchPromises = [];
+
+      // ===================================
+      // MASTER LISTS (All Users)
+      // ===================================
+      prefetchPromises.push(
+        queryClient.prefetchQuery({
+          queryKey: approvalQueryKeys.masterLists(),
+          queryFn: async () => await getAllMasterLists(),
+          staleTime: 10 * 60 * 1000, // 10 minutes for master lists
+        })
+      );
+
+      // ===================================
+      // HR/ADMIN SPECIFIC DATA
+      // ===================================
+      if (isHROrAdmin) {
+        // 1. PDS Management Data
+        prefetchPromises.push(
+          // All PDS
+          queryClient.prefetchQuery({
+            queryKey: pdsQueryKeys.list(null),
+            queryFn: async () => {
+              const response = await getAllPds(null);
+              return response.pds || [];
+            },
+            staleTime: 5 * 60 * 1000,
+          }),
+          // Pending PDS
+          queryClient.prefetchQuery({
+            queryKey: pdsQueryKeys.list('pending'),
+            queryFn: async () => {
+              const response = await getAllPds('pending');
+              return response.pds || [];
+            },
+            staleTime: 5 * 60 * 1000,
+          }),
+          // Employees without PDS
+          queryClient.prefetchQuery({
+            queryKey: pdsQueryKeys.noPds(),
+            queryFn: async () => {
+              const response = await getEmployeesWithoutPds();
+              return response.employees || [];
+            },
+            staleTime: 5 * 60 * 1000,
+          })
+        );
+
+        // 2. Approval/Leave Management Data
+        prefetchPromises.push(
+          // Pending leave approvals
+          queryClient.prefetchQuery({
+            queryKey: approvalQueryKeys.pendingLeaves(role),
+            queryFn: async () => {
+              const response = await getLeaveApplications({ status: 'pending' });
+              return response || [];
+            },
+            staleTime: 5 * 60 * 1000,
+          }),
+          // Pending PDS approvals
+          queryClient.prefetchQuery({
+            queryKey: approvalQueryKeys.pendingPds(),
+            queryFn: async () => {
+              const response = await getAllPds('pending');
+              return response.pds || [];
+            },
+            staleTime: 5 * 60 * 1000,
+          })
+        );
+
+        console.log('✅ Prefetching HR/Admin specific data...');
+      }
+
+      // ===================================
+      // REGULAR EMPLOYEE/APPROVER DATA
+      // ===================================
+      if (!isHROrAdmin) {
+        // Check if user is an approver
+        prefetchPromises.push(
+          queryClient.prefetchQuery({
+            queryKey: approvalQueryKeys.isApprover(),
+            queryFn: async () => await checkIfApprover(),
+            staleTime: 5 * 60 * 1000,
+          })
+        );
+
+        // If user might be an approver, prefetch their approvals
+        prefetchPromises.push(
+          queryClient.prefetchQuery({
+            queryKey: approvalQueryKeys.pendingLeaves(role),
+            queryFn: async () => {
+              try {
+                const response = await getMyPendingApprovals();
+                return response.leaves || [];
+              } catch (err) {
+                // User might not be an approver, that's okay
+                return [];
+              }
+            },
+            staleTime: 5 * 60 * 1000,
+          })
+        );
+
+        console.log('✅ Prefetching employee/approver data...');
+      }
+
+      // ===================================
+      // COMMON DATA (All Users)
+      // ===================================
+      // My Leave Credits, My Leave Applications, etc. can be added here
+      // Example:
+      // prefetchPromises.push(
+      //   queryClient.prefetchQuery({
+      //     queryKey: ['my-leave-credits'],
+      //     queryFn: async () => await getMyLeaveCredits(),
+      //     staleTime: 5 * 60 * 1000,
+      //   })
+      // );
+
+      // Execute all prefetch operations in parallel
+      await Promise.allSettled(prefetchPromises);
+
+      console.log('✅ Global prefetch completed successfully!');
+      console.log(`📦 Cached ${prefetchPromises.length} queries`);
+    } catch (error) {
+      console.error('❌ Error during global prefetch:', error);
+      // Don't throw - prefetch failures shouldn't block the app
+    }
+  };
+
+  /**
+   * Prefetch data for a specific module
+   * Can be called when hovering over nav items
+   */
+  const prefetchModule = async (moduleName, user) => {
+    if (!user) return;
+
+    const role = getUserRole(user);
+    const isHROrAdmin = role === 'hr' || role === 'admin';
+
+    switch (moduleName) {
+      case 'manage-pds':
+        if (isHROrAdmin) {
+          await Promise.allSettled([
+            queryClient.prefetchQuery({
+              queryKey: pdsQueryKeys.list(null),
+              queryFn: async () => {
+                const response = await getAllPds(null);
+                return response.pds || [];
+              },
+              staleTime: 5 * 60 * 1000,
+            }),
+            queryClient.prefetchQuery({
+              queryKey: pdsQueryKeys.noPds(),
+              queryFn: async () => {
+                const response = await getEmployeesWithoutPds();
+                return response.employees || [];
+              },
+              staleTime: 5 * 60 * 1000,
+            }),
+          ]);
+        }
+        break;
+
+      case 'my-approval':
+        await Promise.allSettled([
+          queryClient.prefetchQuery({
+            queryKey: approvalQueryKeys.pendingLeaves(role),
+            queryFn: async () => {
+              if (isHROrAdmin) {
+                const response = await getLeaveApplications({ status: 'pending' });
+                return response || [];
+              } else {
+                const response = await getMyPendingApprovals();
+                return response.leaves || [];
+              }
+            },
+            staleTime: 5 * 60 * 1000,
+          }),
+          isHROrAdmin && queryClient.prefetchQuery({
+            queryKey: approvalQueryKeys.pendingPds(),
+            queryFn: async () => {
+              const response = await getAllPds('pending');
+              return response.pds || [];
+            },
+            staleTime: 5 * 60 * 1000,
+          }),
+        ]);
+        break;
+
+      // Add more modules as needed
+      default:
+        break;
+    }
+  };
+
+  /**
+   * Clear all cached data
+   * Called on logout
+   */
+  const clearAllCache = () => {
+    queryClient.clear();
+    console.log('🗑️ All cache cleared');
+  };
+
+  return {
+    prefetchAllData,
+    prefetchModule,
+    clearAllCache,
+  };
+};
+

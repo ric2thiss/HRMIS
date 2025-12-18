@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { Pencil, Lock, Unlock, Trash2 } from 'lucide-react';
 import AddAccountForm from "./AddAccountForm";
 import EditAccountModal from "./EditAccountModal";
 import api from "../../../api/axios";
@@ -11,36 +12,37 @@ import LoadingSpinner from "../../../components/Loading/LoadingSpinner";
 import { useAuth } from "../../../hooks/useAuth";
 import { getUserRole } from "../../../utils/userHelpers";
 import { useNotificationStore } from "../../../stores/notificationStore";
+import { useUserAccountsStore } from "../../../stores/userAccountsStore";
+import { useEmploymentTypesStore } from "../../../stores/employmentTypesStore";
+import TableActionButton from "../../ui/TableActionButton";
 
 function AccountManager() {
     const { user: currentUser } = useAuth();
     const isAdmin = getUserRole(currentUser) === 'admin';
     const showSuccess = useNotificationStore((state) => state.showSuccess);
     const showError = useNotificationStore((state) => state.showError);
-    const [accounts, setAccounts] = useState([]);
+    const { getAccounts, accounts, updateAccountInCache, addAccountToCache, removeAccountFromCache, refreshAccounts } = useUserAccountsStore();
+    const { getEmploymentTypes, employmentTypes } = useEmploymentTypesStore();
     const [roles, setRoles] = useState([]);
-    const [employmentTypes, setEmploymentTypes] = useState([]);
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [editingAccount, setEditingAccount] = useState(null);
     const [loading, setLoading] = useState(false);
     const [initializing, setInitializing] = useState(true);
     const [error, setError] = useState(null);
 
-    // Fetch roles + users on mount
+    // Fetch roles, users, and employment types on mount (using cache where available)
     useEffect(() => {
         const fetchData = async () => {
             try {
                 await api.get("/sanctum/csrf-cookie");
 
-                const [rolesRes, usersRes, employmentRes] = await Promise.all([
+                const [rolesRes] = await Promise.all([
                     api.get("/api/roles"),
-                    api.get("/api/users"),
-                    api.get("/api/employment/types")
+                    getAccounts(), // Use cached accounts
+                    getEmploymentTypes() // Use cached employment types
                 ]);
                 
                 setRoles(rolesRes.data.roles || []);
-                setAccounts(usersRes.data.users || []);
-                setEmploymentTypes(employmentRes.data || []);
                 
             } catch (err) {
                 setError("Failed to load account data.");
@@ -50,7 +52,7 @@ function AccountManager() {
         };
 
         fetchData();
-    }, []);
+    }, [getAccounts, getEmploymentTypes]);
 
     // Handle new account creation
     const handleAddAccount = useCallback(
@@ -79,9 +81,8 @@ function AccountManager() {
                 // Build account name for success message
                 const accountName = `${first_name} ${middle_initial || ''} ${last_name}`.trim() || email;
 
-                // Refresh accounts list after creation
-                const usersRes = await api.get("/api/users");
-                setAccounts(usersRes.data.users || []);
+                // Refresh accounts cache after creation
+                await refreshAccounts();
 
                 setIsFormVisible(false);
                 setError(null);
@@ -100,7 +101,7 @@ function AccountManager() {
                 setLoading(false);
             }
         },
-        [showSuccess, showError]
+        [showSuccess, showError, refreshAccounts]
     );
 
     const handleCancel = useCallback(() => {
@@ -123,7 +124,7 @@ function AccountManager() {
             try {
                 setLoading(true);
                 await deleteAccount(accountId);
-                setAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
+                removeAccountFromCache(accountId);
                 showSuccess('Account deleted successfully');
                 setError(null);
             } catch (err) {
@@ -143,9 +144,7 @@ function AccountManager() {
     };
 
     const handleAccountUpdate = (updatedAccount) => {
-        setAccounts((prev) =>
-            prev.map((acc) => (acc.id === updatedAccount.id ? updatedAccount : acc))
-        );
+        updateAccountInCache(updatedAccount);
         setEditingAccount(null);
     };
 
@@ -169,9 +168,7 @@ function AccountManager() {
         try {
             setLoading(true);
             const updatedUser = await toggleLock(accountId, !currentLockStatus);
-            setAccounts((prev) =>
-                prev.map((acc) => (acc.id === accountId ? updatedUser : acc))
-            );
+            updateAccountInCache(updatedUser);
             showSuccess(`Account ${action}ed successfully`);
             setError(null);
         } catch (err) {
@@ -194,14 +191,11 @@ function AccountManager() {
             setLoading(true);
             const updatedUser = await toggleSystemSettingsAccess(accountId, !currentAccess);
             
-            // Update the account in the list
-            setAccounts((prev) => 
-                prev.map(acc => 
-                    acc.id === accountId 
-                        ? { ...acc, has_system_settings_access: updatedUser.has_system_settings_access }
-                        : acc
-                )
-            );
+            // Update the account in cache
+            updateAccountInCache({
+                ...accounts.find(acc => acc.id === accountId),
+                has_system_settings_access: updatedUser.has_system_settings_access
+            });
             
             showSuccess(
                 updatedUser.has_system_settings_access 
@@ -352,32 +346,30 @@ function AccountManager() {
                                     )}
                                     <td className="px-6 py-4 text-sm font-medium">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <button
+                                            <TableActionButton
+                                                variant="indigo"
+                                                icon={Pencil}
+                                                label="Edit"
                                                 onClick={() => handleAction(account.id, "Edit")}
-                                                className="text-indigo-600 hover:text-indigo-900"
                                                 disabled={loading}
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
+                                                title="Edit account"
+                                            />
+                                            <TableActionButton
+                                                variant={account.is_locked ? "green" : "yellow"}
+                                                icon={account.is_locked ? Unlock : Lock}
+                                                label={account.is_locked ? 'Unlock' : 'Lock'}
                                                 onClick={() => handleToggleLock(account.id, account.is_locked)}
                                                 disabled={loading}
-                                                className={`${
-                                                    account.is_locked 
-                                                        ? 'text-green-600 hover:text-green-900' 
-                                                        : 'text-yellow-600 hover:text-yellow-900'
-                                                } disabled:opacity-50 disabled:cursor-not-allowed`}
                                                 title={account.is_locked ? 'Click to unlock account' : 'Click to lock account'}
-                                            >
-                                                {account.is_locked ? 'Unlock' : 'Lock'}
-                                            </button>
-                                            <button
+                                            />
+                                            <TableActionButton
+                                                variant="red"
+                                                icon={Trash2}
+                                                label="Delete"
                                                 onClick={() => handleAction(account.id, "Delete")}
-                                                className="text-red-600 hover:text-red-900"
                                                 disabled={loading}
-                                            >
-                                                Delete
-                                            </button>
+                                                title="Delete account"
+                                            />
                                         </div>
                                     </td>
                                 </tr>

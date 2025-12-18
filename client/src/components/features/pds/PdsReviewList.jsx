@@ -1,34 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { getAllPds, reviewPds } from '../../../api/pds/pds';
+import React, { useState } from 'react';
+import { Eye, CheckCircle, FileEdit, XCircle } from 'lucide-react';
+import { reviewPds } from '../../../api/pds/pds';
 import { useNotification } from '../../../hooks/useNotification';
+import { useAuth } from '../../../hooks/useAuth';
+import { usePendingPdsApprovals, useInvalidateApprovalQueries } from '../../../hooks/useApprovalData';
 import PdsReviewModal from './PdsReviewModal';
 import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
+import TableActionButton from '../../ui/TableActionButton';
 
 function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview }) {
     const { showSuccess, showError } = useNotification();
-    const [pendingPds, setPendingPds] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
     const [selectedPds, setSelectedPds] = useState(null);
     const searchQuery = externalSearchQuery;
 
-    useEffect(() => {
-        loadPendingPds();
-    }, []);
-
-    const loadPendingPds = async () => {
-        try {
-            setLoading(true);
-            const response = await getAllPds();
-            const allPds = response.pds || [];
-            const pending = allPds.filter(pds => pds.status === 'pending');
-            setPendingPds(pending);
-        } catch (err) {
-            console.error('Error loading PDS:', err);
-            showError('Failed to load PDS submissions');
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Use React Query to fetch PDS data with caching
+    const { data: pendingPds = [], isLoading: loading } = usePendingPdsApprovals(user);
+    const { invalidateAllApprovalQueries } = useInvalidateApprovalQueries();
 
     const handleReview = async (pdsId, action, comments = null) => {
         try {
@@ -40,7 +28,8 @@ function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview }) {
                 showSuccess('PDS approved! The employee has been notified.');
             }
             
-            loadPendingPds(); // Refresh list
+            // Invalidate approval queries to refetch fresh data
+            invalidateAllApprovalQueries();
             setSelectedPds(null);
             // Notify parent to update count
             if (onReview) {
@@ -149,31 +138,37 @@ function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview }) {
                                             FOR APPROVAL
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <button
-                                            onClick={() => setSelectedPds({ ...pds, action: 'view' })}
-                                            className="text-blue-600 hover:text-blue-900"
-                                        >
-                                            View
-                                        </button>
-                                        <button
-                                            onClick={() => setSelectedPds({ ...pds, action: 'approve' })}
-                                            className="text-green-600 hover:text-green-900"
-                                        >
-                                            Approve
-                                        </button>
-                                        <button
-                                            onClick={() => setSelectedPds({ ...pds, action: 'for-revision' })}
-                                            className="text-orange-600 hover:text-orange-900"
-                                        >
-                                            For Revision
-                                        </button>
-                                        <button
-                                            onClick={() => setSelectedPds({ ...pds, action: 'decline' })}
-                                            className="text-red-600 hover:text-red-900"
-                                        >
-                                            Decline
-                                        </button>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex gap-2 items-center flex-wrap">
+                                            <TableActionButton
+                                                variant="blue"
+                                                icon={Eye}
+                                                label="View"
+                                                onClick={() => setSelectedPds({ ...pds, action: 'view' })}
+                                                title="View PDS"
+                                            />
+                                            <TableActionButton
+                                                variant="green"
+                                                icon={CheckCircle}
+                                                label="Approve"
+                                                onClick={() => setSelectedPds({ ...pds, action: 'approve' })}
+                                                title="Approve PDS"
+                                            />
+                                            <TableActionButton
+                                                variant="orange"
+                                                icon={FileEdit}
+                                                label="For Revision"
+                                                onClick={() => setSelectedPds({ ...pds, action: 'for-revision' })}
+                                                title="Request revision"
+                                            />
+                                            <TableActionButton
+                                                variant="red"
+                                                icon={XCircle}
+                                                label="Decline"
+                                                onClick={() => setSelectedPds({ ...pds, action: 'decline' })}
+                                                title="Decline PDS"
+                                            />
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

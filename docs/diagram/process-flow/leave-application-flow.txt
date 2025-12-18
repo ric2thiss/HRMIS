@@ -1,0 +1,284 @@
+# Leave Management - Application Process Flow (ASCII)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                      LEAVE APPLICATION PROCESS FLOW                             ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+                              ┌─────────────┐
+                              │   START     │
+                              │  (Employee) │
+                              └──────┬──────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Navigate to Leave   │
+                          │  Application page    │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Click "Apply for    │
+                          │  Leave" button       │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────────────┐
+                          │  Display Leave Application   │
+                          │  Form:                       │
+                          │  - Leave Type (dropdown)     │
+                          │  - Start Date (date picker)  │
+                          │  - End Date (date picker)    │
+                          │  - Reason (textarea)         │
+                          │  - Documents (file upload)   │
+                          └──────────┬───────────────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Employee fills form │
+                          │  and submits         │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Frontend Validation │
+                          └──────────┬───────────┘
+                                     │
+                       ┌─────────────┴─────────────┐
+                       │                           │
+                  [Valid?]                    [Invalid?]
+                       │                           │
+                   ┌───▼───┐                   ┌───▼───┐
+                   │  YES  │                   │  NO   │
+                   └───┬───┘                   └───┬───┘
+                       │                           │
+                       │                           ▼
+                       │              ┌────────────────────────┐
+                       │              │  Show validation errors│
+                       │              │  - Required fields     │
+                       │              │  - Date validations    │
+                       │              └────────────┬───────────┘
+                       │                           │
+                       │              ┌────────────┘
+                       │              │
+                       ▼              ▼
+            ┌──────────────────────────────┐
+            │  POST /api/leave/applications│
+            │  {                           │
+            │    leave_type_id: 1          │
+            │    start_date: "2025-01-20"  │
+            │    end_date: "2025-01-22"    │
+            │    reason: "Family vacation" │
+            │    documents: [files]        │
+            │  }                           │
+            └──────────────┬───────────────┘
+                           │
+                           ▼
+            ┌──────────────────────────────┐
+            │  BACKEND: Validate Request   │
+            │  - Check required fields     │
+            │  - Validate date formats     │
+            │  - Validate leave_type_id    │
+            └──────────────┬───────────────┘
+                           │
+                           ▼
+            ┌──────────────────────────────┐
+            │  Calculate total days        │
+            │  (working days between dates)│
+            └──────────────┬───────────────┘
+                           │
+                           ▼
+            ┌──────────────────────────────┐
+            │  Business Rules Validation   │
+            └──────────────┬───────────────┘
+                           │
+         ┌─────────────────┼─────────────────┬──────────────────┐
+         │                 │                 │                  │
+         ▼                 ▼                 ▼                  ▼
+    ┌─────────┐      ┌──────────┐     ┌──────────┐      ┌──────────┐
+    │ Check   │      │ Check    │     │ Check    │      │ Check    │
+    │ leave   │      │ date     │     │ no       │      │ max days │
+    │ credits │      │ conflicts│     │ overlaps │      │ limit    │
+    └────┬────┘      └────┬─────┘     └────┬─────┘      └────┬─────┘
+         │                │                 │                  │
+         └────────────────┴─────────────────┴──────────────────┘
+                                    │
+                     ┌──────────────┴──────────────┐
+                     │                             │
+               [All passed?]                 [Any failed?]
+                     │                             │
+                 ┌───▼───┐                     ┌───▼───┐
+                 │  YES  │                     │  NO   │
+                 └───┬───┘                     └───┬───┘
+                     │                             │
+                     │                             ▼
+                     │              ┌──────────────────────────┐
+                     │              │  Return 422 or 403       │
+                     │              │  with specific error:    │
+                     │              │  - "Insufficient credits"│
+                     │              │  - "Date conflict"       │
+                     │              │  - "Exceeds max days"    │
+                     │              │  - "Date overlap"        │
+                     │              └──────────────┬───────────┘
+                     │                             │
+                     │                             │
+                     ▼                             │
+         ┌─────────────────────────┐               │
+         │ Create Leave Application│               │
+         │ Status: 'pending'       │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Upload documents        │               │
+         │ (if provided)           │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Get approver            │               │
+         │ (based on hierarchy)    │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Create notification     │               │
+         │ for approver            │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Send email notification │               │
+         │ to approver             │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Log activity            │               │
+         │ (ModuleAccessLog)       │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Return 201 Created      │               │
+         │ {                       │               │
+         │   success: true,        │               │
+         │   data: {               │               │
+         │     id: 123,            │               │
+         │     status: "pending",  │               │
+         │     ...                 │               │
+         │   }                     │               │
+         │ }                       │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      │◄───────────────────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ Frontend: Show success  │
+         │ message                 │
+         └────────────┬────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ Redirect to "My Leaves" │
+         │ page                    │
+         └────────────┬────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────────────────┐
+         │ Display application in pending list │
+         │ with status indicator               │
+         └────────────┬────────────────────────┘
+                      │
+                      ▼
+              ┌──────────────┐
+              │ Wait for     │
+              │ Approval     │
+              └──────┬───────┘
+                     │
+                     │
+    ┌────────────────┼────────────────┐
+    │                │                │
+    ▼                ▼                ▼
+┌─────────┐    ┌──────────┐    ┌──────────┐
+│Approved │    │ Rejected │    │ Pending  │
+└────┬────┘    └────┬─────┘    └────┬─────┘
+     │              │                │
+     ▼              ▼                ▼
+┌──────────┐  ┌───────────┐   ┌────────────┐
+│ Deduct   │  │ No credit │   │ Can cancel │
+│ credits  │  │ deduction │   │ if needed  │
+└────┬─────┘  └─────┬─────┘   └─────┬──────┘
+     │              │                │
+     └──────────────┴────────────────┘
+                    │
+                    ▼
+         ┌──────────────────────┐
+         │ Notify employee via: │
+         │ - Email              │
+         │ - System notification│
+         │ - Dashboard alert    │
+         └──────────┬───────────┘
+                    │
+                    ▼
+               ┌─────────┐
+               │   END   │
+               └─────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+BUSINESS RULES CHECKED:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. LEAVE CREDITS CHECK
+   - Employee must have sufficient leave credits
+   - Credits calculated: (total_credits - used_credits) >= requested_days
+   
+2. DATE CONFLICT CHECK
+   - Start date must be before end date
+   - Dates must be in the future (or configurable advance days)
+   - Cannot be more than X days in advance (configurable)
+
+3. OVERLAP CHECK
+   - No existing approved/pending leave for the same dates
+   - Check for date range overlaps in database
+
+4. MAX DAYS LIMIT
+   - Single application cannot exceed max days (e.g., 30 days)
+   - Based on leave type configuration
+
+5. LEAVE TYPE REQUIREMENTS
+   - Check if supporting documents required
+   - Validate document uploads if mandatory
+
+6. WORKING DAYS CALCULATION
+   - Exclude weekends (Saturday, Sunday)
+   - Exclude company holidays
+   - Count only working days
+
+═══════════════════════════════════════════════════════════════════════════════
+NOTIFICATION FLOW:
+═══════════════════════════════════════════════════════════════════════════════
+
+Employee submits → System creates notification → Email sent to approver
+                                               → In-app notification
+                                               → Dashboard badge updated
+
+Approval/Rejection → Email sent to employee → In-app notification
+                                           → SMS (optional)
+                                           → Update leave credits
+
+═══════════════════════════════════════════════════════════════════════════════
+ERROR RESPONSES:
+═══════════════════════════════════════════════════════════════════════════════
+
+422 Validation Error    - Invalid input, missing fields
+403 Forbidden           - Insufficient credits, date conflicts
+404 Not Found           - Invalid leave type
+500 Server Error        - System error during processing
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+

@@ -1,8 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { FileEdit, Send, Printer } from 'lucide-react';
 import { submitPds, updatePds, getPds } from '../../../api/pds/pds';
 import { useNotification } from '../../../hooks/useNotification';
 import PdsPrintView from '../../PdsForm/PdsPrintView';
 import { generatePdsPdfUrl } from '../../../utils/pdsPdfGenerator';
+import TableActionButton from '../../ui/TableActionButton';
 
 /**
  * Calculate completion percentage based on filled fields
@@ -365,74 +367,76 @@ function PdsStatusTable({ pds, onUpdate, onRefresh, isHR = false, isAdmin = fals
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {pds.submitted_at ? new Date(pds.submitted_at).toLocaleDateString() : '-'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                {/* Update button - always visible for employees (including pending) */}
-                                {/* When updating pending PDS, status will change to draft */}
-                                <button
-                                    onClick={handleView}
-                                    className="text-blue-600 hover:text-blue-900"
-                                    title={
-                                        pds.status === 'pending' 
-                                            ? 'Click to update (will change status to draft and remove from pending list)' 
-                                            : pds.status === 'approved' 
-                                                ? 'Click to update (will change status to draft)' 
-                                                : 'Update PDS'
-                                    }
-                                >
-                                    Update PDS
-                                </button>
-                                
-                                {/* Submit button - show for employees and admin users (HR cannot submit) */}
-                                {/* Hide button when status is approved - user must update first to change status to draft */}
-                                {/* Hide button when status is pending - already submitted */}
-                                {!isHR && // HR cannot submit, but Admin can (like employees)
-                                 pds.status !== 'approved' &&
-                                 pds.status !== 'pending' &&
-                                 (pds.status === 'draft' || 
-                                  pds.status === 'declined' || 
-                                  pds.status === 'for-revision' ||
-                                  !pds.status) && // Handle null/undefined as draft
-                                 pds?.form_data && (
-                                    <button
-                                        onClick={handleSubmit}
-                                        disabled={submitting}
-                                        className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex gap-2 items-center flex-wrap">
+                                    {/* Update button - always visible for employees (including pending) */}
+                                    {/* When updating pending PDS, status will change to draft */}
+                                    <TableActionButton
+                                        variant="blue"
+                                        icon={FileEdit}
+                                        label="Update PDS"
+                                        onClick={handleView}
                                         title={
-                                            submitting
-                                                ? 'Submitting...'
-                                                : completion < 50 
-                                                    ? `PDS is ${completion}% complete. Click to submit anyway.` 
-                                                    : 'Submit for Approval'
+                                            pds.status === 'pending' 
+                                                ? 'Click to update (will change status to draft and remove from pending list)' 
+                                                : pds.status === 'approved' 
+                                                    ? 'Click to update (will change status to draft)' 
+                                                    : 'Update PDS'
                                         }
-                                    >
-                                        {submitting ? 'Submitting...' : 'Submit for Approval'}
-                                    </button>
-                                )}
-                                {/* Show message if PDS exists but hasn't been saved yet (only for non-approved, non-pending statuses) */}
-                                {!isHR && // HR cannot submit, but Admin can (like employees)
-                                 pds.status !== 'approved' &&
-                                 pds.status !== 'pending' &&
-                                 (pds.status === 'draft' || 
-                                  pds.status === 'declined' || 
-                                  pds.status === 'for-revision' ||
-                                  !pds.status) &&
-                                 !pds?.form_data && (
-                                    <span className="text-gray-500 text-sm italic">
-                                        Please save the PDS first before submitting
-                                    </span>
-                                )}
-                                
-                                {/* Print button - show for approved status OR for HR/Admin users (they can print their own PDS) */}
-                                {(pds.status === 'approved' || ((isHR || isAdmin) && pds?.form_data)) && (
-                                    <button
-                                        onClick={handlePrint}
-                                        disabled={printing}
-                                        className="text-purple-600 hover:text-purple-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        title={printing ? 'Generating PDF...' : 'Print PDS'}
-                                    >
-                                        {printing ? 'Generating PDF...' : 'Print'}
-                                    </button>
-                                )}
+                                    />
+                                    
+                                    {/* Submit button - show for employees and admin users (HR cannot submit) */}
+                                    {/* Hide button when status is approved - user must update first to change status to draft */}
+                                    {/* Hide button when status is pending - already submitted */}
+                                    {!isHR && // HR cannot submit, but Admin can (like employees)
+                                     pds.status !== 'approved' &&
+                                     pds.status !== 'pending' &&
+                                     (pds.status === 'draft' || 
+                                      pds.status === 'declined' || 
+                                      pds.status === 'for-revision' ||
+                                      !pds.status) && // Handle null/undefined as draft
+                                     pds?.form_data && (
+                                        <TableActionButton
+                                            variant="green"
+                                            icon={Send}
+                                            label={submitting ? 'Submitting...' : 'Submit for Approval'}
+                                            onClick={handleSubmit}
+                                            disabled={submitting}
+                                            title={
+                                                submitting
+                                                    ? 'Submitting...'
+                                                    : completion < 50 
+                                                        ? `PDS is ${completion}% complete. Click to submit anyway.` 
+                                                        : 'Submit for Approval'
+                                            }
+                                        />
+                                    )}
+                                    {/* Show message if PDS exists but hasn't been saved yet (only for non-approved, non-pending statuses) */}
+                                    {!isHR && // HR cannot submit, but Admin can (like employees)
+                                     pds.status !== 'approved' &&
+                                     pds.status !== 'pending' &&
+                                     (pds.status === 'draft' || 
+                                      pds.status === 'declined' || 
+                                      pds.status === 'for-revision' ||
+                                      !pds.status) &&
+                                     !pds?.form_data && (
+                                        <span className="text-gray-500 text-sm italic">
+                                            Please save the PDS first before submitting
+                                        </span>
+                                    )}
+                                    
+                                    {/* Print button - show for approved status OR for HR/Admin users (they can print their own PDS) */}
+                                    {(pds.status === 'approved' || ((isHR || isAdmin) && pds?.form_data)) && (
+                                        <TableActionButton
+                                            variant="purple"
+                                            icon={Printer}
+                                            label={printing ? 'Generating PDF...' : 'Print'}
+                                            onClick={handlePrint}
+                                            disabled={printing}
+                                            title={printing ? 'Generating PDF...' : 'Print PDS'}
+                                        />
+                                    )}
+                                </div>
                             </td>
                         </tr>
                     </tbody>

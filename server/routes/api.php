@@ -17,6 +17,7 @@ use App\Http\Controllers\ModuleAccessController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\ApprovalNameController;
 use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\AttendanceController;
 
 // Apply 'maintenance' and 'log-http' middleware to all API routes
@@ -122,6 +123,11 @@ Route::middleware(['maintenance', \App\Http\Middleware\LogHttpRequests::class])-
             Route::put('/approval-names/{id}', [ApprovalNameController::class, 'update']);
             Route::delete('/approval-names/{id}', [ApprovalNameController::class, 'destroy']);
             
+            // Leave Types CRUD (Create, Update, Delete - HR only)
+            Route::post('/leave-types', [LeaveTypeController::class, 'store']);
+            Route::put('/leave-types/{id}', [LeaveTypeController::class, 'update']);
+            Route::delete('/leave-types/{id}', [LeaveTypeController::class, 'destroy']);
+            
             // Attendance Import (HR only)
             Route::post('/attendance/import', [AttendanceController::class, 'import']);
             Route::get('/attendance/import-history', [AttendanceController::class, 'importHistory']);
@@ -175,7 +181,8 @@ Route::middleware(['maintenance', \App\Http\Middleware\LogHttpRequests::class])-
         });
 
         // Leave Application Routes
-        Route::get('/leave-types', [LeaveController::class, 'getLeaveTypes']); // Get all leave types
+        Route::get('/leave-types', [LeaveTypeController::class, 'index']); // Get all leave types (for dropdowns)
+        Route::get('/leaves/my-leave-credits', [LeaveController::class, 'getMyLeaveCredits']); // Get current user's leave credits
         Route::get('/leaves/my-leaves', [LeaveController::class, 'myLeaves']); // Get current user's leaves
         Route::get('/leaves/my-pending-approvals', [LeaveController::class, 'myPendingApprovals']); // Get pending approvals for current approver
         Route::get('/leaves', [LeaveController::class, 'index']); // Get all leaves (filtered by role)

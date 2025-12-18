@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { getProjects, createProject, updateProject, deleteProject } from '../../../api/master-lists/projects';
+import { Pencil, Trash2 } from 'lucide-react';
+import { createProject, updateProject, deleteProject } from '../../../api/master-lists/projects';
 import { useNotificationStore } from '../../../stores/notificationStore';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
+import { useProjectsTableStore } from '../../../stores/masterListTablesStore';
+import TableActionButton from '../../ui/TableActionButton';
 
 function ProjectsTable() {
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { getProjects, projects, loading } = useProjectsTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [formData, setFormData] = useState({
@@ -16,6 +19,7 @@ function ProjectsTable() {
 
   const showSuccess = useNotificationStore((state) => state.showSuccess);
   const showError = useNotificationStore((state) => state.showError);
+  const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
     loadProjects();
@@ -23,13 +27,9 @@ function ProjectsTable() {
 
   const loadProjects = async () => {
     try {
-      setLoading(true);
-      const data = await getProjects();
-      setProjects(data);
+      await getProjects(); // Uses cache if available
     } catch (err) {
       showError('Failed to load projects');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -48,6 +48,7 @@ function ProjectsTable() {
       setEditingProject(null);
       setFormData({ name: '', project_code: '', status: 'active', project_manager: '' });
       loadProjects();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
@@ -74,6 +75,7 @@ function ProjectsTable() {
       await deleteProject(id);
       showSuccess('Project deleted successfully');
       loadProjects();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {
@@ -144,18 +146,22 @@ function ProjectsTable() {
                     {project.project_manager || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(project)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(project.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <TableActionButton
+                        variant="indigo"
+                        icon={Pencil}
+                        label="Edit"
+                        onClick={() => handleEdit(project)}
+                        title="Edit project"
+                      />
+                      <TableActionButton
+                        variant="red"
+                        icon={Trash2}
+                        label="Delete"
+                        onClick={() => handleDelete(project.id)}
+                        title="Delete project"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

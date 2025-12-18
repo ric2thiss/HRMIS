@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getUserRole, hasSystemSettingsAccess } from '../../utils/userHelpers';
+import { useGlobalPrefetch } from '../../hooks/useGlobalPrefetch';
 
 import './Sidebar.css'
 
@@ -9,6 +10,9 @@ function Sidebar({ user, role: roleProp }) {
   const sidebarRef = useRef(null);
   // Use prop if provided, otherwise get from user
   const role = roleProp || getUserRole(user);
+  
+  // Global prefetch hook for module-based prefetching
+  const { prefetchModule } = useGlobalPrefetch();
 
   // Handle scrollbar visibility on mobile during scrolling
   useEffect(() => {
@@ -154,18 +158,28 @@ function Sidebar({ user, role: roleProp }) {
                     </summary>
 
                     <div className="pl-6 space-y-1 mt-1">
-                        <Link to="/my-approval" className={`block p-2 text-sm rounded-lg transition-colors ${
-                            location.pathname === '/my-approval' 
-                                ? 'bg-blue-100 text-blue-700 font-medium' 
-                                : 'text-gray-600 hover:bg-gray-100'
-                        }`}>
+                        <Link 
+                            to="/my-approval" 
+                            className={`block p-2 text-sm rounded-lg transition-colors ${
+                                location.pathname === '/my-approval' 
+                                    ? 'bg-blue-100 text-blue-700 font-medium' 
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                            onMouseEnter={() => prefetchModule('my-approval', user)}
+                            onFocus={() => prefetchModule('my-approval', user)}
+                        >
                             My Approval
                         </Link>
-                        <Link to="/manage-pds" className={`block p-2 text-sm rounded-lg transition-colors ${
-                            location.pathname === '/manage-pds' 
-                                ? 'bg-blue-100 text-blue-700 font-medium' 
-                                : 'text-gray-600 hover:bg-gray-100'
-                        }`}>
+                        <Link 
+                            to="/manage-pds" 
+                            className={`block p-2 text-sm rounded-lg transition-colors ${
+                                location.pathname === '/manage-pds' 
+                                    ? 'bg-blue-100 text-blue-700 font-medium' 
+                                    : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                            onMouseEnter={() => prefetchModule('manage-pds', user)}
+                            onFocus={() => prefetchModule('manage-pds', user)}
+                        >
                             Manage PDS
                         </Link>
                         <Link to="/manage-leave" className={`block p-2 text-sm rounded-lg transition-colors ${

@@ -1,0 +1,312 @@
+# Personal Data Sheet (PDS) Module - ERD (ASCII Format)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║              PERSONAL DATA SHEET (PDS) MODULE - DATABASE SCHEMA                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+                              ┌──────────────────────┐
+                              │       users          │
+                              ├──────────────────────┤
+                              │ PK id                │
+                              │    first_name        │
+                              │    last_name         │
+                              │    email             │
+                              └──────────┬───────────┘
+                                         │
+                                         │ 1:1
+                                         ▼
+                    ┌────────────────────────────────────────────────────┐
+                    │         personal_data_sheets (Main PDS)            │
+                    ├────────────────────────────────────────────────────┤
+                    │ PK id                                              │
+                    │ FK user_id  → users.id [UNIQUE]                    │
+                    │                                                    │
+                    │ === I. PERSONAL INFORMATION ===                    │
+                    │    surname                varchar(100)             │
+                    │    firstname              varchar(100)             │
+                    │    middlename             varchar(100) [nullable]  │
+                    │    name_extension         varchar(10)  [nullable]  │
+                    │    birth_date             date                     │
+                    │    birth_place            varchar(255)             │
+                    │    sex                    enum('Male','Female')    │
+                    │    civil_status           enum(Single, Married...) │
+                    │    height_cm              decimal(5,2) [nullable]  │
+                    │    weight_kg              decimal(5,2) [nullable]  │
+                    │    blood_type             varchar(5)   [nullable]  │
+                    │    gsis_no                varchar(50)  [nullable]  │
+                    │    pagibig_no             varchar(50)  [nullable]  │
+                    │    philhealth_no          varchar(50)  [nullable]  │
+                    │    sss_no                 varchar(50)  [nullable]  │
+                    │    tin_no                 varchar(50)  [nullable]  │
+                    │    agency_employee_no     varchar(50)  [nullable]  │
+                    │    citizenship            varchar(50)              │
+                    │    dual_citizenship_type  varchar(50)  [nullable]  │
+                    │    country_acquired       varchar(100) [nullable]  │
+                    │                                                    │
+                    │ === II. RESIDENTIAL ADDRESS ===                    │
+                    │    res_house_no           varchar(50)              │
+                    │    res_street             varchar(100)             │
+                    │    res_subdivision        varchar(100) [nullable]  │
+                    │    res_barangay           varchar(100)             │
+                    │    res_city               varchar(100)             │
+                    │    res_province           varchar(100)             │
+                    │    res_zipcode            varchar(10)              │
+                    │                                                    │
+                    │ === III. PERMANENT ADDRESS ===                     │
+                    │    perm_house_no          varchar(50)              │
+                    │    perm_street            varchar(100)             │
+                    │    perm_subdivision       varchar(100) [nullable]  │
+                    │    perm_barangay          varchar(100)             │
+                    │    perm_city              varchar(100)             │
+                    │    perm_province          varchar(100)             │
+                    │    perm_zipcode           varchar(10)              │
+                    │                                                    │
+                    │ === IV. CONTACT INFORMATION ===                    │
+                    │    telephone_no           varchar(20)  [nullable]  │
+                    │    mobile_no              varchar(20)              │
+                    │    email_address          varchar(255)             │
+                    │                                                    │
+                    │ === V. STATUS & META ===                           │
+                    │    status                 enum(draft,submitted...) │
+                    │    submitted_at           timestamp    [nullable]  │
+                    │    verified_by            int         [nullable,FK]│
+                    │    verified_at            timestamp    [nullable]  │
+                    │    photo_path             varchar(255) [nullable]  │
+                    │    signature_path         varchar(255) [nullable]  │
+                    │    thumbmark_path         varchar(255) [nullable]  │
+                    │    created_at             timestamp                │
+                    │    updated_at             timestamp                │
+                    └─────────┬──────────────────────────────────────────┘
+                              │
+              ┌───────────────┼───────────────┬────────────────┬─────────────────┐
+              │               │               │                │                 │
+              │ 1:N           │ 1:N           │ 1:N            │ 1:N             │ 1:N
+              ▼               ▼               ▼                ▼                 ▼
+┌──────────────────┐ ┌────────────────┐ ┌──────────────┐ ┌────────────────┐ ┌──────────────┐
+│ pds_family       │ │ pds_education  │ │ pds_civil    │ │ pds_work       │ │ pds_voluntary│
+│ _background      │ │                │ │ _service     │ │ _experience    │ │ _work        │
+├──────────────────┤ ├────────────────┤ ├──────────────┤ ├────────────────┤ ├──────────────┤
+│ PK id            │ │ PK id          │ │ PK id        │ │ PK id          │ │ PK id        │
+│ FK pds_id        │ │ FK pds_id      │ │ FK pds_id    │ │ FK pds_id      │ │ FK pds_id    │
+│                  │ │                │ │              │ │                │ │              │
+│ === SPOUSE ===   │ │ level(elem/HS/ │ │ career_      │ │ position_title │ │ organization │
+│ spouse_surname   │ │ college/grad)  │ │   service    │ │ department     │ │ address      │
+│ spouse_firstname │ │ school_name    │ │ rating       │ │ monthly_salary │ │ from_date    │
+│ spouse_middlename│ │ degree_course  │ │ date_exam    │ │ salary_grade   │ │ to_date      │
+│ spouse_extension │ │ year_from      │ │ place_exam   │ │ status_appt    │ │ hours        │
+│ spouse_occupation│ │ year_to        │ │ license_no   │ │ is_govt_service│ │ position     │
+│ spouse_employer  │ │ units_earned   │ │ date_validity│ │ from_date      │ │ created_at   │
+│ spouse_bus_addr  │ │ year_graduated │ │ created_at   │ │ to_date        │ │ updated_at   │
+│ spouse_tel       │ │ honors_received│ │ updated_at   │ │ created_at     │ └──────────────┘
+│                  │ │ created_at     │ └──────────────┘ │ updated_at     │
+│ === FATHER ===   │ │ updated_at     │                  └────────────────┘
+│ father_surname   │ └────────────────┘                            │
+│ father_firstname │                                               │
+│ father_middlename│                          ┌────────────────────┘
+│ father_extension │                          │
+│                  │                          │ 1:N
+│ === MOTHER ===   │                          ▼
+│ mother_surname   │               ┌────────────────────┐
+│ mother_firstname │               │ pds_training       │
+│ mother_middlename│               │ _seminars          │
+│                  │               ├────────────────────┤
+│ === CHILDREN === │               │ PK id              │
+│ (stored in       │               │ FK pds_id          │
+│  separate table) │               │ title              │
+│                  │               │ from_date          │
+│ created_at       │               │ to_date            │
+│ updated_at       │               │ hours              │
+└──────────────────┘               │ type (managerial/  │
+         │                         │  technical)        │
+         │ 1:N                     │ sponsored_by       │
+         ▼                         │ created_at         │
+┌──────────────────┐               │ updated_at         │
+│ pds_children     │               └────────────────────┘
+├──────────────────┤
+│ PK id            │                        │
+│ FK family_bg_id  │                        │ 1:N
+│ name             │                        ▼
+│ birth_date       │           ┌──────────────────────┐
+│ created_at       │           │ pds_other_info       │
+│ updated_at       │           ├──────────────────────┤
+└──────────────────┘           │ PK id                │
+                               │ FK pds_id            │
+┌──────────────────┐           │                      │
+│ pds_skills       │           │ === SPECIAL SKILLS ===│
+├──────────────────┤           │ skills (JSON)        │
+│ PK id            │           │                      │
+│ FK pds_id        │           │ === NON-ACADEMIC === │
+│ skill_name       │           │ distinctions (JSON)  │
+│ proficiency      │           │                      │
+│ created_at       │           │ === MEMBERSHIP ===   │
+│ updated_at       │           │ associations (JSON)  │
+└──────────────────┘           │                      │
+                               │ === QUESTIONS ===    │
+┌──────────────────┐           │ q34_a (convicted)    │
+│ pds_recognition  │           │ q34_b (criminal)     │
+├──────────────────┤           │ q35_a (separated)    │
+│ PK id            │           │ q35_b (candidate)    │
+│ FK pds_id        │           │ q36 (immigrant)      │
+│ recognition      │           │ q37 (indigenous)     │
+│ created_at       │           │ q38_a (disabled)     │
+│ updated_at       │           │ q38_b (disability)   │
+└──────────────────┘           │ q39 (solo_parent)    │
+                               │ q40_a (3rd_degree)   │
+┌──────────────────┐           │ q40_b (4th_degree)   │
+│ pds_references   │           │ q40_details (JSON)   │
+├──────────────────┤           │                      │
+│ PK id            │           │ govt_id_type         │
+│ FK pds_id        │           │ govt_id_no           │
+│ name             │           │ date_issued          │
+│ address          │           │ place_issued         │
+│ telephone_no     │           │                      │
+│ created_at       │           │ created_at           │
+│ updated_at       │           │ updated_at           │
+└──────────────────┘           └──────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+RELATIONSHIPS:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. users → personal_data_sheets (1:1)
+   One user has one PDS record
+
+2. personal_data_sheets → pds_family_background (1:1)
+   One PDS has one family background section
+
+3. pds_family_background → pds_children (1:N)
+   One family record has multiple children
+
+4. personal_data_sheets → pds_education (1:N)
+   One PDS has multiple education records (elem, HS, college, grad)
+
+5. personal_data_sheets → pds_civil_service (1:N)
+   One PDS has multiple civil service eligibility records
+
+6. personal_data_sheets → pds_work_experience (1:N)
+   One PDS has multiple work experience entries
+
+7. personal_data_sheets → pds_voluntary_work (1:N)
+   One PDS has multiple voluntary work records
+
+8. personal_data_sheets → pds_training_seminars (1:N)
+   One PDS has multiple training/seminar records
+
+9. personal_data_sheets → pds_skills (1:N)
+   One PDS has multiple skills
+
+10. personal_data_sheets → pds_recognition (1:N)
+    One PDS has multiple recognitions/awards
+
+11. personal_data_sheets → pds_references (1:N)
+    One PDS has multiple character references (usually 3)
+
+12. personal_data_sheets → pds_other_info (1:1)
+    One PDS has one other information section
+
+═══════════════════════════════════════════════════════════════════════════════
+BUSINESS RULES:
+═══════════════════════════════════════════════════════════════════════════════
+
+PDS COMPLETION:
+• PDS follows CSC Form 212 Revised 2017
+• All sections must be completed for submission
+• Some fields are optional but recommended
+• Photo, signature, and right thumbmark required
+• Must answer all 40 questions truthfully
+
+VALIDATION:
+• Birth date must be in the past
+• Age must be 18 or older for government service
+• Valid ID numbers (format validation)
+• Email must be unique and valid
+• Mobile number required
+• At least 3 character references required
+
+EDUCATION:
+• Elementary to Graduate levels
+• Year graduated must be <= current year
+• Can have multiple college degrees
+• Can have multiple graduate studies
+• Honors/awards are optional
+
+WORK EXPERIENCE:
+• List from recent to oldest
+• To_date can be NULL for current position
+• Government service flag required
+• Monthly salary and salary grade for govt positions
+
+CIVIL SERVICE ELIGIBILITY:
+• Career service eligibility required for permanent positions
+• Rating must be passing score
+• License validity date tracked
+• Multiple eligibilities allowed
+
+TRAINING & SEMINARS:
+• Minimum 8 hours to be significant
+• Type: Managerial or Technical
+• Dates must be valid
+
+STATUS WORKFLOW:
+• draft: Work in progress
+• submitted: Submitted for review
+• verified: HR verified
+• approved: Approved by HR head
+• rejected: Needs correction
+
+UPDATES:
+• Employee can update draft PDS anytime
+• Cannot modify after submission (request correction)
+• Major changes require HR approval
+• Audit trail maintained
+
+═══════════════════════════════════════════════════════════════════════════════
+INDEXES FOR PERFORMANCE:
+═══════════════════════════════════════════════════════════════════════════════
+
+personal_data_sheets table:
+  - UNIQUE(user_id)                  → One PDS per user
+  - INDEX(status)                    → Filter by status
+  - INDEX(submitted_at)              → Recent submissions
+
+pds_work_experience table:
+  - INDEX(pds_id, from_date DESC)    → Recent experience first
+  - INDEX(is_govt_service)           → Filter govt service
+
+pds_education table:
+  - INDEX(pds_id, level)             → Education by level
+
+═══════════════════════════════════════════════════════════════════════════════
+TYPICAL QUERIES:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Get complete PDS:
+   SELECT * FROM personal_data_sheets WHERE user_id = ?
+
+2. Get all sections:
+   -- Family
+   SELECT * FROM pds_family_background WHERE pds_id = ?
+   SELECT * FROM pds_children WHERE family_bg_id = ?
+   
+   -- Education
+   SELECT * FROM pds_education WHERE pds_id = ? ORDER BY level
+   
+   -- Work Experience
+   SELECT * FROM pds_work_experience WHERE pds_id = ? 
+   ORDER BY from_date DESC
+   
+   -- etc.
+
+3. Get pending PDS verifications:
+   SELECT p.*, u.first_name, u.last_name
+   FROM personal_data_sheets p
+   JOIN users u ON p.user_id = u.id
+   WHERE p.status = 'submitted'
+   ORDER BY p.submitted_at ASC
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+

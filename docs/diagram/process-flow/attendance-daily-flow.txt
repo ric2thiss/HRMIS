@@ -1,0 +1,370 @@
+# Attendance Management - Daily Time In/Out Flow (ASCII)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                      DAILY ATTENDANCE PROCESS FLOW                              ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+                              ┌─────────────┐
+                              │   START     │
+                              │ (Employee)  │
+                              └──────┬──────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Employee arrives    │
+                          │  at workplace        │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Navigate to         │
+                          │  Attendance page     │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                ┌────────────────────────────────────────┐
+                │  Display Attendance Dashboard          │
+                │  ┌──────────────────────────────────┐  │
+                │  │ Today: December 17, 2025         │  │
+                │  │ Status: Not yet timed in         │  │
+                │  │                                  │  │
+                │  │ [Time In Button] (Enabled)       │  │
+                │  │ [Time Out Button] (Disabled)     │  │
+                │  │                                  │  │
+                │  │ Recent Attendance:               │  │
+                │  │ Dec 16: 8:00 AM - 5:00 PM ✓     │  │
+                │  │ Dec 15: 8:05 AM - 5:00 PM ⚠️    │  │
+                │  └──────────────────────────────────┘  │
+                └──────────────────┬─────────────────────┘
+                                   │
+                                   ▼
+                          ┌─────────────────────┐
+                          │  Click "Time In"    │
+                          │  button             │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Confirm dialog:     │
+                          │  "Record time in?"   │
+                          │  Current time: 8:00  │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  User confirms       │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                 ┌───────────────────────────────────┐
+                 │  POST /api/attendance/time-in     │
+                 │  {                                │
+                 │    date: "2025-12-17"             │
+                 │    time: "08:00:00"               │
+                 │    latitude: 14.5995  (optional)  │
+                 │    longitude: 120.9842 (optional) │
+                 │  }                                │
+                 └───────────────┬───────────────────┘
+                                 │
+                                 ▼
+                 ┌───────────────────────────────┐
+                 │  BACKEND: Validate Request    │
+                 └───────────────┬───────────────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              │                  │                  │
+              ▼                  ▼                  ▼
+    ┌─────────────────┐  ┌────────────────┐  ┌──────────────┐
+    │ Check if user   │  │ Check if date  │  │ Validate GPS │
+    │ is active       │  │ is today       │  │ (if required)│
+    └────────┬────────┘  └────────┬───────┘  └──────┬───────┘
+             │                    │                  │
+             └────────────────────┴──────────────────┘
+                                  │
+                   ┌──────────────┴──────────────┐
+                   │                             │
+              [All valid?]                 [Any failed?]
+                   │                             │
+               ┌───▼───┐                     ┌───▼───┐
+               │  YES  │                     │  NO   │
+               └───┬───┘                     └───┬───┘
+                   │                             │
+                   │                             ▼
+                   │              ┌──────────────────────────┐
+                   │              │  Return error response:  │
+                   │              │  - "Already timed in"    │
+                   │              │  - "Invalid date"        │
+                   │              │  - "Outside workplace"   │
+                   │              └──────────────┬───────────┘
+                   │                             │
+                   ▼                             │
+    ┌──────────────────────────┐                │
+    │ Check for existing       │                │
+    │ attendance record today  │                │
+    └──────────────┬───────────┘                │
+                   │                             │
+        ┌──────────┴──────────┐                 │
+        │                     │                 │
+   [Exists?]            [Not exists?]           │
+        │                     │                 │
+    ┌───▼───┐             ┌───▼───┐            │
+    │  YES  │             │  NO   │            │
+    └───┬───┘             └───┬───┘            │
+        │                     │                 │
+        ▼                     ▼                 │
+┌────────────────┐  ┌──────────────────┐       │
+│ Check if       │  │ Create new       │       │
+│ already timed  │  │ attendance record│       │
+│ in today       │  │ - user_id        │       │
+└────────┬───────┘  │ - date (today)   │       │
+         │          │ - time_in        │       │
+    [Yes?]          │ - status: present│       │
+         │          └────────┬─────────┘       │
+         ▼                   │                 │
+┌────────────────┐           │                 │
+│ Return error   │           │                 │
+│ "Already timed"│           │                 │
+└────────────────┘           │                 │
+                             │                 │
+                             ▼                 │
+                 ┌─────────────────────────┐   │
+                 │ Calculate status:       │   │
+                 │ - On time (<=8:15 AM)   │   │
+                 │ - Late (>8:15 AM)       │   │
+                 └────────────┬────────────┘   │
+                              │                │
+                              ▼                │
+                 ┌─────────────────────────┐   │
+                 │ Save attendance record  │   │
+                 └────────────┬────────────┘   │
+                              │                │
+                              ▼                │
+                 ┌─────────────────────────┐   │
+                 │ Log activity            │   │
+                 └────────────┬────────────┘   │
+                              │                │
+                              ▼                │
+                 ┌─────────────────────────┐   │
+                 │ Return 201 Created      │   │
+                 │ {                       │   │
+                 │   success: true,        │   │
+                 │   data: {               │   │
+                 │     id: 456,            │   │
+                 │     time_in: "08:00",   │   │
+                 │     status: "on-time"   │   │
+                 │   }                     │   │
+                 │ }                       │   │
+                 └────────────┬────────────┘   │
+                              │                │
+                              │◄───────────────┘
+                              │
+                              ▼
+                 ┌─────────────────────────┐
+                 │ Frontend: Show success  │
+                 │ message & update UI     │
+                 └────────────┬────────────┘
+                              │
+                              ▼
+                 ┌─────────────────────────────────┐
+                 │ Update Attendance Dashboard:    │
+                 │ ┌─────────────────────────────┐ │
+                 │ │ Status: Timed In ✓          │ │
+                 │ │ Time In: 8:00 AM            │ │
+                 │ │ [Time In] (Disabled)        │ │
+                 │ │ [Time Out] (Enabled)        │ │
+                 │ └─────────────────────────────┘ │
+                 └────────────┬────────────────────┘
+                              │
+                              │
+                              │
+                    ... WORK DAY ...
+                              │
+                              │
+                              ▼
+                 ┌─────────────────────────┐
+                 │ End of work day         │
+                 │ Employee ready to leave │
+                 └────────────┬────────────┘
+                              │
+                              ▼
+                 ┌─────────────────────────┐
+                 │ Click "Time Out" button │
+                 └────────────┬────────────┘
+                              │
+                              ▼
+                 ┌─────────────────────────┐
+                 │ Confirm dialog:         │
+                 │ "Record time out?"      │
+                 │ Current time: 5:00 PM   │
+                 └────────────┬────────────┘
+                              │
+                              ▼
+                 ┌────────────────────────────────┐
+                 │ POST /api/attendance/time-out  │
+                 │ {                              │
+                 │   attendance_id: 456           │
+                 │   time: "17:00:00"             │
+                 │ }                              │
+                 └────────────┬───────────────────┘
+                              │
+                              ▼
+                 ┌─────────────────────────┐
+                 │ BACKEND: Validate       │
+                 │ - Attendance exists     │
+                 │ - Already timed in      │
+                 │ - Not yet timed out     │
+                 └────────────┬────────────┘
+                              │
+                   ┌──────────┴──────────┐
+                   │                     │
+              [Valid?]             [Invalid?]
+                   │                     │
+               ┌───▼───┐             ┌───▼───┐
+               │  YES  │             │  NO   │
+               └───┬───┘             └───┬───┘
+                   │                     │
+                   │                     ▼
+                   │        ┌────────────────────┐
+                   │        │ Return error       │
+                   │        │ - "Not timed in"   │
+                   │        │ - "Already timed   │
+                   │        │    out"            │
+                   │        └────────────────────┘
+                   │
+                   ▼
+      ┌─────────────────────────┐
+      │ Update attendance record│
+      │ - Set time_out          │
+      └────────────┬────────────┘
+                   │
+                   ▼
+      ┌─────────────────────────┐
+      │ Calculate hours worked  │
+      │ (time_out - time_in)    │
+      └────────────┬────────────┘
+                   │
+                   ▼
+      ┌─────────────────────────┐
+      │ Check for undertime     │
+      │ (if time_out < 5:00 PM) │
+      └────────────┬────────────┘
+                   │
+                   ▼
+      ┌─────────────────────────┐
+      │ Update status:          │
+      │ - Complete              │
+      │ - Undertime (if early)  │
+      └────────────┬────────────┘
+                   │
+                   ▼
+      ┌─────────────────────────┐
+      │ Save updated record     │
+      └────────────┬────────────┘
+                   │
+                   ▼
+      ┌─────────────────────────┐
+      │ Return 200 OK           │
+      │ {                       │
+      │   success: true,        │
+      │   data: {               │
+      │     time_out: "17:00",  │
+      │     hours: 9.0,         │
+      │     status: "complete"  │
+      │   }                     │
+      │ }                       │
+      └────────────┬────────────┘
+                   │
+                   ▼
+      ┌─────────────────────────┐
+      │ Frontend: Show success  │
+      │ & update UI             │
+      └────────────┬────────────┘
+                   │
+                   ▼
+      ┌──────────────────────────────┐
+      │ Display final summary:       │
+      │ ┌──────────────────────────┐ │
+      │ │ Status: Complete ✓       │ │
+      │ │ Time In:  8:00 AM        │ │
+      │ │ Time Out: 5:00 PM        │ │
+      │ │ Hours: 9.0 hours         │ │
+      │ │ [Both buttons disabled]  │ │
+      │ └──────────────────────────┘ │
+      └──────────────┬───────────────┘
+                     │
+                     ▼
+                ┌─────────┐
+                │   END   │
+                └─────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+BUSINESS RULES:
+═══════════════════════════════════════════════════════════════════════════════
+
+TIME IN RULES:
+1. Can only time in once per day
+2. Must be current date (cannot time in for past/future)
+3. Standard work start: 8:00 AM
+4. Grace period: 15 minutes (until 8:15 AM)
+5. Late if after 8:15 AM
+6. GPS location check (optional, if configured)
+
+TIME OUT RULES:
+1. Must have timed in first
+2. Cannot time out before time in
+3. Standard work end: 5:00 PM
+4. Undertime if before 5:00 PM (with tolerance)
+5. Overtime if after 5:00 PM (needs approval)
+6. Minimum 4 hours for half-day
+
+HOURS CALCULATION:
+- Total hours = time_out - time_in
+- Exclude lunch break (1 hour, 12:00-1:00 PM)
+- Round to nearest 15 minutes
+- Flag if less than expected hours
+
+STATUS VALUES:
+- present: Timed in, on time
+- late: Timed in after grace period
+- undertime: Timed out early
+- complete: Normal day completed
+- absent: No time in record
+- on-leave: Approved leave
+- holiday: Company holiday
+
+═══════════════════════════════════════════════════════════════════════════════
+AUTOMATED PROCESSES:
+═══════════════════════════════════════════════════════════════════════════════
+
+END OF DAY (11:59 PM):
+- Mark users without time-out as "no time-out"
+- Mark users without time-in as "absent"
+- Generate daily attendance report
+- Notify HR of absences
+
+WEEKLY:
+- Generate weekly attendance summary
+- Calculate total hours per employee
+- Flag attendance issues
+
+MONTHLY:
+- Generate monthly attendance report
+- Calculate late/undertime statistics
+- Send to payroll system
+
+═══════════════════════════════════════════════════════════════════════════════
+ERROR RESPONSES:
+═══════════════════════════════════════════════════════════════════════════════
+
+400 Bad Request       - Already timed in/out today
+403 Forbidden         - Account not active, on leave
+404 Not Found         - Attendance record not found
+422 Validation Error  - Invalid time format, future date
+500 Server Error      - Database error
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+

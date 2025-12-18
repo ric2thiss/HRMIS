@@ -147,6 +147,47 @@ export const useAuthStore = create((set, get) => ({
   // Login
   login: async (email, password) => {
     try {
+      // Clear all cached data before login to ensure fresh data for new user
+      try {
+        // Clear React Query cache
+        const { queryClient } = await import('../config/queryClient');
+        queryClient.clear();
+        
+        const { clearCache: clearLeaveCreditsCache } = await import('./leaveCreditsStore').then(m => m.useLeaveCreditsStore.getState());
+        const { clearCache: clearMasterListsCache } = await import('./masterListsStore').then(m => m.useMasterListsStore.getState());
+        const { clearCache: clearLeaveTypesCache } = await import('./leaveTypesStore').then(m => m.useLeaveTypesStore.getState());
+        const { clearCache: clearPdsCache } = await import('./pdsStore').then(m => m.usePdsStore.getState());
+        const { clearCache: clearLeaveApplicationsCache } = await import('./leaveApplicationsStore').then(m => m.useLeaveApplicationsStore.getState());
+        const { clearCache: clearAttendanceCache } = await import('./attendanceStore').then(m => m.useAttendanceStore.getState());
+        const { clearCache: clearUserAccountsCache } = await import('./userAccountsStore').then(m => m.useUserAccountsStore.getState());
+        const { clearCache: clearEmploymentTypesCache } = await import('./employmentTypesStore').then(m => m.useEmploymentTypesStore.getState());
+        const { clearCache: clearPositionsCache } = await import('./masterListTablesStore').then(m => m.usePositionsTableStore.getState());
+        const { clearCache: clearRolesCache } = await import('./masterListTablesStore').then(m => m.useRolesTableStore.getState());
+        const { clearCache: clearProjectsCache } = await import('./masterListTablesStore').then(m => m.useProjectsTableStore.getState());
+        const { clearCache: clearOfficesCache } = await import('./masterListTablesStore').then(m => m.useOfficesTableStore.getState());
+        const { clearCache: clearCapabilitiesCache } = await import('./masterListTablesStore').then(m => m.useCapabilitiesTableStore.getState());
+        const { clearCache: clearManageLeaveCache } = await import('./manageLeaveStore').then(m => m.useManageLeaveStore.getState());
+        
+        clearLeaveCreditsCache();
+        clearMasterListsCache();
+        clearLeaveTypesCache();
+        clearPdsCache();
+        clearLeaveApplicationsCache();
+        clearAttendanceCache();
+        clearUserAccountsCache();
+        clearEmploymentTypesCache();
+        clearPositionsCache();
+        clearRolesCache();
+        clearProjectsCache();
+        clearOfficesCache();
+        clearCapabilitiesCache();
+        clearApprovalNamesCache();
+        clearLeaveTypesTableCache();
+        clearManageLeaveCache();
+      } catch (cacheErr) {
+        console.error('Error clearing cache on login:', cacheErr);
+      }
+      
       // Fetch CSRF cookie and ensure it's set before proceeding
       await api.get('/sanctum/csrf-cookie', { withCredentials: true });
       
@@ -200,6 +241,47 @@ export const useAuthStore = create((set, get) => ({
     } catch (err) {
       console.error(err);
     } finally {
+      // Clear all cached data before setting user to null
+      try {
+        // Clear React Query cache
+        const { queryClient } = await import('../config/queryClient');
+        queryClient.clear();
+        
+        const { clearCache: clearLeaveCreditsCache } = await import('./leaveCreditsStore').then(m => m.useLeaveCreditsStore.getState());
+        const { clearCache: clearMasterListsCache } = await import('./masterListsStore').then(m => m.useMasterListsStore.getState());
+        const { clearCache: clearLeaveTypesCache } = await import('./leaveTypesStore').then(m => m.useLeaveTypesStore.getState());
+        const { clearCache: clearPdsCache } = await import('./pdsStore').then(m => m.usePdsStore.getState());
+        const { clearCache: clearLeaveApplicationsCache } = await import('./leaveApplicationsStore').then(m => m.useLeaveApplicationsStore.getState());
+        const { clearCache: clearAttendanceCache } = await import('./attendanceStore').then(m => m.useAttendanceStore.getState());
+        const { clearCache: clearUserAccountsCache } = await import('./userAccountsStore').then(m => m.useUserAccountsStore.getState());
+        const { clearCache: clearEmploymentTypesCache } = await import('./employmentTypesStore').then(m => m.useEmploymentTypesStore.getState());
+        const { clearCache: clearPositionsCache } = await import('./masterListTablesStore').then(m => m.usePositionsTableStore.getState());
+        const { clearCache: clearRolesCache } = await import('./masterListTablesStore').then(m => m.useRolesTableStore.getState());
+        const { clearCache: clearProjectsCache } = await import('./masterListTablesStore').then(m => m.useProjectsTableStore.getState());
+        const { clearCache: clearOfficesCache } = await import('./masterListTablesStore').then(m => m.useOfficesTableStore.getState());
+        const { clearCache: clearCapabilitiesCache } = await import('./masterListTablesStore').then(m => m.useCapabilitiesTableStore.getState());
+        const { clearCache: clearManageLeaveCache } = await import('./manageLeaveStore').then(m => m.useManageLeaveStore.getState());
+        
+        clearLeaveCreditsCache();
+        clearMasterListsCache();
+        clearLeaveTypesCache();
+        clearPdsCache();
+        clearLeaveApplicationsCache();
+        clearAttendanceCache();
+        clearUserAccountsCache();
+        clearEmploymentTypesCache();
+        clearPositionsCache();
+        clearRolesCache();
+        clearProjectsCache();
+        clearOfficesCache();
+        clearCapabilitiesCache();
+        clearApprovalNamesCache();
+        clearLeaveTypesTableCache();
+        clearManageLeaveCache();
+      } catch (cacheErr) {
+        console.error('Error clearing cache on logout:', cacheErr);
+      }
+      
       set({ user: null, isForceLoggingOut: false });
       // Re-setup interceptor after logout
       setupInterceptor(get);

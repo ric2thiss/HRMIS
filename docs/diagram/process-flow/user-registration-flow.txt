@@ -1,0 +1,445 @@
+# User Management - User Registration Flow (ASCII)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                        USER REGISTRATION PROCESS FLOW                           ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+                              ┌─────────────┐
+                              │   START     │
+                              │   (Admin)   │
+                              └──────┬──────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Navigate to User    │
+                          │  Management page     │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Click "Add New      │
+                          │  Employee" button    │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                ┌────────────────────────────────────────────┐
+                │  Display User Registration Form            │
+                │  ┌──────────────────────────────────────┐  │
+                │  │ BASIC INFORMATION:                   │  │
+                │  │ - First Name                         │  │
+                │  │ - Middle Name (optional)             │  │
+                │  │ - Last Name                          │  │
+                │  │ - Extension (Jr., Sr., etc.)         │  │
+                │  │ - Email (unique)                     │  │
+                │  │ - Contact Number                     │  │
+                │  │ - Birth Date                         │  │
+                │  │ - Address                            │  │
+                │  │                                      │  │
+                │  │ EMPLOYMENT:                          │  │
+                │  │ - Employee Number (auto/manual)      │  │
+                │  │ - Office (dropdown)                  │  │
+                │  │ - Position (dropdown)                │  │
+                │  │ - Role (Admin/HR/Employee)           │  │
+                │  │ - Employment Status                  │  │
+                │  │ - Date Hired                         │  │
+                │  │                                      │  │
+                │  │ ACCOUNT SETTINGS:                    │  │
+                │  │ - Generate Password (auto)           │  │
+                │  │ - Force Password Change (checkbox)   │  │
+                │  │ - Account Active (checkbox)          │  │
+                │  │                                      │  │
+                │  │ [Cancel] [Submit]                    │  │
+                │  └──────────────────────────────────────┘  │
+                └──────────────────┬─────────────────────────┘
+                                   │
+                                   ▼
+                          ┌─────────────────────┐
+                          │  Admin fills form   │
+                          │  and clicks Submit  │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Frontend Validation │
+                          └──────────┬───────────┘
+                                     │
+                       ┌─────────────┴─────────────┐
+                       │                           │
+                  [Valid?]                    [Invalid?]
+                       │                           │
+                   ┌───▼───┐                   ┌───▼───┐
+                   │  YES  │                   │  NO   │
+                   └───┬───┘                   └───┬───┘
+                       │                           │
+                       │                           ▼
+                       │              ┌────────────────────────┐
+                       │              │  Show validation errors│
+                       │              │  - Required fields     │
+                       │              │  - Email format        │
+                       │              │  - Date validations    │
+                       │              └────────────┬───────────┘
+                       │                           │
+                       │              ┌────────────┘
+                       │              │
+                       ▼              ▼
+            ┌──────────────────────────────┐
+            │  POST /api/users             │
+            │  {                           │
+            │    first_name: "John"        │
+            │    last_name: "Doe"          │
+            │    email: "john@dict.gov.ph" │
+            │    office_id: 1              │
+            │    position_id: 5            │
+            │    role_id: 3                │
+            │    employee_number: "2025001"│
+            │    birth_date: "1990-01-15"  │
+            │    contact_number: "..."     │
+            │    force_password_change: true│
+            │  }                           │
+            └──────────────┬───────────────┘
+                           │
+                           ▼
+            ┌──────────────────────────────┐
+            │  BACKEND: Validate Request   │
+            └──────────────┬───────────────┘
+                           │
+         ┌─────────────────┼─────────────────┬──────────────────┐
+         │                 │                 │                  │
+         ▼                 ▼                 ▼                  ▼
+    ┌─────────┐      ┌──────────┐     ┌──────────┐      ┌──────────┐
+    │ Check   │      │ Check    │     │ Check    │      │ Check    │
+    │ email   │      │ employee │     │ office & │      │ role     │
+    │ unique  │      │ number   │     │ position │      │ valid    │
+    │         │      │ unique   │     │ exist    │      │          │
+    └────┬────┘      └────┬─────┘     └────┬─────┘      └────┬─────┘
+         │                │                 │                  │
+         └────────────────┴─────────────────┴──────────────────┘
+                                    │
+                     ┌──────────────┴──────────────┐
+                     │                             │
+               [All valid?]                  [Any failed?]
+                     │                             │
+                 ┌───▼───┐                     ┌───▼───┐
+                 │  YES  │                     │  NO   │
+                 └───┬───┘                     └───┬───┘
+                     │                             │
+                     │                             ▼
+                     │              ┌──────────────────────────┐
+                     │              │  Return 422              │
+                     │              │  with errors:            │
+                     │              │  - "Email already exists"│
+                     │              │  - "Invalid office"      │
+                     │              │  - "Invalid role"        │
+                     │              └──────────────┬───────────┘
+                     │                             │
+                     ▼                             │
+         ┌─────────────────────────┐               │
+         │ Generate secure password│               │
+         │ (if not provided)       │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Hash password           │               │
+         │ using bcrypt            │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ BEGIN TRANSACTION       │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Create user record      │               │
+         │ with all fields         │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Set default values:     │               │
+         │ - is_active = true      │               │
+         │ - is_locked = false     │               │
+         │ - failed_attempts = 0   │               │
+         │ - force_pass_change = ..│               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Initialize leave credits│               │
+         │ for new user            │               │
+         │ (based on employment)   │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Create PDS placeholder  │               │
+         │ (empty PDS record)      │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Generate welcome email  │               │
+         │ with credentials        │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Queue email for sending │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Log user creation       │               │
+         │ activity                │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ COMMIT TRANSACTION      │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Return 201 Created      │               │
+         │ {                       │               │
+         │   success: true,        │               │
+         │   data: {               │               │
+         │     id: 123,            │               │
+         │     email: "...",       │               │
+         │     employee_number: ...,               │
+         │     temp_password: "..." (if applicable)│
+         │   }                     │               │
+         │ }                       │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      │◄───────────────────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ Frontend: Show success  │
+         │ message                 │
+         └────────────┬────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────────────┐
+         │ Display temporary password      │
+         │ (if generated)                  │
+         │ ┌─────────────────────────────┐ │
+         │ │ Account Created Successfully│ │
+         │ │                             │ │
+         │ │ Employee: John Doe          │ │
+         │ │ Email: john@dict.gov.ph     │ │
+         │ │ Temporary Password: ******* │ │
+         │ │                             │ │
+         │ │ ⚠️ User must change password│ │
+         │ │    on first login           │ │
+         │ │                             │ │
+         │ │ ✉️ Welcome email sent       │ │
+         │ └─────────────────────────────┘ │
+         └────────────┬────────────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ Update user list        │
+         │ in frontend table       │
+         └────────────┬────────────┘
+                      │
+                      ▼
+              ┌──────────────┐
+              │ MEANWHILE... │
+              └──────┬───────┘
+                     │
+                     ▼
+         ┌─────────────────────────────────┐
+         │ EMAIL SENDING (Background Job)  │
+         │ ┌─────────────────────────────┐ │
+         │ │ To: john@dict.gov.ph        │ │
+         │ │ Subject: Welcome to DICT    │ │
+         │ │                             │ │
+         │ │ Dear John Doe,              │ │
+         │ │                             │ │
+         │ │ Your account has been       │ │
+         │ │ created.                    │ │
+         │ │                             │ │
+         │ │ Email: john@dict.gov.ph     │ │
+         │ │ Temporary Password: *****   │ │
+         │ │                             │ │
+         │ │ Please login and change     │ │
+         │ │ your password immediately.  │ │
+         │ │                             │ │
+         │ │ Login URL: https://...      │ │
+         │ └─────────────────────────────┘ │
+         └────────────┬────────────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ Email sent successfully │
+         └────────────┬────────────┘
+                      │
+                      ▼
+              ┌──────────────┐
+              │ NEW USER:    │
+              │              │
+              │ Receives     │
+              │ email        │
+              └──────┬───────┘
+                     │
+                     ▼
+         ┌─────────────────────────┐
+         │ First Login Attempt     │
+         │ with temp password      │
+         └────────────┬────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ System detects          │
+         │ force_password_change   │
+         │ flag is TRUE            │
+         └────────────┬────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ Redirect to Force       │
+         │ Change Password page    │
+         └────────────┬────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ User sets new password  │
+         └────────────┬────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ Update user record:     │
+         │ - New password hash     │
+         │ - force_change = false  │
+         │ - password_changed_at   │
+         └────────────┬────────────┘
+                      │
+                      ▼
+         ┌─────────────────────────┐
+         │ Redirect to Dashboard   │
+         └────────────┬────────────┘
+                      │
+                      ▼
+                 ┌─────────┐
+                 │   END   │
+                 └─────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+VALIDATION RULES:
+═══════════════════════════════════════════════════════════════════════════════
+
+REQUIRED FIELDS:
+• First Name, Last Name
+• Email (must be unique, valid format)
+• Office ID (must exist in offices table)
+• Position ID (must exist in positions table)
+• Role ID (must be valid role)
+• Employee Number (unique, can be auto-generated)
+
+OPTIONAL FIELDS:
+• Middle Name, Extension
+• Birth Date, Address, Contact Number
+• Date Hired (defaults to current date)
+
+EMAIL RULES:
+• Must be unique across all users
+• Must be valid email format
+• Recommended: use organizational domain (@dict.gov.ph)
+
+EMPLOYEE NUMBER:
+• Unique across all users
+• Can be auto-generated (format: YYYY####)
+• Or manually entered
+• Cannot be changed after creation
+
+PASSWORD GENERATION:
+• Length: 12 characters minimum
+• Contains: uppercase, lowercase, numbers, special chars
+• Secure random generation
+• User must change on first login
+
+═══════════════════════════════════════════════════════════════════════════════
+INITIAL SETUP:
+═══════════════════════════════════════════════════════════════════════════════
+
+LEAVE CREDITS INITIALIZATION:
+Based on employment type and start date:
+• Vacation Leave: 15 days/year (prorated)
+• Sick Leave: 15 days/year (prorated)
+• If hired mid-year, credits are prorated
+
+PDS INITIALIZATION:
+• Empty PDS record created
+• User prompted to complete PDS
+• Required for permanent employees
+
+PERMISSIONS:
+• Default permissions based on role
+• Admin: Full access
+• HR: HR module access
+• Employee: Self-service only
+
+═══════════════════════════════════════════════════════════════════════════════
+WELCOME EMAIL TEMPLATE:
+═══════════════════════════════════════════════════════════════════════════════
+
+Subject: Welcome to DICT HRIS - Account Created
+
+Dear [First Name] [Last Name],
+
+Your account has been successfully created in the DICT Human Resource
+Information System (HRIS).
+
+ACCOUNT DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Email Address:      [email]
+Employee Number:    [employee_number]
+Temporary Password: [temp_password]
+Office:             [office_name]
+Position:           [position_title]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT: You must change your password upon first login.
+
+LOGIN URL: [application_url]/login
+
+NEXT STEPS:
+1. Click the login link above
+2. Enter your email and temporary password
+3. You will be prompted to create a new password
+4. Complete your Personal Data Sheet (PDS)
+
+For assistance, contact the HR Department.
+
+Best regards,
+DICT HR Team
+
+═══════════════════════════════════════════════════════════════════════════════
+ERROR RESPONSES:
+═══════════════════════════════════════════════════════════════════════════════
+
+422 Validation Error:
+  - Email already exists
+  - Invalid email format
+  - Employee number already exists
+  - Invalid office or position
+  - Invalid role
+  - Missing required fields
+
+403 Forbidden:
+  - User not authorized to create accounts
+  - Not an admin or HR role
+
+500 Server Error:
+  - Database transaction failed
+  - Email sending failed (user created but notification failed)
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+

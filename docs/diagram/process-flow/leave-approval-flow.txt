@@ -1,0 +1,294 @@
+# Leave Management - Approval Process Flow (ASCII)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                        LEAVE APPROVAL PROCESS FLOW                              ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+                              ┌─────────────┐
+                              │   START     │
+                              │ (Approver)  │
+                              └──────┬──────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Approver receives   │
+                          │  notification:       │
+                          │  - Email             │
+                          │  - Dashboard alert   │
+                          │  - Badge indicator   │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Approver logs in    │
+                          │  to system           │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────────┐
+                          │  Navigate to:            │
+                          │  - "Leave Approvals" or  │
+                          │  - "Pending Approvals"   │
+                          └──────────┬───────────────┘
+                                     │
+                                     ▼
+                ┌────────────────────────────────────────────┐
+                │  Display Pending Leave Applications List   │
+                │  ┌──────────────────────────────────────┐  │
+                │  │ Employee Name | Leave Type | Dates   │  │
+                │  │ John Doe      | Vacation   | 3 days │  │
+                │  │ Jane Smith    | Sick       | 2 days │  │
+                │  └──────────────────────────────────────┘  │
+                └──────────────────┬─────────────────────────┘
+                                   │
+                                   ▼
+                          ┌─────────────────────┐
+                          │  Click on specific  │
+                          │  leave application  │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                ┌──────────────────────────────────────────────┐
+                │  Display Leave Application Details           │
+                │  ┌────────────────────────────────────────┐  │
+                │  │ Employee: John Doe                     │  │
+                │  │ Leave Type: Vacation Leave             │  │
+                │  │ Duration: Jan 20-22, 2025 (3 days)    │  │
+                │  │ Reason: Family vacation               │  │
+                │  │ Documents: [view attachments]          │  │
+                │  │ Current Credits: 15 days remaining     │  │
+                │  │ After approval: 12 days remaining      │  │
+                │  │                                        │  │
+                │  │ [Approve Button] [Reject Button]       │  │
+                │  │ Remarks: [text field - optional]       │  │
+                │  └────────────────────────────────────────┘  │
+                └──────────────────┬───────────────────────────┘
+                                   │
+                                   ▼
+                          ┌─────────────────────┐
+                          │  Approver reviews   │
+                          │  all details        │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                          ┌─────────────────────┐
+                          │  Approver makes     │
+                          │  decision           │
+                          └──────────┬──────────┘
+                                     │
+                ┌────────────────────┴────────────────────┐
+                │                                         │
+           [APPROVE?]                                [REJECT?]
+                │                                         │
+           ┌────▼─────┐                             ┌────▼─────┐
+           │   YES    │                             │   YES    │
+           └────┬─────┘                             └────┬─────┘
+                │                                         │
+                ▼                                         ▼
+    ┌────────────────────────┐            ┌──────────────────────────┐
+    │ Click "Approve" button │            │ Click "Reject" button    │
+    │ Add remarks (optional) │            │ Add remarks (required)   │
+    └────────┬───────────────┘            └──────────┬───────────────┘
+             │                                       │
+             ▼                                       ▼
+    ┌────────────────────────┐            ┌──────────────────────────┐
+    │ Confirm approval dialog│            │ Confirm rejection dialog │
+    │ "Are you sure?"        │            │ "Are you sure?"          │
+    └────────┬───────────────┘            └──────────┬───────────────┘
+             │                                       │
+             ▼                                       ▼
+    ┌────────────────────────────┐        ┌─────────────────────────────┐
+    │ POST /api/leave/           │        │ POST /api/leave/            │
+    │ applications/{id}/approve  │        │ applications/{id}/reject    │
+    │ {                          │        │ {                           │
+    │   remarks: "Approved"      │        │   remarks: "Insufficient... │
+    │ }                          │        │ }                           │
+    └────────┬───────────────────┘        └─────────┬───────────────────┘
+             │                                       │
+             ▼                                       ▼
+    ┌─────────────────────┐              ┌──────────────────────┐
+    │ BACKEND: Validate   │              │ BACKEND: Validate    │
+    │ - User is approver  │              │ - User is approver   │
+    │ - Leave is pending  │              │ - Leave is pending   │
+    └────────┬────────────┘              └──────────┬───────────┘
+             │                                       │
+             ▼                                       ▼
+    ┌─────────────────────┐              ┌──────────────────────┐
+    │ BEGIN TRANSACTION   │              │ Update leave status  │
+    └────────┬────────────┘              │ to 'rejected'        │
+             │                            └──────────┬───────────┘
+             ▼                                       │
+    ┌─────────────────────┐                         ▼
+    │ Update leave status │              ┌──────────────────────┐
+    │ to 'approved'       │              │ Set rejected_by &    │
+    └────────┬────────────┘              │ rejected_at          │
+             │                            └──────────┬───────────┘
+             ▼                                       │
+    ┌─────────────────────┐                         ▼
+    │ Set approved_by &   │              ┌──────────────────────┐
+    │ approved_at fields  │              │ Add rejection        │
+    └────────┬────────────┘              │ remarks              │
+             │                            └──────────┬───────────┘
+             ▼                                       │
+    ┌─────────────────────┐                         ▼
+    │ Calculate credits   │              ┌──────────────────────┐
+    │ to deduct           │              │ Create notification  │
+    └────────┬────────────┘              │ for employee         │
+             │                            └──────────┬───────────┘
+             ▼                                       │
+    ┌─────────────────────┐                         ▼
+    │ Update leave_credits│              ┌──────────────────────┐
+    │ table:              │              │ Send email to        │
+    │ - Deduct days       │              │ employee             │
+    │ - Update used_credits              │ "Leave Rejected"     │
+    └────────┬────────────┘              └──────────┬───────────┘
+             │                                       │
+             ▼                                       ▼
+    ┌─────────────────────┐              ┌──────────────────────┐
+    │ Create notification │              │ Log activity         │
+    │ for employee        │              └──────────┬───────────┘
+    └────────┬────────────┘                         │
+             │                                       ▼
+             ▼                            ┌──────────────────────┐
+    ┌─────────────────────┐              │ COMMIT TRANSACTION   │
+    │ Send approval email │              └──────────┬───────────┘
+    │ to employee         │                         │
+    └────────┬────────────┘                         ▼
+             │                            ┌──────────────────────┐
+             ▼                            │ Return 200 OK        │
+    ┌─────────────────────┐              │ {                    │
+    │ Notify HR/Admin     │              │   success: true,     │
+    │ (if configured)     │              │   message: "Rejected"│
+    └────────┬────────────┘              │ }                    │
+             │                            └──────────┬───────────┘
+             ▼                                       │
+    ┌─────────────────────┐                         │
+    │ Log activity        │                         │
+    └────────┬────────────┘                         │
+             │                                       │
+             ▼                                       │
+    ┌─────────────────────┐                         │
+    │ COMMIT TRANSACTION  │                         │
+    └────────┬────────────┘                         │
+             │                                       │
+             ▼                                       │
+    ┌─────────────────────┐                         │
+    │ Return 200 OK       │                         │
+    │ {                   │                         │
+    │   success: true,    │                         │
+    │   message:"Approved"│                         │
+    │   data: {           │                         │
+    │     new_credits: 12 │                         │
+    │   }                 │                         │
+    │ }                   │                         │
+    └────────┬────────────┘                         │
+             │                                       │
+             └───────────────┬───────────────────────┘
+                             │
+                             ▼
+                ┌──────────────────────────┐
+                │ Frontend: Show success   │
+                │ message & update list    │
+                └──────────┬───────────────┘
+                           │
+                           ▼
+                ┌──────────────────────────┐
+                │ Remove from pending list │
+                │ Update counts/badges     │
+                └──────────┬───────────────┘
+                           │
+                           ▼
+              ┌─────────────────────────────────┐
+              │ EMPLOYEE SIDE:                  │
+              │ ┌─────────────────────────────┐ │
+              │ │ Receives notification       │ │
+              │ │ - Email: "Leave X"          │ │
+              │ │ - Dashboard alert           │ │
+              │ │ - Status updated in UI      │ │
+              │ └─────────────────────────────┘ │
+              └────────────┬────────────────────┘
+                           │
+                           ▼
+                  ┌────────────────┐
+                  │ Leave status:  │
+                  │ [Approved] or  │
+                  │ [Rejected]     │
+                  └────────┬───────┘
+                           │
+                           ▼
+                      ┌─────────┐
+                      │   END   │
+                      └─────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+APPROVAL BUSINESS LOGIC:
+═══════════════════════════════════════════════════════════════════════════════
+
+APPROVE PROCESS:
+1. Validate approver has permission
+2. Check leave is in pending status
+3. Update status to 'approved'
+4. Record approver and timestamp
+5. Calculate leave days to deduct
+6. Update leave_credits table (deduct from remaining)
+7. Create notification for employee
+8. Send email to employee
+9. Log approval activity
+10. Notify HR/Admin (if configured)
+
+REJECT PROCESS:
+1. Validate approver has permission
+2. Check leave is in pending status
+3. Update status to 'rejected'
+4. Record rejector and timestamp
+5. Add rejection remarks (required)
+6. Create notification for employee
+7. Send email to employee
+8. Log rejection activity
+9. NO credit deduction
+
+═══════════════════════════════════════════════════════════════════════════════
+AUTHORIZATION CHECKS:
+═══════════════════════════════════════════════════════════════════════════════
+
+Who can approve:
+✓ HR role
+✓ Admin role
+✓ Designated approver (approval_names table)
+✓ Department head (if configured)
+
+Cannot approve:
+✗ Employee role (regular)
+✗ Self-approval (own leave)
+✗ Already processed leaves (approved/rejected)
+
+═══════════════════════════════════════════════════════════════════════════════
+NOTIFICATIONS SENT:
+═══════════════════════════════════════════════════════════════════════════════
+
+ON APPROVAL:
+→ Employee: "Your leave application has been approved"
+→ HR/Admin: "Leave approved for [Employee Name]" (optional)
+→ Email includes: dates, type, remaining credits
+
+ON REJECTION:
+→ Employee: "Your leave application has been rejected"
+→ Includes rejection reason/remarks
+→ Advises to contact approver if needed
+
+═══════════════════════════════════════════════════════════════════════════════
+ERROR RESPONSES:
+═══════════════════════════════════════════════════════════════════════════════
+
+403 Forbidden       - User not authorized to approve
+404 Not Found       - Leave application doesn't exist
+400 Bad Request     - Leave already processed
+422 Validation      - Missing required rejection remarks
+500 Server Error    - Database transaction failed
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+

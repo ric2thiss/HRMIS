@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { getOffices, createOffice, updateOffice, deleteOffice } from '../../../api/master-lists/offices';
+import { Pencil, Trash2 } from 'lucide-react';
+import { createOffice, updateOffice, deleteOffice } from '../../../api/master-lists/offices';
 import { useNotificationStore } from '../../../stores/notificationStore';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
+import { useOfficesTableStore } from '../../../stores/masterListTablesStore';
+import TableActionButton from '../../ui/TableActionButton';
 
 function OfficesTable() {
-  const [offices, setOffices] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { getOffices, offices, loading } = useOfficesTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingOffice, setEditingOffice] = useState(null);
   const [formData, setFormData] = useState({
@@ -20,6 +23,7 @@ function OfficesTable() {
 
   const showSuccess = useNotificationStore((state) => state.showSuccess);
   const showError = useNotificationStore((state) => state.showError);
+  const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
     loadOffices();
@@ -27,13 +31,9 @@ function OfficesTable() {
 
   const loadOffices = async () => {
     try {
-      setLoading(true);
-      const data = await getOffices();
-      setOffices(data);
+      await getOffices(); // Uses cache if available
     } catch (err) {
       showError('Failed to load offices');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -61,6 +61,7 @@ function OfficesTable() {
         status: 'active'
       });
       loadOffices();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
@@ -91,6 +92,7 @@ function OfficesTable() {
       await deleteOffice(id);
       showSuccess('Office deleted successfully');
       loadOffices();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {
@@ -172,18 +174,22 @@ function OfficesTable() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(office)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(office.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <TableActionButton
+                        variant="indigo"
+                        icon={Pencil}
+                        label="Edit"
+                        onClick={() => handleEdit(office)}
+                        title="Edit office"
+                      />
+                      <TableActionButton
+                        variant="red"
+                        icon={Trash2}
+                        label="Delete"
+                        onClick={() => handleDelete(office.id)}
+                        title="Delete office"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

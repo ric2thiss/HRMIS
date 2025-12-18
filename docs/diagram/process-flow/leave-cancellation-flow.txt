@@ -1,0 +1,423 @@
+# Leave Management - Leave Cancellation Flow (ASCII)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                      LEAVE APPLICATION CANCELLATION FLOW                        ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+                              ┌─────────────┐
+                              │   START     │
+                              │ (Employee)  │
+                              └──────┬──────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Employee navigates  │
+                          │  to "My Leaves"      │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                ┌────────────────────────────────────────────┐
+                │  Display Employee's Leave Applications     │
+                │  ┌──────────────────────────────────────┐  │
+                │  │ Type    │ Dates      │ Status        │  │
+                │  │ Vacation│ Jan 20-22  │ Pending       │  │
+                │  │ Sick    │ Feb 15-16  │ Approved      │  │
+                │  │ Vacation│ Mar 10-12  │ Approved      │  │
+                │  └──────────────────────────────────────┘  │
+                └──────────────────┬─────────────────────────┘
+                                   │
+                                   ▼
+                          ┌─────────────────────┐
+                          │  Employee selects   │
+                          │  leave to cancel    │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                ┌────────────────────────────────────────┐
+                │  Display Leave Application Details     │
+                │  ┌──────────────────────────────────┐  │
+                │  │ Leave Application #123           │  │
+                │  │                                  │  │
+                │  │ Type: Vacation Leave             │  │
+                │  │ Duration: Jan 20-22, 2025        │  │
+                │  │ Days: 3 days                     │  │
+                │  │ Status: Pending/Approved         │  │
+                │  │ Applied: Jan 10, 2025            │  │
+                │  │ Reason: Family vacation          │  │
+                │  │                                  │  │
+                │  │ [View Details]                   │  │
+                │  │ [Cancel Application] ⚠️          │  │
+                │  └──────────────────────────────────┘  │
+                └──────────────────┬─────────────────────┘
+                                   │
+                                   ▼
+                          ┌─────────────────────┐
+                          │  Click "Cancel      │
+                          │  Application"       │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                ┌────────────────────────────────────────┐
+                │  Confirmation Dialog                   │
+                │  ┌──────────────────────────────────┐  │
+                │  │ Cancel Leave Application?        │  │
+                │  │                                  │  │
+                │  │ This action cannot be undone.    │  │
+                │  │                                  │  │
+                │  │ Status: [Pending/Approved]       │  │
+                │  │                                  │  │
+                │  │ Reason for cancellation:         │  │
+                │  │ [____________________________]   │  │
+                │  │ [____________________________]   │  │
+                │  │ (Required)                       │  │
+                │  │                                  │  │
+                │  │ Note: Credits will be restored   │  │
+                │  │ only if cancelled before start   │  │
+                │  │ date.                            │  │
+                │  │                                  │  │
+                │  │ [No, Keep It] [Yes, Cancel]      │  │
+                │  └──────────────────────────────────┘  │
+                └──────────────────┬─────────────────────┘
+                                   │
+                                   ▼
+                          ┌─────────────────────┐
+                          │  User enters reason │
+                          │  and confirms       │
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+            ┌──────────────────────────────────────┐
+            │  POST /api/leave/applications/{id}   │
+            │        /cancel                       │
+            │  {                                   │
+            │    reason: "Change of plans due to.."│
+            │  }                                   │
+            └──────────────┬───────────────────────┘
+                           │
+                           ▼
+            ┌──────────────────────────────┐
+            │  BACKEND: Validate Request   │
+            └──────────────┬───────────────┘
+                           │
+         ┌─────────────────┼─────────────────┬──────────────────┐
+         │                 │                 │                  │
+         ▼                 ▼                 ▼                  ▼
+    ┌─────────┐      ┌──────────┐     ┌──────────┐      ┌──────────┐
+    │ Check   │      │ Check    │     │ Check    │      │ Check    │
+    │ leave   │      │ employee │     │ leave    │      │ reason   │
+    │ exists  │      │ is owner │     │ status   │      │ provided │
+    └────┬────┘      └────┬─────┘     └────┬─────┘      └────┬─────┘
+         │                │                 │                  │
+         └────────────────┴─────────────────┴──────────────────┘
+                                    │
+                     ┌──────────────┴──────────────┐
+                     │                             │
+               [All valid?]                  [Any failed?]
+                     │                             │
+                 ┌───▼───┐                     ┌───▼───┐
+                 │  YES  │                     │  NO   │
+                 └───┬───┘                     └───┬───┘
+                     │                             │
+                     │                             ▼
+                     │              ┌──────────────────────────┐
+                     │              │  Return error:           │
+                     │              │  - "Not found"           │
+                     │              │  - "Unauthorized"        │
+                     │              │  - "Cannot cancel"       │
+                     │              │  - "Reason required"     │
+                     │              └──────────────┬───────────┘
+                     │                             │
+                     ▼                             │
+         ┌─────────────────────────┐               │
+         │ Check leave status      │               │
+         └────────────┬────────────┘               │
+                      │                            │
+        ┌─────────────┼─────────────┐              │
+        │             │             │              │
+   [Pending?]    [Approved?]   [Other?]           │
+        │             │             │              │
+    ┌───▼───┐     ┌───▼───┐    ┌───▼───┐          │
+    │  YES  │     │  YES  │    │  NO   │          │
+    └───┬───┘     └───┬───┘    └───┬───┘          │
+        │             │             │              │
+        │             │             ▼              │
+        │             │    ┌─────────────────┐    │
+        │             │    │ Cannot cancel   │    │
+        │             │    │ (rejected/used) │    │
+        │             │    └─────────────────┘    │
+        │             │                            │
+        │             ▼                            │
+        │    ┌──────────────────────┐             │
+        │    │ Check current date   │             │
+        │    │ vs. leave start date │             │
+        │    └──────────┬───────────┘             │
+        │               │                          │
+        │    ┌──────────┴──────────┐               │
+        │    │                     │               │
+        │ [Before    [After or     │               │
+        │  start?]    started?]    │               │
+        │    │            │         │               │
+        │    ▼            ▼         │               │
+        │ ┌─────┐     ┌──────┐     │               │
+        │ │Allow│     │Notify│     │               │
+        │ │full │     │only  │     │               │
+        │ │cancel     │no    │     │               │
+        │ └──┬──┘     │credit│     │               │
+        │    │        │restore     │               │
+        │    │        └──┬───┘     │               │
+        │    │           │         │               │
+        └────┴───────────┴─────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ BEGIN TRANSACTION       │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Update leave status:    │               │
+         │ pending/approved →      │               │
+         │ cancelled               │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Set cancellation details│               │
+         │ - cancelled_at          │               │
+         │ - cancel_reason         │               │
+         │ - cancelled_by          │               │
+         └────────────┬────────────┘               │
+                      │                            │
+                      ▼                            │
+         ┌─────────────────────────┐               │
+         │ Check if credits should │               │
+         │ be restored             │               │
+         └────────────┬────────────┘               │
+                      │                            │
+        ┌─────────────┴─────────────┐              │
+        │                           │              │
+   [Before     [After or              │              │
+    start?]     started?]             │              │
+        │                           │              │
+    ┌───▼───┐                   ┌───▼───┐          │
+    │  YES  │                   │  NO   │          │
+    └───┬───┘                   └───┬───┘          │
+        │                           │              │
+        ▼                           ▼              │
+┌────────────────┐      ┌──────────────────┐      │
+│ Restore credits│      │ Do NOT restore   │      │
+│ to user:       │      │ credits (already │      │
+│ - Find leave   │      │ utilized)        │      │
+│   credits      │      └──────────┬───────┘      │
+│ - Add days back│                 │              │
+│ - Update       │                 │              │
+│   remaining    │                 │              │
+└────────┬───────┘                 │              │
+         │                         │              │
+         ▼                         │              │
+┌────────────────┐                 │              │
+│ Log credit     │                 │              │
+│ restoration in │                 │              │
+│ balance_history│                 │              │
+└────────┬───────┘                 │              │
+         │                         │              │
+         └─────────┬───────────────┘              │
+                   │                              │
+                   ▼                              │
+      ┌─────────────────────────┐                │
+      │ Create notification for │                │
+      │ approver (if was pending)│               │
+      │ or HR (if was approved) │                │
+      └────────────┬────────────┘                │
+                   │                              │
+                   ▼                              │
+      ┌─────────────────────────┐                │
+      │ Send email notification │                │
+      │ to relevant parties     │                │
+      └────────────┬────────────┘                │
+                   │                              │
+                   ▼                              │
+      ┌─────────────────────────┐                │
+      │ Log cancellation action │                │
+      │ in activity log         │                │
+      └────────────┬────────────┘                │
+                   │                              │
+                   ▼                              │
+      ┌─────────────────────────┐                │
+      │ Update attendance records│               │
+      │ if leave overlaps with   │               │
+      │ current dates            │               │
+      └────────────┬────────────┘                │
+                   │                              │
+                   ▼                              │
+      ┌─────────────────────────┐                │
+      │ COMMIT TRANSACTION      │                │
+      └────────────┬────────────┘                │
+                   │                              │
+                   ▼                              │
+      ┌─────────────────────────┐                │
+      │ Return 200 OK           │                │
+      │ {                       │                │
+      │   success: true,        │                │
+      │   message: "Leave       │                │
+      │            cancelled",  │                │
+      │   credits_restored:     │                │
+      │            true/false,  │                │
+      │   new_balance: X        │                │
+      │ }                       │                │
+      └────────────┬────────────┘                │
+                   │                              │
+                   │◄─────────────────────────────┘
+                   │
+                   ▼
+      ┌─────────────────────────┐
+      │ Frontend: Show success  │
+      │ message & update list   │
+      └────────────┬────────────┘
+                   │
+                   ▼
+      ┌──────────────────────────────────┐
+      │ Display Cancellation Confirmation│
+      │ ┌──────────────────────────────┐ │
+      │ │ ✓ Leave Cancelled            │ │
+      │ │                              │ │
+      │ │ Your leave application has   │ │
+      │ │ been cancelled.              │ │
+      │ │                              │ │
+      │ │ Credits Restored: 3 days ✓   │ │
+      │ │ New Balance: 15 days         │ │
+      │ │                              │ │
+      │ │ [Back to My Leaves]          │ │
+      │ └──────────────────────────────┘ │
+      └──────────────┬───────────────────┘
+                     │
+                     ▼
+         ┌──────────────────────┐
+         │ Update leave list    │
+         │ (mark as cancelled)  │
+         └──────────┬───────────┘
+                    │
+                    ▼
+               ┌─────────┐
+               │   END   │
+               └─────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+CANCELLATION RULES:
+═══════════════════════════════════════════════════════════════════════════════
+
+CAN CANCEL IF:
+• Status is "pending" or "approved"
+• Employee is the owner
+• Leave has not been marked as "used"
+• Not yet rejected or expired
+
+CANNOT CANCEL IF:
+• Status is "rejected" (already denied)
+• Status is "used" (already consumed)
+• Status is "expired"
+• Leave period has fully passed
+• Different user trying to cancel
+
+CREDIT RESTORATION:
+• Restore IF: Cancelled before start date
+• Do NOT restore IF: Cancelled after start date or during leave period
+• Credits go back to available balance immediately
+• Transaction logged in balance history
+
+═══════════════════════════════════════════════════════════════════════════════
+NOTIFICATION MATRIX:
+═══════════════════════════════════════════════════════════════════════════════
+
+IF PENDING LEAVE CANCELLED:
+→ Notify approver: "Leave application cancelled by employee"
+→ Remove from pending approval queue
+
+IF APPROVED LEAVE CANCELLED:
+→ Notify HR: "Approved leave cancelled"
+→ Notify approver (FYI): "Leave was cancelled"
+→ If credits restored: Update credit balance report
+
+IF CANCELLED BEFORE START:
+→ Email employee: "Leave cancelled, credits restored"
+
+IF CANCELLED AFTER START:
+→ Email employee: "Leave cancelled, no credit restoration"
+→ Alert HR: "Leave cancelled after commencement"
+
+═══════════════════════════════════════════════════════════════════════════════
+AUDIT TRAIL:
+═══════════════════════════════════════════════════════════════════════════════
+
+LOGGED INFORMATION:
+• Who cancelled (user_id)
+• When cancelled (timestamp)
+• Original status (pending/approved)
+• Reason for cancellation
+• Whether credits were restored
+• IP address and device info
+• Notification recipients
+
+BALANCE HISTORY ENTRY:
+• User ID
+• Leave type
+• Action: "restored" or "no_restoration"
+• Amount: number of days
+• Reason: "Leave application #X cancelled"
+• Previous balance
+• New balance
+• Timestamp
+
+═══════════════════════════════════════════════════════════════════════════════
+ERROR RESPONSES:
+═══════════════════════════════════════════════════════════════════════════════
+
+404 Not Found:
+  - Leave application doesn't exist
+
+403 Forbidden:
+  - User not authorized (not owner)
+  - Leave cannot be cancelled (wrong status)
+
+400 Bad Request:
+  - Missing cancellation reason
+  - Leave already cancelled
+
+422 Unprocessable Entity:
+  - Invalid leave ID
+  - Reason too short (min 10 characters)
+
+═══════════════════════════════════════════════════════════════════════════════
+EDGE CASES:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. PARTIAL LEAVE CANCELLATION:
+   If leave has started but not ended:
+   - Mark as cancelled
+   - Calculate partial days used
+   - Restore unused days only
+   - Update attendance for actual days taken
+
+2. SAME-DAY CANCELLATION:
+   If cancelled on start date:
+   - Check if time-in recorded
+   - If yes: Consider as partially used
+   - If no: Full restoration
+
+3. MULTI-LEVEL APPROVAL:
+   If multi-level approval enabled:
+   - Notify all approvers in chain
+   - Remove from all pending queues
+
+4. CANCELLED DURING LEAVE:
+   If cancelled while on leave:
+   - Mark attendance "cancelled-leave"
+   - Calculate days actually taken
+   - Restore remaining days only
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+

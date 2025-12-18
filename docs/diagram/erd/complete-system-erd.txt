@@ -1,0 +1,281 @@
+# DICT Project - Complete System ERD (ASCII Format)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                          DICT PROJECT DATABASE SCHEMA                                            │
+│                                              (ACCURATE AS OF 2024)                                               │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌──────────────────────┐         ┌──────────────────────┐         ┌──────────────────────┐
+│       roles          │         │       offices        │         │      positions       │
+├──────────────────────┤         ├──────────────────────┤         ├──────────────────────┤
+│ PK id                │         │ PK id                │         │ PK id                │
+│    name              │         │    name              │         │    title             │
+│    description       │         │    code              │         │    description       │
+│    access_permissions│         │    address           │         │    created_at        │
+│    scope             │         │    contact_number    │         │    updated_at        │
+│    created_at        │         │    email             │         └──────────┬───────────┘
+│    updated_at        │         │    is_active         │                    │
+└──────────┬───────────┘         │    created_at        │                    │
+           │                     │    updated_at        │                    │
+           │                     └──────────┬───────────┘                    │
+           │                                │                                │
+           │                                │                                │
+           │         ┌──────────────────────┼────────────────────────────────┘
+           │         │                      │
+           │         │                      │
+      ┌────▼─────────▼──────────────────────▼────────────────────────────────────────────────┐
+      │                                    users                                              │
+      ├───────────────────────────────────────────────────────────────────────────────────────┤
+      │ PK id                          │  Basic Information                                   │
+      │    employee_id (UNIQUE)        │  - Name fields (name, first_name, middle_initial,   │
+      │    name                        │    last_name), email, sex                            │
+      │    first_name                  │                                                      │
+      │    middle_initial              │  Organizational                                      │
+      │    last_name                   │  - role_id, office_id, position_id, project_id      │
+      │    sex                         │                                                      │
+      │    email (UNIQUE)              │  Security                                            │
+      │    password (hashed)           │  - Password, remember_token, email_verified_at      │
+      │                                │  - is_locked, must_change_password                  │
+      │ FK role_id                     │  - has_system_settings_access                       │
+      │ FK office_id [nullable]        │                                                      │
+      │ FK position_id                 │  Profile & Signature                                │
+      │ FK project_id                  │  - profile_image (longtext base64)                  │
+      │                                │  - signature (text base64)                          │
+      │    profile_image (longtext)    │                                                      │
+      │    signature (text)            │  Timestamps                                          │
+      │    is_locked (boolean)         │  - created_at, updated_at                           │
+      │    must_change_password (bool) │                                                      │
+      │    has_system_settings_access  │                                                      │
+      │    remember_token              │                                                      │
+      │    email_verified_at           │                                                      │
+      │    created_at                  │                                                      │
+      │    updated_at                  │                                                      │
+      └───────────┬───────────────────────────────────────────────────────────────────────────┘
+                  │
+                  │
+                  │
+      ┌───────────┴───────────┬────────────────┬─────────────────┬──────────────────┬──────────────────┐
+      │                       │                │                 │                  │                  │
+      │                       │                │                 │                  │                  │
+      ▼                       ▼                ▼                 ▼                  ▼                  ▼
+┌─────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│  attendances    │  │     leaves       │  │personal_data_sheet│ │ login_activities │  │ http_request_logs│
+├─────────────────┤  ├──────────────────┤  ├──────────────────┤  ├──────────────────┤  ├──────────────────┤
+│ PK id           │  │ PK id            │  │ PK id            │  │ PK id            │  │ PK id            │
+│ FK user_id      │  │ FK user_id       │  │ FK user_id (1:1) │  │ FK user_id (null)│  │ FK user_id (null)│
+│    ac_no        │  │ FK leave_type_id │  │                  │  │    email         │  │    method        │
+│    employee_id  │  │    start_date    │  │ PERSONAL INFO:   │  │    ip_address    │  │    url           │
+│    name         │  │    end_date      │  │ - surname        │  │    user_agent    │  │    ip_address    │
+│    date_time    │  │    exclusive_dates│  │ - firstname      │  │    successful    │  │    user_agent    │
+│    date         │  │    working_days  │  │ - middlename     │  │    failed_reason │  │    status_code   │
+│    time         │  │    remarks       │  │ - birth info     │  │    created_at    │  │    response_time │
+│    state        │  │    commutation   │  │                  │  │    updated_at    │  │    created_at    │
+│    import_file  │  │    status        │  │ FAMILY:          │  └──────────────────┘  │    updated_at    │
+│ FK imported_by  │  │    approved_by   │  │ - spouse, children│                       └──────────────────┘
+│    imported_at  │  │    approved_at   │  │ - parents        │
+│    created_at   │  │    approval_remarks│  │                  │
+│    updated_at   │  │                  │  │ EDUCATION:       │  ┌──────────────────────┐
+└─────────────────┘  │ MULTI-STAGE:     │  │ - all levels     │  │ module_access_logs   │
+                     │ FK leave_credit_  │  │                  │  ├──────────────────────┤
+                     │    authorized_    │  │ WORK EXPERIENCE: │  │ PK id                │
+                     │    officer_id     │  │ - positions      │  │ FK user_id           │
+                     │ FK recommendation_│  │                  │  │    module_name       │
+                     │    approver_id    │  │ TRAINING:        │  │    action            │
+                     │ FK leave_approver_│  │ - seminars       │  │    ip_address        │
+                     │    id             │  │                  │  │    created_at        │
+                     │                  │  │ OTHER INFO:      │  │    updated_at        │
+                     │ 3 approval stages│  │ - skills         │  └──────────────────────┘
+                     │ with signatures  │  │ - organizations  │
+                     │    created_at    │  │ - references     │
+                     │    updated_at    │  │                  │
+                     └────────┬─────────┘  │    status        │
+                              │            │    created_at    │
+                              │            │    updated_at    │
+                              │            └──────────────────┘
+                     ┌────────▼─────────┐
+                     │   leave_types    │
+                     ├──────────────────┤
+                     │ PK id            │
+                     │    name          │
+                     │    code          │
+                     │    description   │
+                     │    days_per_year │
+                     │    is_paid       │
+                     │    requires_docs │
+                     │    gender_specific│
+                     │    is_monetizable│
+                     │    color_code    │
+                     │    sort_order    │
+                     │    is_active     │
+                     │    created_at    │
+                     │    updated_at    │
+                     └──────────────────┘
+
+
+┌──────────────────────┐         ┌──────────────────────┐
+│   approval_names     │         │      projects        │
+├──────────────────────┤         ├──────────────────────┤
+│ PK id                │         │ PK id                │
+│ FK user_id [nullable]│         │    name              │
+│    name              │         │    project_code      │
+│    type              │         │    description       │
+│    description       │         │    status            │
+│    is_active         │         │    start_date        │
+│    sort_order        │         │    end_date          │
+│    created_at        │         │    created_at        │
+│    updated_at        │         │    updated_at        │
+└──────────────────────┘         └──────────────────────┘
+
+
+┌──────────────────────┐         ┌──────────────────────┐
+│  employment_type     │         │special_capabilities  │
+├──────────────────────┤         ├──────────────────────┤
+│ PK id                │         │ PK id                │
+│    name              │         │    name              │
+│    description       │         │    description       │
+│    created_at        │         │    created_at        │
+│    updated_at        │         │    updated_at        │
+└──────────────────────┘         └──────────────────────┘
+
+
+┌──────────────────────────┐     ┌──────────────────────────┐
+│system_maintenance        │     │ password_reset_tokens    │
+├──────────────────────────┤     ├──────────────────────────┤
+│ PK id                    │     │    email (PK)            │
+│    is_maintenance        │     │    token                 │
+│    message               │     │    created_at            │
+│    start_time            │     └──────────────────────────┘
+│    end_time              │
+│    allowed_login_roles   │
+│    version               │
+│    created_at            │
+│    updated_at            │
+└──────────────────────────┘
+
+
+┌──────────────────────────────┐     ┌──────────────────────────────┐
+│users_employment_types (pivot)│     │user_special_capabilities     │
+├──────────────────────────────┤     │(pivot)                       │
+│ PK id                        │     ├──────────────────────────────┤
+│ FK user_id                   │     │ PK id                        │
+│ FK employment_type_id        │     │ FK user_id                   │
+│    created_at                │     │ FK capability_id             │
+│    updated_at                │     │    created_at                │
+└──────────────────────────────┘     │    updated_at                │
+                                     └──────────────────────────────┘
+
+┌──────────────────────────────┐
+│   role_user (pivot - legacy) │
+├──────────────────────────────┤
+│ FK user_id                   │
+│ FK role_id                   │
+│    created_at                │
+│    updated_at                │
+└──────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+KEY RELATIONSHIPS:
+═══════════════════════════════════════════════════════════════════════════════
+
+USERS:
+1. users → roles (N:1) - Each user has one primary role
+2. users → offices (N:1) - Many users belong to one office (nullable)
+3. users → positions (N:1) - Many users have one position
+4. users → projects (N:1) - Many users assigned to one project
+5. users → employment_type (N:M) - via users_employment_types pivot
+6. users → special_capabilities (N:M) - via user_special_capabilities pivot
+
+LEAVE MANAGEMENT:
+7. users → leaves (1:N) - One user has many leave applications
+8. leave_types → leaves (1:N) - One leave type used in many applications
+9. approval_names → leaves (1:N) - Three foreign keys for 3-stage approval
+10. users → leaves (1:N) - As stage approvers (3 separate relationships)
+
+ATTENDANCE:
+11. users → attendances (1:N) - One user has many attendance records
+12. users → attendances (1:N) [imported_by] - One HR user imports many records
+
+PDS & TRACKING:
+13. users → personal_data_sheets (1:1) - One user has one PDS
+14. users → login_activities (1:N) - One user has many login records
+15. users → module_access_logs (1:N) - One user has many access logs
+16. users → http_request_logs (1:N) - One user has many request logs
+
+
+═══════════════════════════════════════════════════════════════════════════════
+MODULE SUMMARY:
+═══════════════════════════════════════════════════════════════════════════════
+
+USER MANAGEMENT:
+✅ users - Core user accounts
+✅ roles - System roles (admin, hr, employee)
+✅ offices - Office/division organization
+✅ positions - Job positions
+✅ projects - Project assignments
+✅ employment_type - Employment types (Plantilla, JO)
+✅ special_capabilities - Skills for JO employees
+✅ users_employment_types - User-employment pivot
+✅ user_special_capabilities - User-capability pivot
+✅ role_user - Legacy role pivot
+
+LEAVE MANAGEMENT:
+✅ leaves - Leave applications with multi-stage approval
+✅ leave_types - Types of leave (VL, SL, etc.)
+✅ approval_names - Approver master list with types
+
+ATTENDANCE MANAGEMENT:
+✅ attendances - Raw biometric device import data
+
+PDS (Personal Data Sheet):
+✅ personal_data_sheets - Complete employee information
+
+AUTHENTICATION & LOGGING:
+✅ login_activities - Login attempt tracking
+✅ module_access_logs - Module access tracking
+✅ http_request_logs - API request logging
+✅ password_reset_tokens - Password reset tokens
+
+SYSTEM:
+✅ system_maintenance - Maintenance mode control
+✅ personal_access_tokens - Laravel Sanctum tokens
+✅ sessions - User sessions
+✅ cache, cache_locks - Cache system
+✅ jobs, job_batches, failed_jobs - Queue system
+
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPORTANT NOTES:
+═══════════════════════════════════════════════════════════════════════════════
+
+LEAVE MANAGEMENT SPECIFICS:
+• Multi-stage approval workflow (3 stages)
+• Each stage has: approval flag, approver user_id, timestamp, remarks, signature
+• Approvers are selected from approval_names table
+• exclusive_dates stored as JSON array for flexible date selection
+• Digital signatures captured as base64 encoded text
+
+ATTENDANCE SPECIFICS:
+• Raw import data from biometric devices
+• No calculated fields - calculations done at application layer
+• Import tracking for undo capability (import_filename)
+• State field indicates Check In/Check Out
+
+USER MANAGEMENT SPECIFICS:
+• employee_id format: [type][YYYY][MM][NNNN]
+• HR/Admin must be Plantilla (enforced in code)
+• Both belongsTo and many-to-many role relationships (legacy support)
+• Profile images and signatures stored as base64
+• Must change password flag for new accounts
+• System settings access separate from role
+
+PDS SPECIFICS:
+• One-to-one relationship with users
+• Comprehensive employee information
+• Status workflow: draft → pending → approved/for_revision
+
+
+═══════════════════════════════════════════════════════════════════════════════
+```

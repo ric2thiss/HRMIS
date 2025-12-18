@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getSpecialCapabilities, createSpecialCapability, updateSpecialCapability, deleteSpecialCapability } from '../../../api/master-lists/specialCapabilities';
+import { createSpecialCapability, updateSpecialCapability, deleteSpecialCapability } from '../../../api/master-lists/specialCapabilities';
 import { useNotificationStore } from '../../../stores/notificationStore';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
+import { useCapabilitiesTableStore } from '../../../stores/masterListTablesStore';
 
 function SpecialCapabilitiesTable() {
-  const [capabilities, setCapabilities] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { getCapabilities, capabilities, loading } = useCapabilitiesTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingCapability, setEditingCapability] = useState(null);
   const [formData, setFormData] = useState({
@@ -14,6 +15,7 @@ function SpecialCapabilitiesTable() {
 
   const showSuccess = useNotificationStore((state) => state.showSuccess);
   const showError = useNotificationStore((state) => state.showError);
+  const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
     loadCapabilities();
@@ -21,13 +23,9 @@ function SpecialCapabilitiesTable() {
 
   const loadCapabilities = async () => {
     try {
-      setLoading(true);
-      const data = await getSpecialCapabilities();
-      setCapabilities(data);
+      await getCapabilities(); // Uses cache if available
     } catch (err) {
       showError('Failed to load special capabilities');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -46,6 +44,7 @@ function SpecialCapabilitiesTable() {
       setEditingCapability(null);
       setFormData({ name: '', description: '' });
       loadCapabilities();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
@@ -70,6 +69,7 @@ function SpecialCapabilitiesTable() {
       await deleteSpecialCapability(id);
       showSuccess('Special capability deleted successfully');
       loadCapabilities();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {

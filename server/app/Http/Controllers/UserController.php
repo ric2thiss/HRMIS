@@ -180,7 +180,7 @@ class UserController extends Controller
                 'role:id,name',
                 'position:id,title',
                 'project:id,name,project_code,status',
-                'office:id,name',
+                'office:id,name,code',
                 'roles:id,name',
                 'employmentTypes:id,name',
                 'specialCapabilities:id,name'
@@ -224,7 +224,7 @@ class UserController extends Controller
                 'role:id,name',
                 'position:id,title',
                 'project:id,name,project_code,status',
-                'office:id,name',
+                'office:id,name,code',
                 'roles:id,name',
                 'employmentTypes:id,name',
                 'specialCapabilities:id,name'
@@ -272,7 +272,7 @@ class UserController extends Controller
                 'role:id,name',
                 'position:id,title',
                 'project:id,name,project_code,status',
-                'office:id,name',
+                'office:id,name,code',
                 'roles:id,name',
                 'employmentTypes:id,name',
                 'specialCapabilities:id,name'

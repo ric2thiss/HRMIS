@@ -127,6 +127,15 @@ class LeaveController extends Controller
                 'show_remarks_to.leave_approver' => 'boolean',
             ]);
 
+            // Validate that the leave type is active
+            $leaveType = LeaveType::find($validated['leave_type_id']);
+            if (!$leaveType || !$leaveType->is_active) {
+                return response()->json([
+                    'message' => 'The selected leave type is not available. Please select an active leave type.',
+                    'errors' => ['leave_type_id' => ['The selected leave type is inactive.']]
+                ], 422);
+            }
+
             $leave = Leave::create([
                 'user_id' => $user->id,
                 'leave_type_id' => $validated['leave_type_id'],
@@ -634,6 +643,51 @@ class LeaveController extends Controller
             Log::error('Error fetching leave types: ' . $e->getMessage());
             return response()->json([
                 'error' => 'Failed to fetch leave types',
+                'message' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get leave credits (remaining days) for the current user
+     */
+    public function getMyLeaveCredits(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Get all active leave types
+            $leaveTypes = LeaveType::active()->orderBy('name')->get();
+            
+            $leaveCredits = [];
+            
+            foreach ($leaveTypes as $leaveType) {
+                // Calculate used days (approved + pending leaves)
+                $usedDays = Leave::where('user_id', $user->id)
+                    ->where('leave_type_id', $leaveType->id)
+                    ->whereIn('status', ['approved', 'pending'])
+                    ->sum('working_days');
+                
+                // Calculate remaining days
+                $remainingDays = max(0, ($leaveType->max_days ?? 0) - $usedDays);
+                
+                $leaveCredits[] = [
+                    'id' => $leaveType->id,
+                    'code' => $leaveType->code,
+                    'name' => $leaveType->name,
+                    'max_days' => $leaveType->max_days ?? 0,
+                    'used_days' => $usedDays,
+                    'remaining_days' => $remainingDays,
+                ];
+            }
+            
+            return response()->json([
+                'leave_credits' => $leaveCredits
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching leave credits: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to fetch leave credits',
                 'message' => config('app.debug') ? $e->getMessage() : 'An error occurred'
             ], 500);
         }

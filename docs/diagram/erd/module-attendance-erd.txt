@@ -1,0 +1,248 @@
+# Attendance Management Module - ERD (ASCII Format)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    ATTENDANCE MANAGEMENT MODULE - DATABASE SCHEMA               ║
+║                      (BIOMETRIC IMPORT SYSTEM - ACCURATE AS OF 2024)           ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+                              ┌──────────────────────┐
+                              │       users          │
+                              ├──────────────────────┤
+                              │ PK id                │
+                              │    first_name        │
+                              │    last_name         │
+                              │    middle_initial    │
+                              │    employee_id       │
+                              │    office_id         │
+                              │    position_id       │
+                              │    is_active         │
+                              └──────────┬───────────┘
+                                         │
+                                         │ 1:N
+                                         │
+                          ┌──────────────▼─────────────────────────────────────┐
+                          │                 attendances                        │
+                          │         (Raw Biometric Device Import)              │
+                          ├────────────────────────────────────────────────────┤
+                          │ PK id                                              │
+                          │                                                    │
+                          │ BIOMETRIC DEVICE DATA:                             │
+                          │    ac_no              varchar [nullable]           │
+                          │                       (Account No from device)     │
+                          │    employee_id        varchar [nullable, INDEX]    │
+                          │                       (Mapped from AC No.)         │
+                          │ FK user_id            → users.id [nullable, INDEX] │
+                          │    name               varchar [nullable]           │
+                          │                       (Name from device)           │
+                          │                                                    │
+                          │ DATE & TIME:                                       │
+                          │    date_time          datetime [INDEX]             │
+                          │                       (Original from device)       │
+                          │    date               date [INDEX]                 │
+                          │                       (Extracted for querying)     │
+                          │    time               time                         │
+                          │                       (Extracted for querying)     │
+                          │    state              varchar [nullable]           │
+                          │                       (Check In/Check Out)         │
+                          │                                                    │
+                          │ IMPORT TRACKING:                                   │
+                          │    import_filename    varchar [nullable, INDEX]    │
+                          │                       (Original CSV filename)      │
+                          │ FK imported_by        → users.id [nullable]        │
+                          │                       (HR who imported)            │
+                          │    imported_at        timestamp [nullable]         │
+                          │                       (When imported)              │
+                          │                                                    │
+                          │ TIMESTAMPS:                                        │
+                          │    created_at         timestamp                    │
+                          │    updated_at         timestamp                    │
+                          │                                                    │
+                          │ INDEXES:                                           │
+                          │    - INDEX(user_id)                                │
+                          │    - INDEX(date)                                   │
+                          │    - INDEX(employee_id)                            │
+                          │    - INDEX(user_id, date)                          │
+                          │    - INDEX(date_time)                              │
+                          │    - INDEX(import_filename) (for undo import)      │
+                          └────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+RELATIONSHIPS:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. users → attendances (1:N)
+   One user has many attendance records
+
+2. users → attendances (1:N) [imported_by]
+   One HR user can import many attendance batches
+
+
+═══════════════════════════════════════════════════════════════════════════════
+BUSINESS RULES:
+═══════════════════════════════════════════════════════════════════════════════
+
+BIOMETRIC IMPORT SYSTEM:
+• Attendance data is imported from biometric device CSV files
+• Raw data is preserved exactly as received from device
+• Each record represents a single punch (check in or check out)
+• Multiple records per day per employee (in/out pairs)
+
+DATA MAPPING:
+• ac_no: Account number from biometric device
+• employee_id: Mapped employee ID (from ac_no lookup)
+• user_id: Linked to users table after mapping
+• name: Employee name as stored in biometric device
+• date_time: Original timestamp from device
+• date: Extracted date for easier filtering
+• time: Extracted time for easier display
+• state: Check In or Check Out indicator
+
+IMPORT WORKFLOW:
+1. HR uploads CSV file from biometric device
+2. System parses CSV and extracts fields
+3. System maps ac_no to employee_id
+4. System links employee_id to user_id
+5. Records are stored with import metadata
+6. import_filename stored for tracking and undo capability
+
+IMPORT TRACKING:
+• import_filename: Original filename for grouping
+• imported_by: HR user who performed the import
+• imported_at: Timestamp of import operation
+• Allows undo of entire import batch by filename
+
+UNDO IMPORT:
+• HR can undo an import by selecting the import filename
+• All records with matching import_filename are deleted
+• Used for correcting import mistakes
+
+DATA INTEGRITY:
+• user_id is nullable (not all device records may map to users)
+• employee_id helps bridge biometric device to user accounts
+• Original device data (ac_no, name, date_time, state) preserved
+• Extracted date/time fields for query performance
+
+
+═══════════════════════════════════════════════════════════════════════════════
+INDEXES FOR PERFORMANCE:
+═══════════════════════════════════════════════════════════════════════════════
+
+attendances table:
+  - INDEX(user_id)                   → All attendance for a user
+  - INDEX(date)                      → Attendance on specific date
+  - INDEX(employee_id)               → Lookup by employee_id
+  - INDEX(user_id, date)             → User's attendance on date (composite)
+  - INDEX(date_time)                 → Time-based queries
+  - INDEX(import_filename)           → Group by import batch (for undo)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TYPICAL QUERIES:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Get user's attendance for a date range:
+   SELECT * FROM attendances
+   WHERE user_id = ?
+   AND date BETWEEN ? AND ?
+   ORDER BY date_time ASC
+
+2. Get all attendance for a specific date:
+   SELECT a.*, u.first_name, u.last_name, u.employee_id
+   FROM attendances a
+   LEFT JOIN users u ON a.user_id = u.id
+   WHERE a.date = ?
+   ORDER BY a.time ASC
+
+3. Get import history:
+   SELECT import_filename, 
+          COUNT(*) as record_count,
+          MIN(date) as earliest_date,
+          MAX(date) as latest_date,
+          imported_at,
+          u.first_name as imported_by_name
+   FROM attendances a
+   LEFT JOIN users u ON a.imported_by = u.id
+   WHERE import_filename IS NOT NULL
+   GROUP BY import_filename, imported_at, u.first_name
+   ORDER BY imported_at DESC
+
+4. Get unmapped attendance records (for troubleshooting):
+   SELECT ac_no, employee_id, name, COUNT(*) as record_count
+   FROM attendances
+   WHERE user_id IS NULL
+   GROUP BY ac_no, employee_id, name
+
+5. Get daily attendance summary for user:
+   SELECT date,
+          MIN(CASE WHEN state LIKE '%In%' THEN time END) as first_in,
+          MAX(CASE WHEN state LIKE '%Out%' THEN time END) as last_out,
+          COUNT(*) as punch_count
+   FROM attendances
+   WHERE user_id = ?
+   AND date BETWEEN ? AND ?
+   GROUP BY date
+   ORDER BY date
+
+6. Undo import by filename:
+   DELETE FROM attendances
+   WHERE import_filename = ?
+
+
+═══════════════════════════════════════════════════════════════════════════════
+FIELD DESCRIPTIONS:
+═══════════════════════════════════════════════════════════════════════════════
+
+ac_no:            Account number from biometric device (device-specific ID)
+employee_id:      Employee ID mapped from ac_no (string format: 1YYYYMMXXXX)
+user_id:          Foreign key to users table (null if not matched)
+name:             Employee name as stored in biometric device
+date_time:        Original datetime from biometric device punch
+date:             Extracted date component for easier filtering
+time:             Extracted time component for easier display
+state:            State from device (e.g., "Check In", "Check Out", "C/In", "C/Out")
+import_filename:  Original CSV filename (e.g., "att_log_2024-01-15.csv")
+imported_by:      User ID of HR staff who imported the file
+imported_at:      Timestamp when the import was performed
+created_at:       Record creation timestamp
+updated_at:       Record update timestamp
+
+
+═══════════════════════════════════════════════════════════════════════════════
+CSV IMPORT FORMAT:
+═══════════════════════════════════════════════════════════════════════════════
+
+Expected CSV format from biometric device:
+AC-No., Name, Date, Time, Status
+
+Example:
+1,Juan Dela Cruz,2024-01-15,08:30:00,C/In
+1,Juan Dela Cruz,2024-01-15,17:00:00,C/Out
+2,Maria Santos,2024-01-15,08:45:00,C/In
+
+
+═══════════════════════════════════════════════════════════════════════════════
+FUTURE ENHANCEMENTS (NOT YET IMPLEMENTED):
+═══════════════════════════════════════════════════════════════════════════════
+
+The following features are documented for future reference but are NOT currently
+implemented in the system:
+
+• Work schedules and shift management
+• Break time tracking
+• GPS location tracking
+• Calculated fields (hours_worked, late_minutes, overtime)
+• Status flags (is_late, is_undertime, is_overtime)
+• Attendance corrections/adjustments workflow
+• Holiday calendar integration
+• DTR (Daily Time Record) generation
+• Attendance summaries and reports
+
+Current system focuses on raw data import and storage only.
+Processing and calculations are done at the application layer as needed.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+```

@@ -1,55 +1,40 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useIsApprover, usePrefetchApprovalData } from '../../hooks/useApprovalData';
 import AppLayout from '../../components/Layout/AppLayout';
 import ApprovalList from '../../components/features/approval/ApprovalList';
 import LoadingScreen from '../../components/Loading/LoadingScreen';
 import LoadingSpinner from '../../components/Loading/LoadingSpinner';
-import { checkIfApprover } from '../../api/master-lists/approvalNames';
-import { getUserRole } from '../../utils/userHelpers';
 
 function MyApproval() {
   const navigate = useNavigate();
   const { user, logout, loading } = useAuth();
-  const [isApprover, setIsApprover] = useState(false);
-  const [checkingApprover, setCheckingApprover] = useState(true);
+  const { prefetchApprovalData } = usePrefetchApprovalData();
+  
+  // Use React Query to check if user is an approver (with caching)
+  const { data: isApprover, isLoading: checkingApprover, error } = useIsApprover(user);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/login");
       return;
     }
-
-    const checkAccess = async () => {
-      if (user) {
-        const role = getUserRole(user);
-        // HR and Admin always have access
-        if (role === 'hr' || role === 'admin') {
-          setIsApprover(true);
-          setCheckingApprover(false);
-          return;
-        }
-
-        // Check if user is an approver
-        try {
-          const approverStatus = await checkIfApprover();
-          setIsApprover(approverStatus);
-          if (!approverStatus) {
-            navigate("/dashboard");
-          }
-        } catch (err) {
-          console.error('Error checking approver status:', err);
-          navigate("/dashboard");
-        } finally {
-          setCheckingApprover(false);
-        }
-      }
-    };
-
-    if (user) {
-      checkAccess();
-    }
   }, [loading, user, navigate]);
+
+  // Redirect if user is not an approver
+  useEffect(() => {
+    if (!checkingApprover && isApprover === false) {
+      navigate("/dashboard");
+    }
+  }, [checkingApprover, isApprover, navigate]);
+
+  // Prefetch approval data when component mounts
+  useEffect(() => {
+    if (user && isApprover) {
+      prefetchApprovalData(user);
+    }
+  }, [user, isApprover, prefetchApprovalData]);
 
   // Show full page loading only for initial auth check
   if (loading || !user) {

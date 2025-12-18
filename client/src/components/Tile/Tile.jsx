@@ -1,11 +1,31 @@
 import React from 'react'
 import './Tile.css'
 import { Link } from 'react-router-dom'
+import { useGlobalPrefetch } from '../../hooks/useGlobalPrefetch'
+import { useAuth } from '../../hooks/useAuth'
 
 function Tile({ title, icon, link }) {
+  const { prefetchModule } = useGlobalPrefetch();
+  const { user } = useAuth();
+  
+  const handleMouseEnter = () => {
+    // Extract module name from route
+    const moduleName = link.replace('/', '');
+    
+    // Prefetch data for the module
+    if (moduleName === 'manage-pds' || moduleName === 'my-approval') {
+      prefetchModule(moduleName, user);
+    }
+  };
+  
   return (
     // FIX: Removed fixed dimensions (w-32 h-32) to allow the tile to fill the grid column.
-    <Link to={link} className="w-full"> 
+    <Link 
+      to={link} 
+      className="w-full"
+      onMouseEnter={handleMouseEnter}
+      onFocus={handleMouseEnter}
+    > 
       <div
         className="flex flex-col justify-center items-center 
                   bg-white p-6 rounded-xl shadow-lg border 

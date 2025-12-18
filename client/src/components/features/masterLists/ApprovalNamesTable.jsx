@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { getApprovalNames, createApprovalName, updateApprovalName, deleteApprovalName } from '../../../api/master-lists/approvalNames';
+import { createApprovalName, updateApprovalName, deleteApprovalName } from '../../../api/master-lists/approvalNames';
 import { useNotificationStore } from '../../../stores/notificationStore';
-import getAccounts from '../../../api/user/get_accounts';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
+import { useUserAccountsStore } from '../../../stores/userAccountsStore';
+import { useApprovalNamesTableStore } from '../../../stores/approvalNamesTableStore';
 import { useAuth } from '../../../hooks/useAuth';
 
 function ApprovalNamesTable() {
   const { user: currentUser } = useAuth();
-  const [approvalNames, setApprovalNames] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { clearCache: clearMasterListsCache } = useMasterListsStore();
+  const { getAccounts, accounts: users, loading: loadingUsers } = useUserAccountsStore();
+  const { getApprovalNames, approvalNames, loading } = useApprovalNamesTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingApprovalName, setEditingApprovalName] = useState(null);
   const [formData, setFormData] = useState({
@@ -25,31 +26,9 @@ function ApprovalNamesTable() {
 
   useEffect(() => {
     loadApprovalNames();
-    loadUsers();
-  }, [currentUser]);
-
-  const loadUsers = async () => {
-    try {
-      setLoadingUsers(true);
-      const usersData = await getAccounts();
-      
-      // Add current user to the list if they're not already included
-      if (currentUser) {
-        const currentUserExists = usersData.some(u => u.id === currentUser.id);
-        if (!currentUserExists) {
-          setUsers([currentUser, ...usersData]);
-        } else {
-          setUsers(usersData);
-        }
-      } else {
-        setUsers(usersData);
-      }
-    } catch (err) {
-      showError('Failed to load users');
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
+    // Load users from cache
+    getAccounts();
+  }, [currentUser, getAccounts]);
 
   const formatUserName = (user) => {
     if (user.first_name && user.last_name) {
@@ -63,13 +42,9 @@ function ApprovalNamesTable() {
 
   const loadApprovalNames = async () => {
     try {
-      setLoading(true);
-      const data = await getApprovalNames();
-      setApprovalNames(data);
+      await getApprovalNames(); // Uses cache if available (5 min TTL)
     } catch (err) {
       showError('Failed to load approval names');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -103,6 +78,7 @@ function ApprovalNamesTable() {
       setEditingApprovalName(null);
       setFormData({ user_id: '', type: 'general', description: '', is_active: true, sort_order: 0 });
       loadApprovalNames();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
@@ -134,6 +110,7 @@ function ApprovalNamesTable() {
       await deleteApprovalName(id);
       showSuccess('Approval name deleted successfully');
       loadApprovalNames();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {

@@ -1,27 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Printer, Download, Navigation } from 'lucide-react';
-import { mockLeaveCredits } from '../../../data/mockLeaveData';
 import { LEAVE_STATUS, LEAVE_STATUS_LABELS } from '../../../data/leaveTypes';
 import { useNotification } from '../../../hooks/useNotification';
-import { getMyLeaveApplications, updateLeaveApplication } from '../../../api/leave/leaveApplications';
+import { updateLeaveApplication } from '../../../api/leave/leaveApplications';
+import { useLeaveCreditsStore } from '../../../stores/leaveCreditsStore';
+import { useLeaveApplicationsStore } from '../../../stores/leaveApplicationsStore';
 import Pagination from '../../common/Pagination';
 import LeavePdfViewModal from './LeavePdfViewModal';
 
 function MyLeaveList({ user }) {
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
-  const [leaves, setLeaves] = useState([]);
-  const [leaveCredits, setLeaveCredits] = useState(mockLeaveCredits);
+  const { getLeaveCredits, getHeroLeaveCredits, loading: loadingCredits } = useLeaveCreditsStore();
+  const { getLeaveApplications, leaveApplications, loading: loadingLeaves, removeLeaveApplicationFromCache } = useLeaveApplicationsStore();
   const [filter, setFilter] = useState('all');
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [viewModalLeaveId, setViewModalLeaveId] = useState(null);
 
+  // Get hero leave credits from store
+  const heroCredits = getHeroLeaveCredits();
+
   useEffect(() => {
-    loadLeaves();
-  }, [filter]);
+    // Load leave credits on mount
+    if (user) {
+      getLeaveCredits();
+    }
+  }, [user, getLeaveCredits]);
+
+  useEffect(() => {
+    // Load leave applications with filter (cached)
+    if (user) {
+      const params = filter !== 'all' ? { status: filter } : {};
+      getLeaveApplications(params);
+    }
+  }, [filter, user, getLeaveApplications]);
 
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when filter changes
@@ -31,21 +45,8 @@ function MyLeaveList({ user }) {
     setCurrentPage(1); // Reset to first page when items per page changes
   }, [itemsPerPage]);
 
-  const loadLeaves = async () => {
-    try {
-      setLoading(true);
-      const params = filter !== 'all' ? { status: filter } : {};
-      const data = await getMyLeaveApplications(params);
-      setLeaves(data);
-    } catch (err) {
-      showError(err?.response?.data?.message || 'Failed to load leave applications');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Filter is already applied in the API call, but keep this for client-side filtering if needed
-  const filteredLeaves = leaves;
+  // Use cached leave applications
+  const filteredLeaves = leaveApplications;
 
   // Pagination calculations
   const totalItems = filteredLeaves.length;
@@ -68,9 +69,14 @@ function MyLeaveList({ user }) {
   const handleCancel = async (leaveId) => {
     if (window.confirm('Are you sure you want to cancel this leave application?')) {
       try {
-        await updateLeaveApplication(leaveId, { status: 'cancelled' });
+        const updatedLeave = await updateLeaveApplication(leaveId, { status: 'cancelled' });
         showSuccess('Leave application cancelled successfully');
-        loadLeaves(); // Reload the list
+        // Update cache instead of reloading
+        const { updateLeaveApplicationInCache } = useLeaveApplicationsStore.getState();
+        updateLeaveApplicationInCache(updatedLeave);
+        // Refresh leave credits as cancellation might affect available days
+        const { refreshLeaveCredits } = useLeaveCreditsStore.getState();
+        await refreshLeaveCredits();
       } catch (err) {
         showError(err?.response?.data?.message || 'Failed to cancel leave application');
       }
@@ -124,28 +130,33 @@ function MyLeaveList({ user }) {
         </div>
       </div>
 
-      {/* Leave Credits Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-blue-50 rounded-lg">
-        <div>
-          <p className="text-sm text-gray-600">Vacation Leave</p>
-          <p className="text-2xl font-bold text-blue-600">{leaveCredits.vacation_leave}</p>
+      {/* Leave Credits Summary - Only VL, SL, SPL */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-blue-50 rounded-lg">
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-1">Sick Leave</p>
+          <p className="text-2xl font-bold text-blue-600">
+            {loadingCredits ? '...' : heroCredits.SL.remaining.toFixed(2)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Remaining Days</p>
         </div>
-        <div>
-          <p className="text-sm text-gray-600">Sick Leave</p>
-          <p className="text-2xl font-bold text-blue-600">{leaveCredits.sick_leave}</p>
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-1">Vacation Leave</p>
+          <p className="text-2xl font-bold text-blue-600">
+            {loadingCredits ? '...' : heroCredits.VL.remaining.toFixed(2)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Remaining Days</p>
         </div>
-        <div>
-          <p className="text-sm text-gray-600">Special Privilege</p>
-          <p className="text-2xl font-bold text-blue-600">{leaveCredits.special_privilege_leave}</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-600">Service Incentive</p>
-          <p className="text-2xl font-bold text-blue-600">{leaveCredits.service_incentive_leave}</p>
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-1">Special Privilege Leave</p>
+          <p className="text-2xl font-bold text-blue-600">
+            {loadingCredits ? '...' : heroCredits.SPL.remaining.toFixed(2)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Remaining Days</p>
         </div>
       </div>
 
       {/* Leave Applications Table */}
-      {loading ? (
+      {loadingLeaves ? (
         <div className="text-center py-10 text-gray-500">
           Loading leave applications...
         </div>
@@ -259,7 +270,7 @@ function MyLeaveList({ user }) {
       )}
 
       {/* Pagination - Always show when not loading */}
-      {!loading && (
+      {!loadingLeaves && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}

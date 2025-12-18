@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './Hero.css';
+import { useLeaveCreditsStore } from '../../stores/leaveCreditsStore';
 
 function Hero({ user }) {
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
+  const { getLeaveCredits, getHeroLeaveCredits, loading: loadingCredits, leaveCredits } = useLeaveCreditsStore();
+  
+  // Subscribe to store changes and get hero credits
+  const heroCredits = getHeroLeaveCredits();
 
   useEffect(() => {
     // Update time every second
@@ -12,6 +17,13 @@ function Hero({ user }) {
 
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    // Load leave credits (will use cache if available)
+    if (user) {
+      getLeaveCredits();
+    }
+  }, [user, getLeaveCredits]);
 
   const formatDate = (date) => {
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -47,19 +59,27 @@ function Hero({ user }) {
         <div className="flex flex-col sm:flex-row gap-4 items-stretch w-full lg:w-auto">
             {/* Leave Credits Container - Keep existing design */}
             <div className="bg-white/10 p-3 sm:p-4 rounded-lg lg:ml-6 w-full sm:min-w-[280px] lg:min-w-[300px] flex flex-col">
-                <h3 className="text-xs sm:text-sm font-medium mb-2 sm:mb-3">LEAVE CREDITS AS OF 11/12/2004</h3>
+                <h3 className="text-xs sm:text-sm font-medium mb-2 sm:mb-3">
+                    LEAVE CREDITS AS OF {new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                </h3>
                 <div className="flex justify-between text-center text-xs sm:text-sm font-semibold gap-2 sm:gap-0">
                     <div className="flex-1">
-                        <p className="text-base sm:text-lg font-extrabold">15.00</p>
-                        <p className="text-[10px] sm:text-xs text-gray-300">SICK LEAVE</p>
+                        <p className="text-base sm:text-lg font-extrabold">
+                            {loadingCredits ? '...' : heroCredits.SL.remaining.toFixed(2)}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-gray-300">{heroCredits.SL.name}</p>
                     </div>
                     <div className="flex-1">
-                        <p className="text-base sm:text-lg font-extrabold">15.00</p>
-                        <p className="text-[10px] sm:text-xs text-gray-300">VACATION LEAVE</p>
+                        <p className="text-base sm:text-lg font-extrabold">
+                            {loadingCredits ? '...' : heroCredits.VL.remaining.toFixed(2)}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-gray-300">{heroCredits.VL.name}</p>
                     </div>
                     <div className="flex-1">
-                        <p className="text-base sm:text-lg font-extrabold">5.00</p>
-                        <p className="text-[10px] sm:text-xs text-gray-300">SPECIAL LEAVE</p>
+                        <p className="text-base sm:text-lg font-extrabold">
+                            {loadingCredits ? '...' : heroCredits.SPL.remaining.toFixed(2)}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-gray-300">{heroCredits.SPL.name}</p>
                     </div>
                 </div>
             </div>

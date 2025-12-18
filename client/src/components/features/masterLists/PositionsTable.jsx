@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { getPositions, createPosition, updatePosition, deletePosition } from '../../../api/master-lists/positions';
+import { Pencil, Trash2 } from 'lucide-react';
+import { createPosition, updatePosition, deletePosition } from '../../../api/master-lists/positions';
 import { useNotificationStore } from '../../../stores/notificationStore';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
+import { usePositionsTableStore } from '../../../stores/masterListTablesStore';
+import TableActionButton from '../../ui/TableActionButton';
 
 function PositionsTable() {
-  const [positions, setPositions] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { getPositions, positions, loading } = usePositionsTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingPosition, setEditingPosition] = useState(null);
   const [formData, setFormData] = useState({
@@ -14,6 +17,7 @@ function PositionsTable() {
 
   const showSuccess = useNotificationStore((state) => state.showSuccess);
   const showError = useNotificationStore((state) => state.showError);
+  const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
     loadPositions();
@@ -21,13 +25,9 @@ function PositionsTable() {
 
   const loadPositions = async () => {
     try {
-      setLoading(true);
-      const data = await getPositions();
-      setPositions(data);
+      await getPositions(); // Uses cache if available
     } catch (err) {
       showError('Failed to load positions');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -46,6 +46,7 @@ function PositionsTable() {
       setEditingPosition(null);
       setFormData({ title: '', description: '' });
       loadPositions();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
@@ -120,18 +121,22 @@ function PositionsTable() {
                     {position.description || 'No description'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(position)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(position.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <TableActionButton
+                        variant="indigo"
+                        icon={Pencil}
+                        label="Edit"
+                        onClick={() => handleEdit(position)}
+                        title="Edit position"
+                      />
+                      <TableActionButton
+                        variant="red"
+                        icon={Trash2}
+                        label="Delete"
+                        onClick={() => handleDelete(position.id)}
+                        title="Delete position"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

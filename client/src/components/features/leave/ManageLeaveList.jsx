@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, CheckCircle, XCircle } from 'lucide-react';
 import { LEAVE_STATUS, LEAVE_STATUS_LABELS } from '../../../data/leaveTypes';
 import { useNotification } from '../../../hooks/useNotification';
-import { getLeaveApplications, approveLeaveApplication } from '../../../api/leave/leaveApplications';
+import { approveLeaveApplication } from '../../../api/leave/leaveApplications';
 import { useAuth } from '../../../hooks/useAuth';
 import { getUserRole } from '../../../utils/userHelpers';
-import { getAllMasterLists } from '../../../api/master-lists/masterLists';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
+import { useManageLeaveStore } from '../../../stores/manageLeaveStore';
 import Pagination from '../../common/Pagination';
 import LeaveApprovalModal from './LeaveApprovalModal';
+import TableActionButton from '../../ui/TableActionButton';
 
 function ManageLeaveList() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showSuccess, showError } = useNotification();
-  const [leaves, setLeaves] = useState([]);
+  const { getMasterLists } = useMasterListsStore();
+  const { getLeaveApplications, allLeaves, loading, refreshLeaveApplications } = useManageLeaveStore();
   const [filter, setFilter] = useState('all');
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [approvalModalLeave, setApprovalModalLeave] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [userApprovalNameIds, setUserApprovalNameIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -28,7 +31,7 @@ function ManageLeaveList() {
       loadUserApprovalNames();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, user]);
+  }, [user]); // Removed 'filter' from dependencies - only load once
 
   useEffect(() => {
     setCurrentPage(1); // Reset to first page when filter changes
@@ -40,7 +43,7 @@ function ManageLeaveList() {
 
   const loadUserApprovalNames = async () => {
     try {
-      const masterLists = await getAllMasterLists();
+      const masterLists = await getMasterLists();
       const approvalNames = masterLists.approval_names || [];
       // Get approval name IDs where the current user is assigned
       const ids = approvalNames
@@ -54,19 +57,16 @@ function ManageLeaveList() {
 
   const loadLeaves = async () => {
     try {
-      setLoading(true);
-      const params = filter !== 'all' ? { status: filter } : {};
-      const data = await getLeaveApplications(params);
-      setLeaves(data);
+      await getLeaveApplications(); // Fetch ALL leaves (uses cache if available, 1 min TTL)
     } catch (err) {
       showError(err?.response?.data?.message || 'Failed to load leave applications');
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Filter is already applied in the API call, but keep this for client-side filtering if needed
-  const filteredLeaves = leaves;
+  // Client-side filtering based on selected tab
+  const filteredLeaves = filter === 'all' 
+    ? allLeaves 
+    : allLeaves.filter(leave => leave.status === filter);
 
   // Pagination calculations
   const totalItems = filteredLeaves.length;
@@ -96,7 +96,7 @@ function ManageLeaveList() {
       showSuccess('Leave application approved successfully');
       setApprovalModalLeave(null);
       setSelectedLeave(null);
-      loadLeaves(); // Reload the list
+      await refreshLeaveApplications(); // Refresh cached data
     } catch (err) {
       showError(err?.response?.data?.message || 'Failed to approve leave application');
     }
@@ -119,7 +119,7 @@ function ManageLeaveList() {
       });
       showSuccess('Leave application rejected');
       setSelectedLeave(null);
-      loadLeaves(); // Reload the list
+      await refreshLeaveApplications(); // Refresh cached data
     } catch (err) {
       showError(err?.response?.data?.message || 'Failed to reject leave application');
     }
@@ -253,7 +253,7 @@ function ManageLeaveList() {
               filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            All ({leaves.length})
+            All ({allLeaves.length})
           </button>
           <button
             onClick={() => setFilter(LEAVE_STATUS.PENDING)}
@@ -261,7 +261,7 @@ function ManageLeaveList() {
               filter === LEAVE_STATUS.PENDING ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Pending ({leaves.filter(l => l.status === LEAVE_STATUS.PENDING).length})
+            Pending ({allLeaves.filter(l => l.status === LEAVE_STATUS.PENDING).length})
           </button>
           <button
             onClick={() => setFilter(LEAVE_STATUS.APPROVED)}
@@ -269,7 +269,7 @@ function ManageLeaveList() {
               filter === LEAVE_STATUS.APPROVED ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            Approved ({leaves.filter(l => l.status === LEAVE_STATUS.APPROVED).length})
+            Approved ({allLeaves.filter(l => l.status === LEAVE_STATUS.APPROVED).length})
           </button>
         </div>
       </div>
@@ -329,13 +329,13 @@ function ManageLeaveList() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex gap-2 items-center">
-                      <button
+                      <TableActionButton
+                        variant="blue"
+                        icon={Eye}
+                        label="View"
                         onClick={() => navigate(`/leave-application/${leave.id}/track`)}
-                        className="text-blue-600 hover:text-blue-900 transition-colors"
                         title="View leave application details"
-                      >
-                        View
-                      </button>
+                      />
                       {leave.status === LEAVE_STATUS.PENDING && hasUserAlreadyDecided(leave) && (
                         <span className="text-xs text-gray-500 italic" title="You have already processed this application">
                           Already Processed
@@ -343,20 +343,20 @@ function ManageLeaveList() {
                       )}
                       {leave.status === LEAVE_STATUS.PENDING && !hasUserAlreadyDecided(leave) && isUserTurnToApprove(leave) && (
                         <>
-                          <button
+                          <TableActionButton
+                            variant="green"
+                            icon={CheckCircle}
+                            label="Approve"
                             onClick={() => handleApproveClick(leave)}
-                            className="text-green-600 hover:text-green-900 transition-colors"
                             title="Approve this leave application"
-                          >
-                            Approve
-                          </button>
-                          <button
+                          />
+                          <TableActionButton
+                            variant="red"
+                            icon={XCircle}
+                            label="Reject"
                             onClick={() => setSelectedLeave({ ...leave, action: 'reject' })}
-                            className="text-red-600 hover:text-red-900 transition-colors"
                             title="Reject this leave application"
-                          >
-                            Reject
-                          </button>
+                          />
                         </>
                       )}
                       {leave.status === LEAVE_STATUS.PENDING && !hasUserAlreadyDecided(leave) && !isUserTurnToApprove(leave) && (

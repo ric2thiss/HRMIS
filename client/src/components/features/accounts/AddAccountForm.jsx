@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getAllMasterLists } from '../../../api/master-lists/masterLists';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
 
 function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loading }) {
+  const { getMasterLists, masterLists, loading: loadingMasterLists } = useMasterListsStore();
   const [formData, setFormData] = useState({
     first_name: '',
     middle_initial: '',
@@ -17,23 +18,14 @@ function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loadin
     special_capability_ids: []
   });
 
-  const [masterLists, setMasterLists] = useState({
-    positions: [],
-    roles: [],
-    projects: [],
-    offices: [],
-    special_capabilities: []
-  });
-
   const [isJobOrder, setIsJobOrder] = useState(false);
   const [masterListsError, setMasterListsError] = useState(null);
 
-  // Load master lists on mount
+  // Load master lists on mount (cached)
   useEffect(() => {
-    const loadMasterLists = async () => {
+    const loadMasterListsData = async () => {
       try {
-        const data = await getAllMasterLists();
-        setMasterLists(data);
+        const data = await getMasterLists();
         
         // Validate that all required master lists are populated
         if (data.positions.length === 0 || data.roles.length === 0 || data.projects.length === 0) {
@@ -48,8 +40,8 @@ function AddAccountForm({ onAddAccount, roles, employmentTypes, onCancel, loadin
         setMasterListsError('Failed to load master lists.');
       }
     };
-    loadMasterLists();
-  }, []);
+    loadMasterListsData();
+  }, [getMasterLists]);
 
   // Set default values after master lists are loaded
   useEffect(() => {

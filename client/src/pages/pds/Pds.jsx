@@ -91,7 +91,10 @@ function Pds() {
             />
           )}
           {showForm && (
-            <PdsForm onSave={handleRefresh} />
+            <PdsForm onSave={async () => {
+              await handleRefresh();
+              setShowForm(false);
+            }} />
           )}
         </>
       )}

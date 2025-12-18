@@ -4,7 +4,7 @@ import { getAttendance } from '../../../api/attendance/attendance';
 import { useNotificationStore } from '../../../stores/notificationStore';
 import { useAuth } from '../../../hooks/useAuth';
 import { getUserRole } from '../../../utils/userHelpers';
-import getAccounts from '../../../api/user/get_accounts';
+import { useUserAccountsStore } from '../../../stores/userAccountsStore';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import LoadingSpinner from '../../Loading/LoadingSpinner';
@@ -36,7 +36,7 @@ function ViewAttendanceTable() {
   const showError = useNotificationStore((state) => state.showError);
   const [attendances, setAttendances] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState([]);
+  const { getAccounts: fetchUsers, accounts: users } = useUserAccountsStore();
   const [filters, setFilters] = useState({
     start_date: '',
     end_date: '',
@@ -63,6 +63,11 @@ function ViewAttendanceTable() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const dtrPdfRef = useRef(null);
+  
+  // Searchable dropdown states
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const employeeDropdownRef = useRef(null);
 
   // Memoize page numbers calculation
   const pageNumbers = useMemo(() => {
@@ -146,21 +151,53 @@ function ViewAttendanceTable() {
     return () => clearTimeout(timeoutId);
   }, [filters, pagination.current_page, pagination.per_page, loadAttendances]);
 
-  // Load users list for HR - memoized
-  const loadUsers = useCallback(async () => {
-    try {
-      const usersList = await getAccounts();
-      setUsers(usersList);
-    } catch (error) {
-      console.error('Failed to load users:', error);
-    }
-  }, []);
-
+  // Load users list for HR from cache
   useEffect(() => {
     if (isHR) {
-      loadUsers();
+      fetchUsers(); // Load from cache or fetch if expired
     }
-  }, [isHR, loadUsers]);
+  }, [isHR, fetchUsers]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target)) {
+        setShowEmployeeDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Filter users based on search query
+  const filteredEmployees = useMemo(() => {
+    if (!employeeSearch.trim()) {
+      return users;
+    }
+    const searchLower = employeeSearch.toLowerCase();
+    return users.filter(user => {
+      const name = (user.name || `${user.first_name || ''} ${user.last_name || ''}`).toLowerCase();
+      const employeeId = (user.employee_id || '').toLowerCase();
+      return name.includes(searchLower) || employeeId.includes(searchLower);
+    });
+  }, [users, employeeSearch]);
+
+  // Update search input when employee is selected via dropdown
+  // Note: We don't auto-update when selected_user_id changes externally to avoid overriding user typing
+
+  // Handle employee selection
+  const handleEmployeeSelect = (userId) => {
+    setDtrFilters(prev => ({ ...prev, selected_user_id: userId.toString() }));
+    const selected = users.find(u => u.id.toString() === userId.toString());
+    if (selected) {
+      const displayName = selected.name || `${selected.first_name || ''} ${selected.last_name || ''}`.trim();
+      setEmployeeSearch(displayName);
+    }
+    setShowEmployeeDropdown(false);
+  };
 
   // Memoize DTR Processing Functions
   const processAttendanceData = useCallback((attendances, startDay, endDay) => {
@@ -295,7 +332,7 @@ function ViewAttendanceTable() {
       const attendances = response.attendances?.data || [];
       const days = processAttendanceData(attendances, startDay, endDay);
 
-      const selectedUser = users.find(u => u.id === parseInt(dtrFilters.selected_user_id));
+      const selectedUser = users.find(u => u.id.toString() === dtrFilters.selected_user_id.toString());
       const employeeName = selectedUser?.name || 
         (selectedUser?.first_name && selectedUser?.last_name 
           ? `${selectedUser.first_name} ${selectedUser.last_name}`.toUpperCase()
@@ -318,9 +355,100 @@ function ViewAttendanceTable() {
     }
   }, [dtrFilters, users, showError]);
 
-  const handlePrintDTR = useCallback(() => {
+  const handlePrintDTR = useCallback(async () => {
+    // Validate required fields
+    if (!dtrFilters.selected_user_id) {
+      showError('Please select an employee first.');
+      return;
+    }
+
+    if (!dtrFilters.year || !dtrFilters.month || !dtrFilters.period) {
+      showError('Please select valid Year, Month, and Period.');
+      return;
+    }
+
+    // If DTR content doesn't exist, load it first
     if (!dtrContent || !dtrPdfRef.current) {
-      showError('Please search for a DTR first before printing.');
+      // Auto-search for DTR
+      let startDay, endDay;
+      
+      if (dtrFilters.period === 'whole-month') {
+        startDay = 1;
+        endDay = getLastDayOfMonth(parseInt(dtrFilters.year), parseInt(dtrFilters.month));
+      } else {
+        if (!dtrFilters.period.includes('-')) {
+          showError('Invalid period format.');
+          return;
+        }
+        
+        const parts = dtrFilters.period.split('-');
+        if (parts.length !== 2) {
+          showError('Invalid period format.');
+          return;
+        }
+
+        const [startDayStr, endDayStr] = parts;
+        startDay = parseInt(startDayStr);
+        endDay = parseInt(endDayStr);
+        
+        if (isNaN(startDay) || isNaN(endDay)) {
+          showError('Error parsing period days.');
+          return;
+        }
+      }
+
+      const startDate = `${dtrFilters.year}-${dtrFilters.month}-${String(startDay).padStart(2, '0')}`;
+      const endDate = `${dtrFilters.year}-${dtrFilters.month}-${String(endDay).padStart(2, '0')}`;
+
+      setDtrLoading(true);
+      try {
+        const response = await getAttendance({
+          user_id: dtrFilters.selected_user_id,
+          start_date: startDate,
+          end_date: endDate,
+          per_page: 1000,
+        });
+
+        const attendances = response.attendances?.data || [];
+        const days = processAttendanceData(attendances, startDay, endDay);
+
+        const selectedUser = users.find(u => u.id.toString() === dtrFilters.selected_user_id.toString());
+        const employeeName = selectedUser?.name || 
+          (selectedUser?.first_name && selectedUser?.last_name 
+            ? `${selectedUser.first_name} ${selectedUser.last_name}`.toUpperCase()
+            : 'EMPLOYEE NAME');
+
+        const newDtrContent = { 
+          employeeName: employeeName,
+          monthYear: `${MONTHS.find(m => m.value === dtrFilters.month).name}, ${dtrFilters.year}`,
+          period: dtrFilters.period === 'whole-month' ? 'Whole Month' : `${startDay} - ${endDay}`,
+          days: days,
+          dateGenerated: new Date().toLocaleDateString(),
+        };
+
+        setDtrContent(newDtrContent);
+        setShowDtrModal(true);
+        
+        // Wait a bit for DOM to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        const message = error?.response?.data?.message || 'Failed to load attendance data';
+        showError(message);
+        setDtrLoading(false);
+        return;
+      } finally {
+        setDtrLoading(false);
+      }
+    }
+    
+    // Wait for ref to be ready
+    if (!dtrPdfRef.current) {
+      // Wait a bit more if ref is not ready
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    if (!dtrPdfRef.current) {
+      showError('DTR content is not ready. Please try again.');
       return;
     }
     
@@ -332,16 +460,111 @@ function ViewAttendanceTable() {
     printWindow.document.write('</body></html>');
     printWindow.document.close();
     printWindow.print();
-  }, [dtrContent, showError]);
+  }, [dtrContent, dtrFilters, users, showError, processAttendanceData, getAttendance]);
 
-  const handleDownloadDTR = useCallback(() => {
+  const handleDownloadDTR = useCallback(async () => {
+    // Validate required fields
+    if (!dtrFilters.selected_user_id) {
+      showError('Please select an employee first.');
+      return;
+    }
+
+    if (!dtrFilters.year || !dtrFilters.month || !dtrFilters.period) {
+      showError('Please select valid Year, Month, and Period.');
+      return;
+    }
+
+    // If DTR content doesn't exist, load it first
     if (!dtrContent || !dtrPdfRef.current) {
-      showError('Please search for a DTR first before downloading.');
+      // Auto-search for DTR
+      let startDay, endDay;
+      
+      if (dtrFilters.period === 'whole-month') {
+        startDay = 1;
+        endDay = getLastDayOfMonth(parseInt(dtrFilters.year), parseInt(dtrFilters.month));
+      } else {
+        if (!dtrFilters.period.includes('-')) {
+          showError('Invalid period format.');
+          return;
+        }
+        
+        const parts = dtrFilters.period.split('-');
+        if (parts.length !== 2) {
+          showError('Invalid period format.');
+          return;
+        }
+
+        const [startDayStr, endDayStr] = parts;
+        startDay = parseInt(startDayStr);
+        endDay = parseInt(endDayStr);
+        
+        if (isNaN(startDay) || isNaN(endDay)) {
+          showError('Error parsing period days.');
+          return;
+        }
+      }
+
+      const startDate = `${dtrFilters.year}-${dtrFilters.month}-${String(startDay).padStart(2, '0')}`;
+      const endDate = `${dtrFilters.year}-${dtrFilters.month}-${String(endDay).padStart(2, '0')}`;
+
+      setDtrLoading(true);
+      try {
+        const response = await getAttendance({
+          user_id: dtrFilters.selected_user_id,
+          start_date: startDate,
+          end_date: endDate,
+          per_page: 1000,
+        });
+
+        const attendances = response.attendances?.data || [];
+        const days = processAttendanceData(attendances, startDay, endDay);
+
+        const selectedUser = users.find(u => u.id.toString() === dtrFilters.selected_user_id.toString());
+        const employeeName = selectedUser?.name || 
+          (selectedUser?.first_name && selectedUser?.last_name 
+            ? `${selectedUser.first_name} ${selectedUser.last_name}`.toUpperCase()
+            : 'EMPLOYEE NAME');
+
+        const newDtrContent = { 
+          employeeName: employeeName,
+          monthYear: `${MONTHS.find(m => m.value === dtrFilters.month).name}, ${dtrFilters.year}`,
+          period: dtrFilters.period === 'whole-month' ? 'Whole Month' : `${startDay} - ${endDay}`,
+          days: days,
+          dateGenerated: new Date().toLocaleDateString(),
+        };
+
+        setDtrContent(newDtrContent);
+        setShowDtrModal(true);
+        
+        // Wait a bit for DOM to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        const message = error?.response?.data?.message || 'Failed to load attendance data';
+        showError(message);
+        setDtrLoading(false);
+        return;
+      } finally {
+        setDtrLoading(false);
+      }
+    }
+
+    // Wait for ref to be ready
+    if (!dtrPdfRef.current) {
+      // Wait a bit more if ref is not ready
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    if (!dtrPdfRef.current) {
+      showError('DTR content is not ready. Please try again.');
       return;
     }
 
     const input = dtrPdfRef.current;
-    const filename = `DTR_${dtrContent.employeeName.replace(/ /g, '_')}_${dtrFilters.year}-${dtrFilters.month}.pdf`;
+    const currentDtrContent = dtrContent || {
+      employeeName: users.find(u => u.id.toString() === dtrFilters.selected_user_id.toString())?.name || 'EMPLOYEE',
+      monthYear: `${MONTHS.find(m => m.value === dtrFilters.month)?.name || ''}, ${dtrFilters.year}`,
+    };
+    const filename = `DTR_${currentDtrContent.employeeName.replace(/ /g, '_')}_${dtrFilters.year}-${dtrFilters.month}.pdf`;
 
     html2canvas(input, { 
       scale: 2,
@@ -359,7 +582,7 @@ function ViewAttendanceTable() {
       console.error("PDF Generation Error:", err);
       showError("Failed to generate PDF.");
     });
-  }, [dtrContent, dtrFilters, showError]);
+  }, [dtrContent, dtrFilters, users, showError, processAttendanceData, getAttendance]);
 
   const handleBulkDTRGenerate = async (userIds, filters) => {
     let startDay, endDay;
@@ -591,22 +814,67 @@ function ViewAttendanceTable() {
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h4 className="text-md font-semibold text-gray-800 mb-4">DTR Operations</h4>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-            <div>
+            <div className="relative" ref={employeeDropdownRef}>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Employee
               </label>
-              <select
-                value={dtrFilters.selected_user_id}
-                onChange={(e) => setDtrFilters(prev => ({ ...prev, selected_user_id: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select Employee</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name || `${user.first_name} ${user.last_name}`} ({user.employee_id})
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={employeeSearch}
+                  onChange={(e) => {
+                    setEmployeeSearch(e.target.value);
+                    setShowEmployeeDropdown(true);
+                    if (!e.target.value) {
+                      setDtrFilters(prev => ({ ...prev, selected_user_id: '' }));
+                    }
+                  }}
+                  onFocus={() => setShowEmployeeDropdown(true)}
+                  placeholder="Search employee name or ID..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {employeeSearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmployeeSearch('');
+                      setDtrFilters(prev => ({ ...prev, selected_user_id: '' }));
+                      setShowEmployeeDropdown(false);
+                    }}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+                {showEmployeeDropdown && filteredEmployees.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {filteredEmployees.map((user) => {
+                      const displayName = user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim();
+                      const isSelected = dtrFilters.selected_user_id === user.id.toString();
+                      return (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => handleEmployeeSelect(user.id)}
+                          className={`w-full text-left px-4 py-2 hover:bg-blue-50 ${
+                            isSelected ? 'bg-blue-100' : ''
+                          }`}
+                        >
+                          <div className="font-medium text-sm text-gray-900">{displayName}</div>
+                          <div className="text-xs text-gray-500">{user.employee_id || 'N/A'}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {showEmployeeDropdown && employeeSearch.trim() && filteredEmployees.length === 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-sm text-gray-500 text-center">
+                    No employees found
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -967,9 +1235,9 @@ function ViewAttendanceTable() {
 const AttendanceRow = React.memo(({ attendance, formatDate, formatDateTime }) => {
   const acNo = attendance.ac_no || '';
   const employeeId = attendance.employee_id || '';
-  const combinedId = acNo && employeeId 
-    ? `${acNo} / ${employeeId}`
-    : acNo || employeeId || 'N/A';
+  // const combinedId = acNo && employeeId 
+  //   ? `${acNo} / ${employeeId}`
+  //   : acNo || employeeId || 'N/A';
   
   // Handle user name - check multiple sources
   let userName = 'N/A';
@@ -992,7 +1260,7 @@ const AttendanceRow = React.memo(({ attendance, formatDate, formatDateTime }) =>
   return (
     <tr className="hover:bg-gray-50">
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {combinedId}
+        {employeeId}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
         {userName}

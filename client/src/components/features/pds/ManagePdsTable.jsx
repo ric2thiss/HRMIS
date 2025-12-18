@@ -1,121 +1,62 @@
-import React, { useState, useEffect } from 'react';
-import { getAllPds, getEmployeesWithoutPds, notifyEmployee, reviewPds, deletePds, getPds } from '../../../api/pds/pds';
+import React, { useState } from 'react';
+import { Bell, Eye, CheckCircle, FileEdit, XCircle, Printer, Trash2, MessageSquare } from 'lucide-react';
+import { notifyEmployee, reviewPds, deletePds, getPds } from '../../../api/pds/pds';
 import { useNotification } from '../../../hooks/useNotification';
 import { useAuth } from '../../../hooks/useAuth';
+import { useAllPds, useEmployeesWithoutPds, usePdsCounts, useInvalidatePdsQueries } from '../../../hooks/usePdsData';
 import PdsReviewModal from './PdsReviewModal';
 import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
+import TableActionButton from '../../ui/TableActionButton';
 
 function ManagePdsTable() {
     const { showSuccess, showError } = useNotification();
     const { user: currentUser } = useAuth();
     const [activeFilter, setActiveFilter] = useState('for-approval'); // 'all', 'for-revision', 'for-approval', 'approved', 'declined', 'no-pds'
-    const [pdsList, setPdsList] = useState([]);
-    const [employeesWithoutPds, setEmployeesWithoutPds] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [selectedPds, setSelectedPds] = useState(null);
     const [notifying, setNotifying] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
     const [viewingComments, setViewingComments] = useState(null);
     const [printingPds, setPrintingPds] = useState(null);
-    const [pendingCount, setPendingCount] = useState(0);
-    const [allPdsCount, setAllPdsCount] = useState(0);
-    const [forRevisionCount, setForRevisionCount] = useState(0);
-    const [approvedCount, setApprovedCount] = useState(0);
-    const [declinedCount, setDeclinedCount] = useState(0);
-    const [noPdsCount, setNoPdsCount] = useState(0);
 
-    useEffect(() => {
-        loadData();
-        fetchAllCounts();
-    }, [activeFilter]);
+    // Use React Query hooks for data fetching with caching
+    const { invalidateAllPdsQueries } = useInvalidatePdsQueries();
+    
+    // Determine what status to fetch based on active filter
+    let statusFilter = null;
+    if (activeFilter === 'for-revision') {
+        statusFilter = 'declined';
+    } else if (activeFilter === 'for-approval') {
+        statusFilter = 'pending';
+    } else if (activeFilter === 'approved') {
+        statusFilter = 'approved';
+    } else if (activeFilter === 'declined') {
+        statusFilter = 'declined';
+    }
 
-    // Fetch all counts for notification badges
-    const fetchAllCounts = async () => {
-        try {
-            // Fetch all PDS for counting
-            const allResponse = await getAllPds();
-            const allPds = allResponse.pds || [];
-            
-            // Count by status
-            setAllPdsCount(allPds.length);
-            setPendingCount(allPds.filter(pds => pds.status === 'pending').length);
-            setForRevisionCount(allPds.filter(pds => pds.status === 'for-revision' || pds.status === 'declined').length);
-            setApprovedCount(allPds.filter(pds => pds.status === 'approved').length);
-            setDeclinedCount(allPds.filter(pds => pds.status === 'declined').length);
-            
-            // Fetch employees without PDS
-            try {
-                const noPdsResponse = await getEmployeesWithoutPds();
-                setNoPdsCount((noPdsResponse.employees || []).length);
-            } catch (err) {
-                console.error('Error fetching employees without PDS count:', err);
-                setNoPdsCount(0);
-            }
-        } catch (err) {
-            console.error('Error fetching counts:', err);
-            setAllPdsCount(0);
-            setPendingCount(0);
-            setForRevisionCount(0);
-            setApprovedCount(0);
-            setDeclinedCount(0);
-            setNoPdsCount(0);
+    // Fetch data using React Query - this will use cached data when available
+    const { data: allPdsList = [], isLoading: isLoadingPds } = useAllPds(activeFilter === 'no-pds' ? undefined : statusFilter);
+    const { data: employeesWithoutPdsList = [], isLoading: isLoadingNoPds } = useEmployeesWithoutPds();
+    const { counts } = usePdsCounts();
+
+    // Determine which data to display based on filter
+    const pdsList = activeFilter === 'no-pds' ? [] : allPdsList;
+    const employeesWithoutPds = activeFilter === 'no-pds' ? employeesWithoutPdsList : [];
+    const loading = activeFilter === 'no-pds' ? isLoadingNoPds : isLoadingPds;
+
+    // Apply client-side filtering for specific tabs
+    const getFilteredPdsByStatus = () => {
+        if (activeFilter === 'all') {
+            return pdsList;
+        } else if (activeFilter === 'for-revision') {
+            return pdsList.filter(pds => pds.status === 'for-revision' || pds.status === 'declined');
+        } else if (activeFilter === 'for-approval') {
+            return pdsList.filter(pds => pds.status === 'pending');
+        } else if (activeFilter === 'approved') {
+            return pdsList.filter(pds => pds.status === 'approved');
+        } else if (activeFilter === 'declined') {
+            return pdsList.filter(pds => pds.status === 'declined');
         }
-    };
-
-    const loadData = async () => {
-        try {
-            setLoading(true);
-            
-            if (activeFilter === 'no-pds') {
-                const response = await getEmployeesWithoutPds();
-                setEmployeesWithoutPds(response.employees || []);
-                setPdsList([]);
-            } else {
-                // Map frontend filter to backend status
-                let statusFilter = null;
-                if (activeFilter === 'all') {
-                    // All PDS tab: Fetch all PDS without status filter
-                    statusFilter = null;
-                } else if (activeFilter === 'for-revision') {
-                    statusFilter = 'declined';
-                } else if (activeFilter === 'for-approval') {
-                    statusFilter = 'pending';
-                } else if (activeFilter === 'approved') {
-                    statusFilter = 'approved';
-                } else if (activeFilter === 'declined') {
-                    statusFilter = 'declined';
-                }
-                
-                const response = await getAllPds(statusFilter);
-                // Additional client-side filtering to ensure correct status
-                let filteredPds = response.pds || [];
-                
-                if (activeFilter === 'all') {
-                    // All PDS tab: Show all PDS without filtering
-                    // No additional filtering needed
-                } else if (activeFilter === 'for-revision') {
-                    // For Revision tab: Show all for-revision and declined PDS
-                    filteredPds = filteredPds.filter(pds => pds.status === 'for-revision' || pds.status === 'declined');
-                } else if (activeFilter === 'for-approval') {
-                    // For Approval tab: Show all pending PDS
-                    filteredPds = filteredPds.filter(pds => pds.status === 'pending');
-                } else if (activeFilter === 'approved') {
-                    // Approved tab: Show all approved PDS
-                    filteredPds = filteredPds.filter(pds => pds.status === 'approved');
-                } else if (activeFilter === 'declined') {
-                    // Declined tab: Show all declined PDS
-                    filteredPds = filteredPds.filter(pds => pds.status === 'declined');
-                }
-                
-                setPdsList(filteredPds);
-                setEmployeesWithoutPds([]);
-            }
-        } catch (err) {
-            console.error('Error loading PDS data:', err);
-            showError('Failed to load PDS data');
-        } finally {
-            setLoading(false);
-        }
+        return pdsList;
     };
 
     const handleNotify = async (employeeId) => {
@@ -141,8 +82,8 @@ function ManagePdsTable() {
                 showSuccess('PDS approved! The employee has been notified.');
             }
             
-            loadData(); // Refresh list
-            fetchAllCounts(); // Update all counts
+            // Invalidate all PDS queries to refetch fresh data
+            invalidateAllPdsQueries();
             setSelectedPds(null);
         } catch (err) {
             console.error('Error reviewing PDS:', err);
@@ -158,8 +99,8 @@ function ManagePdsTable() {
         try {
             await deletePds(pdsId);
             showSuccess('PDS deleted successfully');
-            loadData(); // Refresh list
-            fetchAllCounts(); // Update all counts
+            // Invalidate all PDS queries to refetch fresh data
+            invalidateAllPdsQueries();
         } catch (err) {
             console.error('Error deleting PDS:', err);
             showError(err.response?.data?.message || 'Failed to delete PDS');
@@ -215,7 +156,7 @@ function ManagePdsTable() {
 
     // Filter PDS list based on search query and selected PDS
     const getFilteredPdsList = () => {
-        let filtered = pdsList;
+        let filtered = getFilteredPdsByStatus();
         
         // First filter: show only selected PDS when viewing
         if (selectedPds && selectedPds.action === 'view') {
@@ -281,9 +222,9 @@ function ManagePdsTable() {
                             }`}
                         >
                             All PDS
-                            {allPdsCount > 0 && (
+                            {counts.allPdsCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
-                                    {allPdsCount > 99 ? '99+' : allPdsCount}
+                                    {counts.allPdsCount > 99 ? '99+' : counts.allPdsCount}
                                 </span>
                             )}
                         </button>
@@ -298,9 +239,9 @@ function ManagePdsTable() {
                             }`}
                         >
                             For Revision
-                            {forRevisionCount > 0 && (
+                            {counts.forRevisionCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
-                                    {forRevisionCount > 99 ? '99+' : forRevisionCount}
+                                    {counts.forRevisionCount > 99 ? '99+' : counts.forRevisionCount}
                                 </span>
                             )}
                         </button>
@@ -315,9 +256,9 @@ function ManagePdsTable() {
                             }`}
                         >
                             For Approval
-                            {pendingCount > 0 && (
+                            {counts.pendingCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
-                                    {pendingCount > 99 ? '99+' : pendingCount}
+                                    {counts.pendingCount > 99 ? '99+' : counts.pendingCount}
                                 </span>
                             )}
                         </button>
@@ -332,9 +273,9 @@ function ManagePdsTable() {
                             }`}
                         >
                             Approved
-                            {approvedCount > 0 && (
+                            {counts.approvedCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
-                                    {approvedCount > 99 ? '99+' : approvedCount}
+                                    {counts.approvedCount > 99 ? '99+' : counts.approvedCount}
                                 </span>
                             )}
                         </button>
@@ -349,9 +290,9 @@ function ManagePdsTable() {
                             }`}
                         >
                             Declined
-                            {declinedCount > 0 && (
+                            {counts.declinedCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
-                                    {declinedCount > 99 ? '99+' : declinedCount}
+                                    {counts.declinedCount > 99 ? '99+' : counts.declinedCount}
                                 </span>
                             )}
                         </button>
@@ -366,9 +307,9 @@ function ManagePdsTable() {
                             }`}
                         >
                             No PDS
-                            {noPdsCount > 0 && (
+                            {counts.noPdsCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
-                                    {noPdsCount > 99 ? '99+' : noPdsCount}
+                                    {counts.noPdsCount > 99 ? '99+' : counts.noPdsCount}
                                 </span>
                             )}
                         </button>
@@ -478,13 +419,14 @@ function ManagePdsTable() {
                                                 {(employee.employmentTypes || employee.employment_types)?.[0]?.name || 'N/A'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button
+                                                <TableActionButton
+                                                    variant="blue"
+                                                    icon={Bell}
+                                                    label={notifying[employee.id] ? 'Sending...' : 'Notify to Fill PDS'}
                                                     onClick={() => handleNotify(employee.id)}
                                                     disabled={notifying[employee.id]}
-                                                    className="text-blue-600 hover:text-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {notifying[employee.id] ? 'Sending...' : 'Notify to Fill PDS'}
-                                                </button>
+                                                    title="Send notification to employee"
+                                                />
                                             </td>
                                         </tr>
                                     ))}
@@ -561,63 +503,69 @@ function ManagePdsTable() {
                                                     ? new Date(pds.updated_at).toLocaleDateString()
                                                     : 'N/A'}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                <button
-                                                    onClick={() => setSelectedPds({ ...pds, action: 'view' })}
-                                                    className="text-blue-600 hover:text-blue-900"
-                                                >
-                                                    View
-                                                </button>
-                                                {pds.status === 'pending' && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => setSelectedPds({ ...pds, action: 'approve' })}
-                                                            className="text-green-600 hover:text-green-900"
-                                                        >
-                                                            Approve
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setSelectedPds({ ...pds, action: 'for-revision' })}
-                                                            className="text-orange-600 hover:text-orange-900"
-                                                        >
-                                                            For Revision
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setSelectedPds({ ...pds, action: 'decline' })}
-                                                            className="text-red-600 hover:text-red-900"
-                                                        >
-                                                            Decline
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {pds.status === 'approved' && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => handlePrintPds(pds.id)}
-                                                            disabled={printingPds === pds.id}
-                                                            className="text-purple-600 hover:text-purple-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            title="Print approved PDS"
-                                                        >
-                                                            {printingPds === pds.id ? 'Printing...' : 'Print'}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(pds.id, pds.user?.name || 'employee')}
-                                                            className="text-red-600 hover:text-red-900"
-                                                            title="Delete PDS"
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {(pds.status === 'declined' || pds.status === 'for-revision') && (
-                                                    <button
-                                                        onClick={() => setViewingComments(pds)}
-                                                        className="text-purple-600 hover:text-purple-900"
-                                                        title="View comments"
-                                                    >
-                                                        View Comments
-                                                    </button>
-                                                )}
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex gap-2 items-center flex-wrap">
+                                                    <TableActionButton
+                                                        variant="blue"
+                                                        icon={Eye}
+                                                        label="View"
+                                                        onClick={() => setSelectedPds({ ...pds, action: 'view' })}
+                                                        title="View PDS"
+                                                    />
+                                                    {pds.status === 'pending' && (
+                                                        <>
+                                                            <TableActionButton
+                                                                variant="green"
+                                                                icon={CheckCircle}
+                                                                label="Approve"
+                                                                onClick={() => setSelectedPds({ ...pds, action: 'approve' })}
+                                                                title="Approve PDS"
+                                                            />
+                                                            <TableActionButton
+                                                                variant="orange"
+                                                                icon={FileEdit}
+                                                                label="For Revision"
+                                                                onClick={() => setSelectedPds({ ...pds, action: 'for-revision' })}
+                                                                title="Request revision"
+                                                            />
+                                                            <TableActionButton
+                                                                variant="red"
+                                                                icon={XCircle}
+                                                                label="Decline"
+                                                                onClick={() => setSelectedPds({ ...pds, action: 'decline' })}
+                                                                title="Decline PDS"
+                                                            />
+                                                        </>
+                                                    )}
+                                                    {pds.status === 'approved' && (
+                                                        <>
+                                                            <TableActionButton
+                                                                variant="purple"
+                                                                icon={Printer}
+                                                                label={printingPds === pds.id ? 'Printing...' : 'Print'}
+                                                                onClick={() => handlePrintPds(pds.id)}
+                                                                disabled={printingPds === pds.id}
+                                                                title="Print approved PDS"
+                                                            />
+                                                            <TableActionButton
+                                                                variant="red"
+                                                                icon={Trash2}
+                                                                label="Delete"
+                                                                onClick={() => handleDelete(pds.id, pds.user?.name || 'employee')}
+                                                                title="Delete PDS"
+                                                            />
+                                                        </>
+                                                    )}
+                                                    {(pds.status === 'declined' || pds.status === 'for-revision') && (
+                                                        <TableActionButton
+                                                            variant="purple"
+                                                            icon={MessageSquare}
+                                                            label="View Comments"
+                                                            onClick={() => setViewingComments(pds)}
+                                                            title="View comments"
+                                                        />
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

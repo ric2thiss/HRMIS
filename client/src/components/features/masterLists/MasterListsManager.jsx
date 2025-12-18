@@ -5,6 +5,7 @@ import ProjectsTable from './ProjectsTable';
 import SpecialCapabilitiesTable from './SpecialCapabilitiesTable';
 import OfficesTable from './OfficesTable';
 import ApprovalNamesTable from './ApprovalNamesTable';
+import LeaveTypesTable from './LeaveTypesTable';
 
 function MasterListsManager() {
   const [activeTab, setActiveTab] = useState('positions');
@@ -16,6 +17,7 @@ function MasterListsManager() {
     { id: 'offices', label: 'Offices', component: OfficesTable },
     { id: 'capabilities', label: 'Special Capabilities', component: SpecialCapabilitiesTable },
     { id: 'approval-names', label: 'Approval Names', component: ApprovalNamesTable },
+    { id: 'leave-types', label: 'Leave Types', component: LeaveTypesTable },
   ];
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || PositionsTable;

@@ -2,22 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { useNotification } from '../../../hooks/useNotification';
 import { useAuth } from '../../../hooks/useAuth';
 import Calendar from '../../ui/Calendar/Calendar';
-import { getAllMasterLists } from '../../../api/master-lists/masterLists';
-import { createLeaveApplication, getLeaveTypes } from '../../../api/leave/leaveApplications';
+import { createLeaveApplication } from '../../../api/leave/leaveApplications';
 import SignatureModal from '../profile/SignatureModal';
+import AvailableLeaveModal from './AvailableLeaveModal';
+import { useLeaveCreditsStore } from '../../../stores/leaveCreditsStore';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
+import { useLeaveTypesStore } from '../../../stores/leaveTypesStore';
+import { useLeaveApplicationsStore } from '../../../stores/leaveApplicationsStore';
 import updateProfile from '../../../api/user/updateProfile';
 
 function LeaveApplicationForm({ user }) {
   const { showSuccess, showError } = useNotification();
   const { user: authUser, refreshUser } = useAuth();
+  const { getLeaveCredits, getHeroLeaveCredits, loading: loadingCredits } = useLeaveCreditsStore();
+  const { getMasterLists, getApprovalNames, loading: loadingMasterLists } = useMasterListsStore();
+  const { getLeaveTypes, leaveTypes, loading: loadingLeaveTypes } = useLeaveTypesStore();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [approvalNames, setApprovalNames] = useState([]);
-  const [loadingApprovalNames, setLoadingApprovalNames] = useState(false);
-  const [leaveTypes, setLeaveTypes] = useState([]);
-  const [loadingLeaveTypes, setLoadingLeaveTypes] = useState(false);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [pendingFormOpen, setPendingFormOpen] = useState(false);
+  const [isAvailableLeaveModalOpen, setIsAvailableLeaveModalOpen] = useState(false);
   
   // Calendar state
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -38,54 +43,48 @@ function LeaveApplicationForm({ user }) {
     },
   });
 
-  // Load approval names and leave types when form opens
+  // Load leave credits on mount
+  useEffect(() => {
+    if (user) {
+      getLeaveCredits();
+    }
+  }, [user, getLeaveCredits]);
+
+  // Load master lists and leave types on mount (cached)
+  useEffect(() => {
+    if (user) {
+      getMasterLists();
+      getLeaveTypes();
+    }
+  }, [user, getMasterLists, getLeaveTypes]);
+
+  // Load approval names when form opens (from cached master lists)
   useEffect(() => {
     if (isOpen) {
-      if (approvalNames.length === 0) {
-        loadApprovalNames();
-      }
-      if (leaveTypes.length === 0) {
-        loadLeaveTypes();
-      }
-    }
-  }, [isOpen]);
-
-  const loadApprovalNames = async () => {
-    setLoadingApprovalNames(true);
-    try {
-      const masterLists = await getAllMasterLists();
-      // Get active approval names, sorted by type and sort_order
-      const activeApprovalNames = (masterLists.approval_names || [])
-        .filter(an => an.is_active)
-        .sort((a, b) => {
-          // Sort by type first, then by sort_order
-          if (a.type !== b.type) {
-            const typeOrder = ['leave_credit_officer', 'recommendation_approver', 'leave_approver', 'general'];
-            return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
+      const loadApprovalNames = async () => {
+        try {
+          const masterLists = await getMasterLists();
+          if (masterLists && masterLists.approval_names) {
+            // Get active approval names, sorted by type and sort_order
+            const activeApprovalNames = masterLists.approval_names
+              .filter(an => an.is_active)
+              .sort((a, b) => {
+                // Sort by type first, then by sort_order
+                if (a.type !== b.type) {
+                  const typeOrder = ['leave_credit_officer', 'recommendation_approver', 'leave_approver', 'general'];
+                  return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
+                }
+                return (a.sort_order || 0) - (b.sort_order || 0);
+              });
+            setApprovalNames(activeApprovalNames);
           }
-          return (a.sort_order || 0) - (b.sort_order || 0);
-        });
-      setApprovalNames(activeApprovalNames);
-    } catch (error) {
-      console.error('Failed to load approval names:', error);
-      showError('Failed to load approval names list');
-    } finally {
-      setLoadingApprovalNames(false);
+        } catch (error) {
+          console.error('Failed to load approval names:', error);
+        }
+      };
+      loadApprovalNames();
     }
-  };
-
-  const loadLeaveTypes = async () => {
-    setLoadingLeaveTypes(true);
-    try {
-      const types = await getLeaveTypes();
-      setLeaveTypes(types);
-    } catch (error) {
-      console.error('Failed to load leave types:', error);
-      showError('Failed to load leave types');
-    } finally {
-      setLoadingLeaveTypes(false);
-    }
-  };
+  }, [isOpen, getMasterLists]);
 
   // Calculate working days (excluding weekends from selected dates)
   const calculateWorkingDays = (dates) => {
@@ -152,6 +151,14 @@ function LeaveApplicationForm({ user }) {
         return;
       }
 
+      // Validate that selected leave type is active
+      const selectedLeaveType = leaveTypes.find(type => type.id === parseInt(formData.leave_type_id));
+      if (!selectedLeaveType || !selectedLeaveType.is_active) {
+        showError('The selected leave type is not available. Please select an active leave type.');
+        setLoading(false);
+        return;
+      }
+
       if (selectedDates.length === 0) {
         showError('Please select at least one date');
         setLoading(false);
@@ -207,6 +214,12 @@ function LeaveApplicationForm({ user }) {
       await createLeaveApplication(submissionData);
 
       showSuccess('Leave application submitted successfully');
+      
+      // Refresh leave credits and leave applications cache after submission
+      const { refreshLeaveCredits } = useLeaveCreditsStore.getState();
+      const { refreshLeaveApplications } = useLeaveApplicationsStore.getState();
+      await refreshLeaveCredits();
+      await refreshLeaveApplications({});
       
       // Reset form
       setFormData({
@@ -266,6 +279,9 @@ function LeaveApplicationForm({ user }) {
     }
   };
 
+  // Get hero leave credits from store
+  const heroCredits = getHeroLeaveCredits();
+
   // If form is closed, show the button to open it
   if (!isOpen) {
     return (
@@ -273,12 +289,20 @@ function LeaveApplicationForm({ user }) {
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-800">File Leave Application</h2>
-            <button
-              onClick={handleOpenForm}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              + New Application
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsAvailableLeaveModalOpen(true)}
+                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                My Available Leave
+              </button>
+              <button
+                onClick={handleOpenForm}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                + New Application
+              </button>
+            </div>
           </div>
         </div>
 
@@ -291,6 +315,12 @@ function LeaveApplicationForm({ user }) {
           }}
           onSave={handleSaveSignature}
           currentSignature={authUser?.signature || user?.signature || ''}
+        />
+
+        {/* Available Leave Modal */}
+        <AvailableLeaveModal
+          isOpen={isAvailableLeaveModalOpen}
+          onClose={() => setIsAvailableLeaveModalOpen(false)}
         />
       </>
     );
@@ -343,7 +373,7 @@ function LeaveApplicationForm({ user }) {
                   value={formData.leave_type_id}
                   onChange={handleChange}
                   required
-                  disabled={loadingLeaveTypes}
+                  disabled={loadingLeaveTypes || leaveTypes.length === 0}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 disabled:bg-gray-100"
                 >
                   <option value="">_SELECT_</option>
@@ -415,7 +445,7 @@ function LeaveApplicationForm({ user }) {
                   value={formData.leave_credit_authorized_officer_id}
                   onChange={handleChange}
                   required
-                  disabled={loadingApprovalNames}
+                  disabled={loadingMasterLists}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 disabled:bg-gray-100"
                 >
                   <option value="">_SELECT_</option>
@@ -439,7 +469,7 @@ function LeaveApplicationForm({ user }) {
                   value={formData.recommendation_approver_id}
                   onChange={handleChange}
                   required
-                  disabled={loadingApprovalNames}
+                  disabled={loadingMasterLists}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 disabled:bg-gray-100"
                 >
                   <option value="">_SELECT_</option>
@@ -463,7 +493,7 @@ function LeaveApplicationForm({ user }) {
                   value={formData.leave_approver_id}
                   onChange={handleChange}
                   required
-                  disabled={loadingApprovalNames}
+                  disabled={loadingMasterLists}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 disabled:bg-gray-100"
                 >
                   <option value="">_SELECT_</option>

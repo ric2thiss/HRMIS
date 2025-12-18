@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getRoles, createRole, updateRole, deleteRole } from '../../../api/master-lists/roles';
+import { createRole, updateRole, deleteRole } from '../../../api/master-lists/roles';
 import { useNotificationStore } from '../../../stores/notificationStore';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
+import { useRolesTableStore } from '../../../stores/masterListTablesStore';
 
 function RolesTable() {
-  const [roles, setRoles] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { getRoles, roles, loading } = useRolesTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [formData, setFormData] = useState({
@@ -14,6 +15,7 @@ function RolesTable() {
 
   const showSuccess = useNotificationStore((state) => state.showSuccess);
   const showError = useNotificationStore((state) => state.showError);
+  const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
     loadRoles();
@@ -21,13 +23,9 @@ function RolesTable() {
 
   const loadRoles = async () => {
     try {
-      setLoading(true);
-      const data = await getRoles();
-      setRoles(data);
+      await getRoles(); // Uses cache if available
     } catch (err) {
       showError('Failed to load roles');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -46,6 +44,7 @@ function RolesTable() {
       setEditingRole(null);
       setFormData({ name: '', access_permissions_scope: '' });
       loadRoles();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
@@ -70,6 +69,7 @@ function RolesTable() {
       await deleteRole(id);
       showSuccess('Role deleted successfully');
       loadRoles();
+      clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {

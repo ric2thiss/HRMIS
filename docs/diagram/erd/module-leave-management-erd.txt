@@ -1,0 +1,354 @@
+# Leave Management Module - ERD (ASCII Format)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                   LEAVE MANAGEMENT MODULE - DATABASE SCHEMA                     ║
+║                           (ACCURATE AS OF 2025)                                  ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+                              ┌──────────────────────┐
+                              │       users          │
+                              ├──────────────────────┤
+                              │ PK id                │
+                              │    first_name        │
+                              │    last_name         │
+                              │    middle_initial    │
+                              │    employee_id       │
+                              │    office_id         │
+                              │    position_id       │
+                              └──────────┬───────────┘
+                                         │
+                                         │ 1:N
+                                         │
+                          ┌──────────────▼─────────────────────────────────────┐
+                          │                    leaves                          │
+                          ├────────────────────────────────────────────────────┤
+                          │ PK id                                              │
+                          │ FK user_id               → users.id                │
+                          │ FK leave_type_id         → leave_types.id          │
+                          │                                                    │
+                          │ DATE & SELECTION:                                  │
+                          │    start_date            date                      │
+                          │    end_date              date                      │
+                          │    exclusive_dates       json (array of dates)     │
+                          │    working_days          integer                   │
+                          │                                                    │
+                          │ APPLICATION DETAILS:                               │
+                          │    remarks               text [nullable]           │
+                          │    commutation           enum('Requested',         │
+                          │                               'Not Requested')     │
+                          │                          [nullable]                │
+                          │                                                    │
+                          │ APPROVER ASSIGNMENT (FK → approval_names):         │
+                          │ FK leave_credit_authorized_officer_id [nullable]   │
+                          │ FK recommendation_approver_id         [nullable]   │
+                          │ FK leave_approver_id                  [nullable]   │
+                          │                                                    │
+                          │ SHOW REMARKS FLAGS:                                │
+                          │    show_remarks_to_leave_credit_officer  boolean   │
+                          │    show_remarks_to_recommendation_approver boolean │
+                          │    show_remarks_to_leave_approver        boolean   │
+                          │                                                    │
+                          │ OVERALL STATUS:                                    │
+                          │    status                enum('pending',           │
+                          │                               'approved',          │
+                          │                               'rejected',          │
+                          │                               'cancelled')         │
+                          │ FK approved_by           → users.id [nullable]     │
+                          │    approved_at           timestamp [nullable]      │
+                          │    approval_remarks      text [nullable]           │
+                          │                                                    │
+                          │ STAGE 1: LEAVE CREDIT OFFICER APPROVAL             │
+                          │    leave_credit_officer_approved        boolean    │
+                          │ FK leave_credit_officer_approved_by  → users.id    │
+                          │    leave_credit_officer_approved_at  timestamp     │
+                          │    leave_credit_officer_remarks      text          │
+                          │    leave_credit_officer_signature    text (base64) │
+                          │                                                    │
+                          │ STAGE 2: RECOMMENDATION APPROVER                   │
+                          │    recommendation_approver_approved      boolean   │
+                          │ FK recommendation_approver_approved_by → users.id  │
+                          │    recommendation_approver_approved_at timestamp   │
+                          │    recommendation_approver_remarks     text        │
+                          │    recommendation_approver_signature   text(base64)│
+                          │                                                    │
+                          │ STAGE 3: LEAVE APPROVER                            │
+                          │    leave_approver_approved           boolean       │
+                          │ FK leave_approver_approved_by     → users.id       │
+                          │    leave_approver_approved_at     timestamp        │
+                          │    leave_approver_remarks         text             │
+                          │    leave_approver_signature       text (base64)    │
+                          │                                                    │
+                          │ TIMESTAMPS:                                        │
+                          │    created_at            timestamp                 │
+                          │    updated_at            timestamp                 │
+                          │                                                    │
+                          │ INDEXES:                                           │
+                          │    - INDEX(user_id)                                │
+                          │    - INDEX(status)                                 │
+                          │    - INDEX(start_date)                             │
+                          │    - INDEX(end_date)                               │
+                          └────────────────────┬───────────────────────────────┘
+                                               │
+                                               │ N:1
+                                               ▼
+                          ┌────────────────────────────────────────────────────┐
+                          │                  leave_types                       │
+                          ├────────────────────────────────────────────────────┤
+                          │ PK id                                              │
+                          │    name               varchar                      │
+                          │    code               varchar [nullable]           │
+                          │    description        text [nullable]              │
+                          │    days_per_year      integer [nullable]           │
+                          │    is_paid            boolean [default: true]      │
+                          │    requires_docs      boolean [default: false]     │
+                          │    gender_specific    enum('Male','Female','Both') │
+                          │                       [default: 'Both']            │
+                          │    is_monetizable     boolean [default: false]     │
+                          │    color_code         varchar [nullable]           │
+                          │    sort_order         integer [default: 0]         │
+                          │    is_active          boolean [default: true]      │
+                          │    created_at         timestamp                    │
+                          │    updated_at         timestamp                    │
+                          └────────────────────────────────────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          APPROVAL NAMES TABLE                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+                          ┌────────────────────────────────────────────────────┐
+                          │                approval_names                      │
+                          ├────────────────────────────────────────────────────┤
+                          │ PK id                                              │
+                          │ FK user_id            → users.id [nullable]        │
+                          │    name               varchar (full name)          │
+                          │    type               varchar (leave_credit_officer│
+                          │                              recommendation_approver│
+                          │                              leave_approver,general)│
+                          │    description        text [nullable]              │
+                          │    is_active          boolean [default: true]      │
+                          │    sort_order         integer [default: 0]         │
+                          │    created_at         timestamp                    │
+                          │    updated_at         timestamp                    │
+                          └────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+RELATIONSHIPS:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. users → leaves (1:N)
+   One user (employee) can create many leave applications
+
+2. leave_types → leaves (1:N)
+   One leave type is used in many leave applications
+
+3. approval_names → leaves (1:N) [leave_credit_authorized_officer]
+   One approval name can be assigned as leave credit officer for many leaves
+
+4. approval_names → leaves (1:N) [recommendation_approver]
+   One approval name can be assigned as recommendation approver for many leaves
+
+5. approval_names → leaves (1:N) [leave_approver]
+   One approval name can be assigned as leave approver for many leaves
+
+6. users → leaves (1:N) [approved_by]
+   One user can be the final approver for many leaves
+
+7. users → leaves (1:N) [leave_credit_officer_approved_by]
+   One user can approve stage 1 for many leaves
+
+8. users → leaves (1:N) [recommendation_approver_approved_by]
+   One user can approve stage 2 for many leaves
+
+9. users → leaves (1:N) [leave_approver_approved_by]
+   One user can approve stage 3 for many leaves
+
+10. approval_names → users (N:1) [optional link]
+    Approval names can be linked to actual users for notifications
+
+═══════════════════════════════════════════════════════════════════════════════
+BUSINESS RULES:
+═══════════════════════════════════════════════════════════════════════════════
+
+LEAVE APPLICATION:
+• Employee selects date range (start_date, end_date)
+• Employee can select specific dates within range (exclusive_dates JSON array)
+• System calculates working_days based on selection
+• Employee can add remarks (optional)
+• Employee can request commutation ('Requested' or 'Not Requested')
+• Employee assigns 3 approvers from approval_names table
+• Employee can choose to show/hide remarks to each approver
+
+DATE SELECTION SYSTEM:
+• exclusive_dates: JSON array containing specific dates to include
+• working_days: Calculated number of working days
+• Flexible selection - not just continuous date ranges
+• System handles weekends/holidays in working_days calculation
+
+MULTI-STAGE APPROVAL WORKFLOW:
+• Stage 1: Leave Credit Officer
+  - Reviews leave credits availability
+  - Can approve/reject with remarks
+  - Digital signature captured (base64 encoded)
+  
+• Stage 2: Recommendation Approver
+  - Provides recommendation
+  - Can approve/reject with remarks
+  - Digital signature captured
+  
+• Stage 3: Leave Approver
+  - Final approval authority
+  - Can approve/reject with remarks
+  - Digital signature captured
+
+• Overall Status: pending → approved/rejected/cancelled
+• All 3 stages tracked independently with:
+  - Boolean approval flag
+  - Approver user_id (actual user who approved)
+  - Approval timestamp
+  - Remarks from that stage
+  - Digital signature
+
+APPROVAL ASSIGNMENT:
+• Approvers are selected from approval_names master list
+• approval_names.type: 'leave_credit_officer', 'recommendation_approver', 
+                        'leave_approver', or 'general'
+• Approval names can optionally link to user accounts
+• Employee chooses which approval names to assign when submitting leave
+
+STATUS FLOW:
+• pending: Initial status when submitted
+• approved: All required approvals completed
+• rejected: Any stage rejects the application
+• cancelled: Employee cancels before completion
+
+LEAVE TYPES:
+• Configurable leave types (stored in leave_types table)
+• Can specify gender_specific: 'Male', 'Female', or 'Both'
+• is_paid: Whether leave is with pay
+• requires_docs: Whether documents are required
+• is_monetizable: Whether can be converted to cash
+• days_per_year: Standard allocation per year (if applicable)
+
+COMMUTATION:
+• Employee can request commutation of leave
+• Options: 'Requested' or 'Not Requested'
+• Used for monetizable leave types (converting to cash value)
+
+REMARKS VISIBILITY:
+• Employee controls visibility of remarks to each approver
+• show_remarks_to_leave_credit_officer: boolean
+• show_remarks_to_recommendation_approver: boolean
+• show_remarks_to_leave_approver: boolean
+
+═══════════════════════════════════════════════════════════════════════════════
+INDEXES FOR PERFORMANCE:
+═══════════════════════════════════════════════════════════════════════════════
+
+leaves table:
+  - INDEX(user_id)                   → All leaves for a user
+  - INDEX(status)                    → Leaves by status
+  - INDEX(start_date)                → Date-based queries
+  - INDEX(end_date)                  → Date range queries
+
+leave_types table:
+  - INDEX(is_active)                 → Active leave types
+  - INDEX(sort_order)                → Ordered display
+
+approval_names table:
+  - INDEX(type)                      → Filter by approver type
+  - INDEX(is_active)                 → Active approvers only
+  - INDEX(sort_order)                → Ordered display
+  - INDEX(user_id)                   → Link to user account
+
+═══════════════════════════════════════════════════════════════════════════════
+STATUS FLOW:
+═══════════════════════════════════════════════════════════════════════════════
+
+                              ┌─────────────┐
+                              │   pending   │
+                              └──────┬──────┘
+                                     │
+                    ┌────────────────┼────────────────┐
+                    │                │                │
+                    ▼                ▼                ▼
+           ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+           │  approved   │  │  rejected   │  │ cancelled   │
+           │ (all 3      │  │ (any stage) │  │ (by employee)│
+           │  stages OK) │  └─────────────┘  └─────────────┘
+           └─────────────┘
+
+STAGE PROGRESSION:
+  pending → Stage 1 (Leave Credit Officer) → approved/rejected
+         → Stage 2 (Recommendation Approver) → approved/rejected
+         → Stage 3 (Leave Approver) → approved/rejected
+         → Overall status updated to 'approved' when all stages complete
+
+═══════════════════════════════════════════════════════════════════════════════
+TYPICAL QUERIES:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Get user's leave applications:
+   SELECT l.*, lt.name as leave_type_name, u.first_name, u.last_name
+   FROM leaves l
+   JOIN leave_types lt ON l.leave_type_id = lt.id
+   JOIN users u ON l.user_id = u.id
+   WHERE l.user_id = ?
+   ORDER BY l.created_at DESC
+
+2. Get pending leaves for specific approver stage:
+   SELECT l.*, u.first_name, u.last_name, lt.name as leave_type
+   FROM leaves l
+   JOIN users u ON l.user_id = u.id
+   JOIN leave_types lt ON l.leave_type_id = lt.id
+   JOIN approval_names an ON l.leave_credit_authorized_officer_id = an.id
+   WHERE an.user_id = ? 
+   AND l.status = 'pending'
+   AND l.leave_credit_officer_approved = false
+   ORDER BY l.created_at ASC
+
+3. Check date overlap (considering exclusive_dates):
+   SELECT COUNT(*) FROM leaves
+   WHERE user_id = ?
+   AND status IN ('pending', 'approved')
+   AND ((start_date <= ? AND end_date >= ?)
+        OR JSON_CONTAINS(exclusive_dates, '"2024-01-15"'))
+
+4. Get leave with all approval details:
+   SELECT l.*, 
+          u.first_name as employee_name,
+          lt.name as leave_type,
+          an1.name as credit_officer_name,
+          an2.name as recommendation_approver_name,
+          an3.name as leave_approver_name,
+          u1.first_name as stage1_approved_by_name,
+          u2.first_name as stage2_approved_by_name,
+          u3.first_name as stage3_approved_by_name
+   FROM leaves l
+   JOIN users u ON l.user_id = u.id
+   JOIN leave_types lt ON l.leave_type_id = lt.id
+   LEFT JOIN approval_names an1 ON l.leave_credit_authorized_officer_id = an1.id
+   LEFT JOIN approval_names an2 ON l.recommendation_approver_id = an2.id
+   LEFT JOIN approval_names an3 ON l.leave_approver_id = an3.id
+   LEFT JOIN users u1 ON l.leave_credit_officer_approved_by = u1.id
+   LEFT JOIN users u2 ON l.recommendation_approver_approved_by = u2.id
+   LEFT JOIN users u3 ON l.leave_approver_approved_by = u3.id
+   WHERE l.id = ?
+
+5. Get leaves requiring my approval (as linked approval name):
+   SELECT l.*, u.first_name, u.last_name
+   FROM leaves l
+   JOIN users u ON l.user_id = u.id
+   JOIN approval_names an ON (
+       l.leave_credit_authorized_officer_id = an.id OR
+       l.recommendation_approver_id = an.id OR
+       l.leave_approver_id = an.id
+   )
+   WHERE an.user_id = ? AND l.status = 'pending'
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+

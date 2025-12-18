@@ -12,7 +12,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // For MySQL, we need to modify the enum column
+        // Check if using SQLite (for testing) or MySQL (for production)
+        $driver = DB::getDriverName();
+        
+        if ($driver === 'sqlite') {
+            // SQLite doesn't support ALTER COLUMN, so we'll skip for tests
+            // In production with MySQL, this will modify the enum
+            return;
+        }
+        
+        // For MySQL, modify the enum column
         DB::statement("ALTER TABLE personal_data_sheets MODIFY COLUMN status ENUM('draft', 'pending', 'approved', 'declined', 'for-revision') DEFAULT 'draft'");
     }
 
@@ -21,7 +30,13 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Revert back to original enum values
+        $driver = DB::getDriverName();
+        
+        if ($driver === 'sqlite') {
+            return;
+        }
+        
+        // Revert back to original enum values for MySQL
         DB::statement("ALTER TABLE personal_data_sheets MODIFY COLUMN status ENUM('draft', 'pending', 'approved', 'declined') DEFAULT 'draft'");
     }
 };

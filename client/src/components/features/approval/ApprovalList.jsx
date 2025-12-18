@@ -1,102 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LEAVE_STATUS, LEAVE_STATUS_LABELS } from '../../../data/leaveTypes';
 import { useNotification } from '../../../hooks/useNotification';
 import PdsReviewList from '../pds/PdsReviewList';
-import { getAllPds } from '../../../api/pds/pds';
-import { getMyPendingApprovals, approveLeaveApplication, getLeaveApplications } from '../../../api/leave/leaveApplications';
+import { approveLeaveApplication } from '../../../api/leave/leaveApplications';
 import { useAuth } from '../../../hooks/useAuth';
 import { getUserRole } from '../../../utils/userHelpers';
-import { getAllMasterLists } from '../../../api/master-lists/masterLists';
+import { 
+  usePendingLeaveApprovals, 
+  usePendingPdsApprovals, 
+  useMasterLists,
+  useApprovalCounts,
+  useInvalidateApprovalQueries 
+} from '../../../hooks/useApprovalData';
 import LeaveApprovalModal from '../leave/LeaveApprovalModal';
 
 function ApprovalList() {
   const navigate = useNavigate();
   const { showSuccess, showError } = useNotification();
   const { user } = useAuth();
-  const [approvals, setApprovals] = useState([]);
   const [selectedApproval, setSelectedApproval] = useState(null);
   const [approvalModalLeave, setApprovalModalLeave] = useState(null);
   const [activeTab, setActiveTab] = useState('leave'); // 'leave' or 'pds'
   const [searchQuery, setSearchQuery] = useState('');
-  const [leaveCount, setLeaveCount] = useState(0);
-  const [pdsCount, setPdsCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [userApprovalNameIds, setUserApprovalNameIds] = useState([]);
 
+  // Use React Query hooks for data fetching with caching
+  const { invalidateAllApprovalQueries } = useInvalidateApprovalQueries();
+  const { data: approvals = [], isLoading: loadingLeaves } = usePendingLeaveApprovals(user);
+  const { data: pdsApprovals = [], isLoading: loadingPds } = usePendingPdsApprovals(user);
+  const { data: masterLists, isLoading: loadingMasterLists } = useMasterLists(user);
+  const { counts } = useApprovalCounts(user);
+
+  const loading = loadingLeaves || loadingPds || loadingMasterLists;
+  const role = getUserRole(user);
+  const isHROrAdmin = role === 'hr' || role === 'admin';
+
+  // Get user approval name IDs from master lists
+  const userApprovalNameIds = useMemo(() => {
+    if (!masterLists || !user) return [];
+    const approvalNames = masterLists.approval_names || [];
+    return approvalNames
+      .filter(an => an.user_id === user?.id && an.is_active)
+      .map(an => an.id);
+  }, [masterLists, user]);
+
+  // Redirect to leave tab if not HR/Admin and on PDS tab
   useEffect(() => {
-    loadPendingApprovals();
-    if (user) {
-      loadUserApprovalNames();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const loadUserApprovalNames = async () => {
-    try {
-      const masterLists = await getAllMasterLists();
-      const approvalNames = masterLists.approval_names || [];
-      // Get approval name IDs where the current user is assigned
-      const ids = approvalNames
-        .filter(an => an.user_id === user?.id && an.is_active)
-        .map(an => an.id);
-      setUserApprovalNameIds(ids);
-    } catch (err) {
-      console.error('Failed to load user approval names:', err);
-    }
-  };
-
-  const loadPendingApprovals = async () => {
-    try {
-      setLoading(true);
-      const role = getUserRole(user);
-      
-      // If user is HR or Admin, get all pending approvals
-      if (role === 'hr' || role === 'admin') {
-        // For HR/Admin, fetch all pending leaves and PDS
-        const [leavesResponse, pdsResponse] = await Promise.all([
-          getLeaveApplications({ status: 'pending' }),
-          getAllPds('pending')
-        ]);
-        
-        setApprovals(leavesResponse || []);
-        setLeaveCount(leavesResponse?.length || 0);
-        setPdsCount(pdsResponse.pds?.length || 0);
-      } else {
-        // For regular approvers, get only their assigned leave approvals (no PDS)
-        const response = await getMyPendingApprovals();
-        setApprovals(response.leaves || []);
-        setLeaveCount(response.leaves?.length || 0);
-        setPdsCount(0); // Regular approvers don't have access to PDS
-      }
-    } catch (err) {
-      console.error('Error fetching pending approvals:', err);
-      showError('Failed to load pending approvals');
-      setApprovals([]);
-      setLeaveCount(0);
-      setPdsCount(0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Refresh counts when switching tabs
-  useEffect(() => {
-    const role = getUserRole(user);
-    const isHROrAdmin = role === 'hr' || role === 'admin';
-    
-    // If user is not HR/Admin and somehow on PDS tab, switch back to leave tab
     if (activeTab === 'pds' && !isHROrAdmin) {
       setActiveTab('leave');
-    } else if (activeTab === 'pds') {
-      loadPendingApprovals();
     }
-  }, [activeTab, user]);
-
-  // Update leave count when approvals change
-  useEffect(() => {
-    setLeaveCount(approvals.length);
-  }, [approvals]);
+  }, [activeTab, isHROrAdmin]);
 
   const handleApprove = async (approvalData) => {
     try {
@@ -108,7 +61,8 @@ function ApprovalList() {
       showSuccess('Application approved successfully');
       setApprovalModalLeave(null);
       setSelectedApproval(null);
-      loadPendingApprovals(); // Reload the list
+      // Invalidate all approval queries to refetch fresh data
+      invalidateAllApprovalQueries();
     } catch (err) {
       showError(err?.response?.data?.message || 'Failed to approve application');
     }
@@ -131,15 +85,16 @@ function ApprovalList() {
       });
       showSuccess('Application rejected');
       setSelectedApproval(null);
-      loadPendingApprovals(); // Reload the list
+      // Invalidate all approval queries to refetch fresh data
+      invalidateAllApprovalQueries();
     } catch (err) {
       showError(err?.response?.data?.message || 'Failed to reject application');
     }
   };
 
-  const handlePdsReview = async () => {
-    // Refresh PDS count after review
-    await loadPendingApprovals();
+  const handlePdsReview = () => {
+    // Invalidate all approval queries to refetch fresh data
+    invalidateAllApprovalQueries();
   };
 
   const getTypeIcon = (type) => {
@@ -301,8 +256,6 @@ function ApprovalList() {
   };
 
   const displayedApprovals = getFilteredApprovals();
-  const role = getUserRole(user);
-  const isHROrAdmin = role === 'hr' || role === 'admin';
 
   return (
     <div className="w-full">
@@ -322,9 +275,9 @@ function ApprovalList() {
               }`}
             >
               Leave Applications
-              {leaveCount > 0 && (
+              {counts.leaveCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
-                  {leaveCount > 99 ? '99+' : leaveCount}
+                  {counts.leaveCount > 99 ? '99+' : counts.leaveCount}
                 </span>
               )}
             </button>
@@ -342,9 +295,9 @@ function ApprovalList() {
                 }`}
               >
                 PDS Submissions
-                {pdsCount > 0 && (
+                {counts.pdsCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
-                    {pdsCount > 99 ? '99+' : pdsCount}
+                    {counts.pdsCount > 99 ? '99+' : counts.pdsCount}
                   </span>
                 )}
               </button>

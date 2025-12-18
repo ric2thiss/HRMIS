@@ -1,0 +1,526 @@
+# PDS Module - Submission and Verification Flow (ASCII)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║             PERSONAL DATA SHEET (PDS) SUBMISSION & VERIFICATION FLOW           ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+                              ┌─────────────┐
+                              │   START     │
+                              │ (Employee)  │
+                              └──────┬──────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Employee logs in    │
+                          │  to system           │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Navigate to PDS     │
+                          │  section             │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Check if PDS exists │
+                          └──────────┬───────────┘
+                                     │
+                       ┌─────────────┴─────────────┐
+                       │                           │
+                  [Exists?]                   [New PDS?]
+                       │                           │
+                   ┌───▼───┐                   ┌───▼───┐
+                   │  YES  │                   │  NO   │
+                   └───┬───┘                   └───┬───┘
+                       │                           │
+                       ▼                           ▼
+            ┌──────────────────┐      ┌──────────────────────┐
+            │ Load existing    │      │ Create new PDS       │
+            │ PDS data         │      │ (draft status)       │
+            └────────┬─────────┘      └──────────┬───────────┘
+                     │                           │
+                     └───────────┬───────────────┘
+                                 │
+                                 ▼
+                ┌────────────────────────────────────────┐
+                │  Display Multi-Section PDS Form        │
+                │  ┌──────────────────────────────────┐  │
+                │  │ Progress: [■■■□□□□□] 40%         │  │
+                │  │                                  │  │
+                │  │ SECTIONS:                        │  │
+                │  │ ☑ I. Personal Information        │  │
+                │  │ ☑ II. Family Background          │  │
+                │  │ ☐ III. Educational Background    │  │
+                │  │ ☐ IV. Civil Service Eligibility  │  │
+                │  │ ☐ V. Work Experience             │  │
+                │  │ ☐ VI. Voluntary Work             │  │
+                │  │ ☐ VII. Training & Seminars       │  │
+                │  │ ☐ VIII. Other Information        │  │
+                │  │                                  │  │
+                │  │ [Save Draft] [Continue]          │  │
+                │  └──────────────────────────────────┘  │
+                └──────────────────┬─────────────────────┘
+                                   │
+                                   ▼
+                          ┌─────────────────────┐
+                          │  Employee fills     │
+                          │  sections one by one│
+                          └──────────┬──────────┘
+                                     │
+                                     │
+                          ┌──────────▼────────────┐
+                          │ === SECTION I ===     │
+                          │ Personal Information  │
+                          │ - Name, birthdate     │
+                          │ - Address, contact    │
+                          │ - Gov't IDs           │
+                          └──────────┬────────────┘
+                                     │
+                                     ▼
+            ┌────────────────────────────────────┐
+            │  POST /api/pds/personal-info       │
+            │  Auto-save every 30 seconds        │
+            └────────────┬───────────────────────┘
+                         │
+                         ▼
+            ┌──────────────────────┐
+            │ Validate & save      │
+            │ (status: draft)      │
+            └────────────┬─────────┘
+                         │
+                         ▼
+                    [Continue to next section...]
+                         │
+                         │
+                ┌────────▼─────────┐
+                │ === SECTION II ===│
+                │ Family Background │
+                │ - Spouse info     │
+                │ - Father/Mother   │
+                │ - Children        │
+                └────────┬──────────┘
+                         │
+                         ▼
+                    [Auto-save...]
+                         │
+                         │
+                ┌────────▼─────────┐
+                │ === SECTION III ===│
+                │ Educational       │
+                │ - Elementary      │
+                │ - Secondary       │
+                │ - Vocational      │
+                │ - College         │
+                │ - Graduate        │
+                └────────┬──────────┘
+                         │
+                         ▼
+                    [Auto-save...]
+                         │
+                         │
+        [Continue through all 8 sections...]
+                         │
+                         │
+                         ▼
+                ┌────────────────────────┐
+                │ === FINAL SECTION ===  │
+                │ Review & Submit        │
+                └────────┬───────────────┘
+                         │
+                         ▼
+            ┌────────────────────────────────┐
+            │  Display PDS Summary for Review│
+            │  ┌──────────────────────────┐  │
+            │  │ Review Your PDS          │  │
+            │  │                          │  │
+            │  │ [Section I]   Complete ✓ │  │
+            │  │ [Section II]  Complete ✓ │  │
+            │  │ [Section III] Complete ✓ │  │
+            │  │ [Section IV]  Complete ✓ │  │
+            │  │ [Section V]   Complete ✓ │  │
+            │  │ [Section VI]  Complete ✓ │  │
+            │  │ [Section VII] Complete ✓ │  │
+            │  │ [Section VIII]Complete ✓ │  │
+            │  │                          │  │
+            │  │ ☐ I certify that this    │  │
+            │  │   information is true    │  │
+            │  │                          │  │
+            │  │ Upload Photo: [Choose]   │  │
+            │  │ Upload Signature:[Choose]│  │
+            │  │                          │  │
+            │  │ [Back] [Submit PDS]      │  │
+            │  └──────────────────────────┘  │
+            └────────────┬───────────────────┘
+                         │
+                         ▼
+            ┌──────────────────────┐
+            │ Employee reviews all │
+            │ information          │
+            └────────────┬─────────┘
+                         │
+                         ▼
+            ┌──────────────────────┐
+            │ Upload photo &       │
+            │ signature            │
+            └────────────┬─────────┘
+                         │
+                         ▼
+            ┌──────────────────────┐
+            │ Check certification  │
+            │ checkbox             │
+            └────────────┬─────────┘
+                         │
+                         ▼
+            ┌──────────────────────┐
+            │ Click "Submit PDS"   │
+            └────────────┬─────────┘
+                         │
+                         ▼
+            ┌──────────────────────────────┐
+            │ Confirmation Dialog:         │
+            │ "Submit PDS for verification?│
+            │  You cannot edit after       │
+            │  submission"                 │
+            │ [Cancel] [Confirm Submit]    │
+            └────────────┬─────────────────┘
+                         │
+                         ▼
+            ┌──────────────────────────────┐
+            │ POST /api/pds/submit         │
+            └────────────┬─────────────────┘
+                         │
+                         ▼
+            ┌──────────────────────┐
+            │ Backend validates:   │
+            │ - All required fields│
+            │ - Photo uploaded     │
+            │ - Signature uploaded │
+            │ - Certification      │
+            └────────────┬─────────┘
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+         [Valid?]             [Invalid?]
+              │                     │
+          ┌───▼───┐             ┌───▼───┐
+          │  YES  │             │  NO   │
+          └───┬───┘             └───┬───┘
+              │                     │
+              │                     ▼
+              │        ┌──────────────────────┐
+              │        │ Return 422 with      │
+              │        │ missing fields list  │
+              │        └──────────┬───────────┘
+              │                   │
+              │                   │
+              ▼                   │
+┌──────────────────────────┐     │
+│ BEGIN TRANSACTION        │     │
+└────────────┬─────────────┘     │
+             │                   │
+             ▼                   │
+┌──────────────────────────┐     │
+│ Update PDS status:       │     │
+│ - draft → submitted      │     │
+│ - Set submitted_at       │     │
+└────────────┬─────────────┘     │
+             │                   │
+             ▼                   │
+┌──────────────────────────┐     │
+│ Generate PDS number      │     │
+│ (format: PDS-YYYY-####)  │     │
+└────────────┬─────────────┘     │
+             │                   │
+             ▼                   │
+┌──────────────────────────┐     │
+│ Save uploaded files:     │     │
+│ - Photo                  │     │
+│ - Signature              │     │
+│ - Thumbmark (if any)     │     │
+└────────────┬─────────────┘     │
+             │                   │
+             ▼                   │
+┌──────────────────────────┐     │
+│ Create notification for  │     │
+│ HR to verify PDS         │     │
+└────────────┬─────────────┘     │
+             │                   │
+             ▼                   │
+┌──────────────────────────┐     │
+│ Send email to HR         │     │
+│ "New PDS submitted"      │     │
+└────────────┬─────────────┘     │
+             │                   │
+             ▼                   │
+┌──────────────────────────┐     │
+│ Log PDS submission       │     │
+└────────────┬─────────────┘     │
+             │                   │
+             ▼                   │
+┌──────────────────────────┐     │
+│ COMMIT TRANSACTION       │     │
+└────────────┬─────────────┘     │
+             │                   │
+             ▼                   │
+┌──────────────────────────┐     │
+│ Return 200 OK            │     │
+│ {                        │     │
+│   success: true,         │     │
+│   data: {                │     │
+│     pds_number: "..."    │     │
+│     status: "submitted"  │     │
+│   }                      │     │
+│ }                        │     │
+└────────────┬─────────────┘     │
+             │                   │
+             │◄──────────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ Frontend: Show success   │
+│ & redirect to view PDS   │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────────────┐
+│ Display Submission Confirmation  │
+│ ┌──────────────────────────────┐ │
+│ │ ✓ PDS Submitted Successfully │ │
+│ │                              │ │
+│ │ PDS Number: PDS-2025-0123    │ │
+│ │ Status: Under Verification   │ │
+│ │                              │ │
+│ │ Your PDS has been submitted  │ │
+│ │ to HR for verification.      │ │
+│ │                              │ │
+│ │ You will be notified once    │ │
+│ │ verification is complete.    │ │
+│ │                              │ │
+│ │ [View PDS] [Download PDF]    │ │
+│ └──────────────────────────────┘ │
+└────────────┬─────────────────────┘
+             │
+             │
+             ▼
+    ┌────────────────┐
+    │  MEANWHILE...  │
+    │  HR Side       │
+    └────────┬───────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ HR receives notification │
+│ and email                │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ HR logs in and navigates │
+│ to PDS Verification queue│
+└────────────┬─────────────┘
+             │
+             ▼
+┌────────────────────────────────┐
+│ Display Pending PDS List       │
+│ ┌────────────────────────────┐ │
+│ │ Employee     │ Submitted   │ │
+│ │ John Doe     │ 2025-01-15  │ │
+│ │ Jane Smith   │ 2025-01-14  │ │
+│ └────────────────────────────┘ │
+└────────────┬───────────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ HR clicks on PDS to      │
+│ review                   │
+└────────────┬─────────────┘
+             │
+             ▼
+┌────────────────────────────────┐
+│ Display Complete PDS for Review│
+│ - All 8 sections             │
+│ - Photos/Signature            │
+│ - Supporting documents         │
+└────────────┬───────────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ HR reviews all sections  │
+│ thoroughly               │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ HR makes decision        │
+└────────────┬─────────────┘
+             │
+   ┌─────────┴─────────┐
+   │                   │
+[Verify?]          [Reject?]
+   │                   │
+┌──▼──┐            ┌───▼───┐
+│ YES │            │  NO   │
+└──┬──┘            └───┬───┘
+   │                   │
+   ▼                   ▼
+┌────────────────┐  ┌────────────────┐
+│ POST /api/pds/ │  │ POST /api/pds/ │
+│ {id}/verify    │  │ {id}/reject    │
+│                │  │ {              │
+│                │  │   reason: "..."│
+│                │  │ }              │
+└────────┬───────┘  └────────┬───────┘
+         │                   │
+         ▼                   ▼
+┌────────────────┐  ┌────────────────┐
+│ Update status: │  │ Update status: │
+│ submitted →    │  │ submitted →    │
+│ verified       │  │ rejected       │
+│                │  │                │
+│ Set:           │  │ Set:           │
+│ - verified_by  │  │ - Add reason   │
+│ - verified_at  │  │                │
+└────────┬───────┘  └────────┬───────┘
+         │                   │
+         ▼                   ▼
+┌────────────────┐  ┌────────────────┐
+│ Notify employee│  │ Notify employee│
+│ "PDS verified" │  │ "PDS rejected" │
+└────────┬───────┘  └────────┬───────┘
+         │                   │
+         ▼                   ▼
+┌────────────────┐  ┌────────────────┐
+│ Send email     │  │ Send email with│
+│ confirmation   │  │ rejection notes│
+└────────┬───────┘  └────────┬───────┘
+         │                   │
+         └────────┬──────────┘
+                  │
+                  ▼
+         ┌────────────────┐
+         │ Employee gets  │
+         │ notification   │
+         └────────┬───────┘
+                  │
+                  ▼
+            ┌─────────┐
+            │   END   │
+            └─────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PDS SECTIONS BREAKDOWN:
+═══════════════════════════════════════════════════════════════════════════════
+
+I. PERSONAL INFORMATION
+   • Full name, birth details
+   • Citizenship, civil status
+   • Height, weight, blood type
+   • Government IDs (GSIS, PAG-IBIG, PhilHealth, SSS, TIN)
+   • Residential and permanent address
+   • Contact information
+
+II. FAMILY BACKGROUND
+   • Spouse information (if married)
+   • Father's name and details
+   • Mother's maiden name and details
+   • Children (names and birthdates)
+
+III. EDUCATIONAL BACKGROUND
+   • Elementary level
+   • Secondary level
+   • Vocational/Trade course
+   • College level
+   • Graduate studies
+   • (For each: school name, period attended, degree, honors)
+
+IV. CIVIL SERVICE ELIGIBILITY
+   • Career service/examination
+   • Rating, date of examination
+   • Place of examination
+   • License number and validity
+
+V. WORK EXPERIENCE
+   • Position title
+   • Department/Agency/Office
+   • Monthly salary
+   • Salary grade and status of appointment
+   • Government service (Yes/No)
+   • Inclusive dates (From-To)
+
+VI. VOLUNTARY WORK
+   • Organization name and address
+   • Inclusive dates
+   • Number of hours
+   • Position/Nature of work
+
+VII. LEARNING AND DEVELOPMENT
+   • Title of training/seminar
+   • Inclusive dates
+   • Number of hours
+   • Type (Managerial/Supervisory/Technical)
+   • Conducted/Sponsored by
+
+VIII. OTHER INFORMATION
+   • Special skills and hobbies
+   • Non-academic distinctions/recognition
+   • Membership in associations/organizations
+   • Answer to 34-40 questionnaire items
+   • References (3 persons)
+   • Government issued ID
+
+═══════════════════════════════════════════════════════════════════════════════
+VALIDATION RULES:
+═══════════════════════════════════════════════════════════════════════════════
+
+REQUIRED FIELDS:
+• All sections must be completed
+• Photo (passport size, recent)
+• Signature (digital or scanned)
+• Certification checkbox
+• At least 3 character references
+• Answer to all 40 questions
+
+FILE REQUIREMENTS:
+• Photo: Max 2MB, JPG/PNG
+• Signature: Max 1MB, JPG/PNG
+• Thumbmark: Optional, Max 1MB
+
+BUSINESS RULES:
+• Cannot submit incomplete PDS
+• Cannot edit after submission (must request from HR)
+• Photo must be recent (less than 6 months old)
+• All information must be truthful and accurate
+• False information grounds for dismissal
+
+═══════════════════════════════════════════════════════════════════════════════
+STATUS FLOW:
+═══════════════════════════════════════════════════════════════════════════════
+
+draft → submitted → verified → (completed)
+   │         │
+   │         └──→ rejected → (can revise and resubmit)
+   │
+   └─────────────→ (can save multiple times)
+
+═══════════════════════════════════════════════════════════════════════════════
+NOTIFICATIONS:
+═══════════════════════════════════════════════════════════════════════════════
+
+TO EMPLOYEE:
+• Submission confirmation
+• Verification notification (approved)
+• Rejection notification (with reasons)
+• Reminder if incomplete after 30 days
+
+TO HR:
+• New PDS submission alert
+• Pending verification count
+• Weekly digest of submissions
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+

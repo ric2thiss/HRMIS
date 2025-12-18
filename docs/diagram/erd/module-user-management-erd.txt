@@ -1,0 +1,341 @@
+# User Management Module - ERD (ASCII Format)
+
+```
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                        USER MANAGEMENT MODULE - DATABASE SCHEMA                 ║
+║                              (ACCURATE AS OF 2024)                              ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+
+┌──────────────────────┐         ┌──────────────────────┐         ┌──────────────────────┐
+│       roles          │         │       offices        │         │      positions       │
+├──────────────────────┤         ├──────────────────────┤         ├──────────────────────┤
+│ PK id                │         │ PK id                │         │ PK id                │
+│    name              │         │    name              │         │    title             │
+│    description       │         │    code              │         │    description       │
+│    access_permissions│         │    address           │         │    created_at        │
+│    scope             │         │    contact_number    │         │    updated_at        │
+│    created_at        │         │    email             │         └──────────┬───────────┘
+│    updated_at        │         │    is_active         │                    │
+└──────────┬───────────┘         │    created_at        │                    │
+           │                     │    updated_at        │                    │
+           │                     └──────────┬───────────┘                    │
+           │                                │                                │
+           │                                │                                │
+           │         ┌──────────────────────┼────────────────────────────────┘
+           │         │                      │
+           │         │                      │
+      ┌────▼─────────▼──────────────────────▼──────────────────────────┐
+      │                           users                                 │
+      ├─────────────────────────────────────────────────────────────────┤
+      │ PK id                                                           │
+      │    employee_id          varchar(50) [UNIQUE, nullable]          │
+      │                         (Format: [type][YYYY][MM][NNNN])        │
+      │                                                                 │
+      │ BASIC INFORMATION:                                              │
+      │    name                 varchar(255)                            │
+      │    first_name           varchar(255) [nullable]                 │
+      │    middle_initial       varchar(10) [nullable]                  │
+      │    last_name            varchar(255) [nullable]                 │
+      │    sex                  enum('Male','Female') [nullable]        │
+      │    email                varchar(255) [UNIQUE]                   │
+      │                                                                 │
+      │ ORGANIZATIONAL:                                                 │
+      │ FK role_id              → roles.id (NOT NULL)                   │
+      │ FK office_id            → offices.id [nullable]                 │
+      │ FK position_id          → positions.id (NOT NULL)               │
+      │ FK project_id           → projects.id (NOT NULL)                │
+      │                                                                 │
+      │ AUTHENTICATION & SECURITY:                                      │
+      │    password             varchar(255) [hashed]                   │
+      │    remember_token       varchar(100) [nullable]                 │
+      │    email_verified_at    timestamp [nullable]                    │
+      │    is_locked            boolean [default: false]                │
+      │    must_change_password boolean [default: false]                │
+      │                                                                 │
+      │ ACCESS CONTROL:                                                 │
+      │    has_system_settings_access boolean [default: false]          │
+      │                              (Admin-level system access)        │
+      │                                                                 │
+      │ PROFILE & SIGNATURE:                                            │
+      │    profile_image        longtext [nullable] (base64)            │
+      │    signature            text [nullable] (base64)                │
+      │                                                                 │
+      │ TIMESTAMPS:                                                     │
+      │    created_at           timestamp                               │
+      │    updated_at           timestamp                               │
+      │                                                                 │
+      │ INDEXES:                                                        │
+      │    - UNIQUE(employee_id)                                        │
+      │    - UNIQUE(email)                                              │
+      │    - INDEX(role_id)                                             │
+      │    - INDEX(office_id)                                           │
+      │    - INDEX(position_id)                                         │
+      │    - INDEX(project_id)                                          │
+      └─────────────────────────┬───────────────────────────────────────┘
+                                │
+                                │
+              ┌─────────────────┼─────────────────┐
+              │                 │                 │
+              ▼                 ▼                 ▼
+┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
+│   login_activities   │  │password_reset_tokens │  │module_access_logs    │
+├──────────────────────┤  ├──────────────────────┤  ├──────────────────────┤
+│ PK id                │  │    email (PK)        │  │ PK id                │
+│ FK user_id [nullable]│  │    token             │  │ FK user_id           │
+│    email             │  │    created_at        │  │    module_name       │
+│    ip_address        │  └──────────────────────┘  │    action            │
+│    user_agent        │                            │    ip_address        │
+│    successful        │  ┌──────────────────────┐  │    created_at        │
+│    failed_reason     │  │ http_request_logs    │  │    updated_at        │
+│    created_at        │  ├──────────────────────┤  └──────────────────────┘
+│    updated_at        │  │ PK id                │
+└──────────────────────┘  │ FK user_id [nullable]│
+                          │    method            │
+                          │    url               │
+                          │    ip_address        │
+                          │    user_agent        │
+                          │    status_code       │
+                          │    response_time     │
+                          │    created_at        │
+                          │    updated_at        │
+                          └──────────────────────┘
+
+┌──────────────────────┐         ┌──────────────────────┐
+│      projects        │         │  employment_type     │
+├──────────────────────┤         ├──────────────────────┤
+│ PK id                │         │ PK id                │
+│    name              │         │    name              │
+│    project_code      │         │    description       │
+│    description       │         │    created_at        │
+│    status            │         │    updated_at        │
+│    start_date        │         └──────────────────────┘
+│    end_date          │                   │
+│    created_at        │                   │
+│    updated_at        │                   │ N:M
+└──────────────────────┘                   ▼
+                          ┌──────────────────────────────┐
+                          │ users_employment_types       │
+                          ├──────────────────────────────┤
+┌──────────────────────┐ │ PK id                        │
+│special_capabilities  │ │ FK user_id                   │
+├──────────────────────┤ │ FK employment_type_id        │
+│ PK id                │ │    created_at                │
+│    name              │ │    updated_at                │
+│    description       │ └──────────────────────────────┘
+│    created_at        │
+│    updated_at        │
+└──────────────────────┘
+           │
+           │ N:M
+           ▼
+┌──────────────────────────────┐
+│ user_special_capabilities    │
+├──────────────────────────────┤
+│ PK id                        │
+│ FK user_id                   │
+│ FK capability_id             │
+│    created_at                │
+│    updated_at                │
+└──────────────────────────────┘
+
+┌──────────────────────┐
+│   role_user          │  (Many-to-Many pivot - legacy)
+├──────────────────────┤
+│ FK user_id           │
+│ FK role_id           │
+│    created_at        │
+│    updated_at        │
+└──────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+RELATIONSHIPS:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. users → roles (N:1) [PRIMARY]
+   Each user has one primary role (role_id foreign key)
+
+2. users → roles (N:M) [LEGACY]
+   Many-to-many relationship via role_user table (backward compatibility)
+
+3. users → offices (N:1)
+   Many users belong to one office (nullable)
+
+4. users → positions (N:1)
+   Many users have one position/designation
+
+5. users → projects (N:1)
+   Many users are assigned to one project
+
+6. users → employment_type (N:M)
+   Users can have multiple employment types via users_employment_types
+
+7. users → special_capabilities (N:M)
+   Users (especially JO employees) can have special capabilities
+
+8. users → login_activities (1:N)
+   One user has many login activity records
+
+9. users → module_access_logs (1:N)
+   One user has many module access logs
+
+10. users → http_request_logs (1:N)
+    One user has many HTTP request logs
+
+
+═══════════════════════════════════════════════════════════════════════════════
+BUSINESS RULES:
+═══════════════════════════════════════════════════════════════════════════════
+
+EMPLOYEE ID FORMAT:
+• Format: [type][YYYY][MM][NNNN]
+• type: 1 = Plantilla, 2 = JO (Job Order)
+• YYYY: Year (4 digits)
+• MM: Month (2 digits)
+• NNNN: Incremental number (4 digits, zero-padded)
+• Example: 120241201234 (Plantilla, Dec 2024, #1234)
+• Auto-generated on user creation
+
+USER ROLES:
+• Admin: Full system access, including system settings
+• HR: HR management functions, employee management
+• Employee: Regular employee access
+• Role determines access to various modules
+
+AUTHENTICATION SECURITY:
+• Passwords are hashed using bcrypt
+• remember_token for "Remember Me" functionality
+• email_verified_at for email verification
+• is_locked: Account lock status
+• must_change_password: Forces password change on next login
+
+ACCESS CONTROL:
+• has_system_settings_access: Boolean flag for admin-level system settings
+• Used in conjunction with role for fine-grained access control
+• Only Admin users should have this set to true
+
+PROFILE MANAGEMENT:
+• profile_image: Base64 encoded image stored as longtext
+• signature: Base64 encoded signature for document signing
+• Both are optional (nullable)
+
+NAME FIELDS:
+• name: Full name (legacy field, still used)
+• first_name, middle_initial, last_name: Structured name fields
+• Both systems supported for backward compatibility
+
+EMPLOYMENT TYPE:
+• Plantilla: Regular permanent employees
+• JO: Job Order employees (contractual)
+• HR and Admin must be Plantilla (enforced in code)
+• JO employees can have special capabilities
+
+SPECIAL CAPABILITIES:
+• Skills or certifications for JO employees
+• Examples: "Data Entry", "Graphic Design", etc.
+• Many-to-many relationship via user_special_capabilities
+
+ORGANIZATIONAL STRUCTURE:
+• office_id: Office/division assignment (nullable)
+• position_id: Job position/designation (required)
+• project_id: Project assignment (required)
+• role_id: System role (required)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+INDEXES FOR PERFORMANCE:
+═══════════════════════════════════════════════════════════════════════════════
+
+users table:
+  - UNIQUE(employee_id)              → Unique employee identifier
+  - UNIQUE(email)                    → Login credential
+  - INDEX(role_id)                   → Filter by role
+  - INDEX(office_id)                 → Filter by office
+  - INDEX(position_id)               → Filter by position
+  - INDEX(project_id)                → Filter by project
+
+login_activities table:
+  - INDEX(user_id)                   → User's login history
+  - INDEX(email)                     → Login attempts by email
+  - INDEX(created_at)                → Chronological queries
+
+module_access_logs table:
+  - INDEX(user_id)                   → User's module access
+  - INDEX(module_name)               → Access by module
+  - INDEX(created_at)                → Time-based reports
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TYPICAL QUERIES:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Get user with all relationships:
+   SELECT u.*, r.name as role_name, o.name as office_name, 
+          p.title as position_title, pr.name as project_name
+   FROM users u
+   LEFT JOIN roles r ON u.role_id = r.id
+   LEFT JOIN offices o ON u.office_id = o.id
+   LEFT JOIN positions p ON u.position_id = p.id
+   LEFT JOIN projects pr ON u.project_id = pr.id
+   WHERE u.id = ?
+
+2. Get all employees by role:
+   SELECT u.*, r.name as role_name
+   FROM users u
+   JOIN roles r ON u.role_id = r.id
+   WHERE r.name = 'employee'
+   ORDER BY u.last_name, u.first_name
+
+3. Get users by office:
+   SELECT u.*, o.name as office_name
+   FROM users u
+   JOIN offices o ON u.office_id = o.id
+   WHERE u.office_id = ?
+
+4. Get JO employees with special capabilities:
+   SELECT u.first_name, u.last_name, 
+          GROUP_CONCAT(sc.name) as capabilities
+   FROM users u
+   JOIN users_employment_types uet ON u.id = uet.user_id
+   JOIN employment_type et ON uet.employment_type_id = et.id
+   LEFT JOIN user_special_capabilities usc ON u.id = usc.user_id
+   LEFT JOIN special_capabilities sc ON usc.capability_id = sc.id
+   WHERE et.name = 'JO'
+   GROUP BY u.id, u.first_name, u.last_name
+
+5. Get user's login history:
+   SELECT la.*, u.first_name, u.last_name
+   FROM login_activities la
+   LEFT JOIN users u ON la.user_id = u.id
+   WHERE la.email = ? OR la.user_id = ?
+   ORDER BY la.created_at DESC
+   LIMIT 20
+
+6. Check if user needs to change password:
+   SELECT id, email, must_change_password, is_locked
+   FROM users
+   WHERE email = ?
+
+
+═══════════════════════════════════════════════════════════════════════════════
+FIELD DETAILS:
+═══════════════════════════════════════════════════════════════════════════════
+
+employee_id:           Auto-generated unique identifier (1YYYYMMNNNN or 2YYYYMMNNNN)
+name:                  Full name (legacy, maintained for compatibility)
+first_name:            Given name
+middle_initial:        Middle name initial or abbreviation (up to 10 chars)
+last_name:             Surname/family name
+sex:                   Biological sex ('Male' or 'Female')
+email:                 Email address for login and communications
+password:              Bcrypt hashed password
+profile_image:         Base64 encoded profile photo (stored as longtext)
+signature:             Base64 encoded digital signature (for document approvals)
+is_locked:             Account lock status (false = active, true = locked)
+must_change_password:  Force password change flag (e.g., for new accounts)
+has_system_settings_access: Grant access to system settings (admin only)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+```
