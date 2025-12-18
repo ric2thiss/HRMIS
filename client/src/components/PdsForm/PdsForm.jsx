@@ -472,13 +472,6 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                             <span className="font-semibold">CS Form No. 212</span>
                             <span className="ml-2">Revised 2025</span>
                         </div>
-                        <div className="text-right">
-                            <div className="mb-1">
-                                <span className="font-medium">1. CS ID No.</span>
-                                <span className="ml-2 text-xs">(Do not fill up. For CSC use only)</span>
-                            </div>
-                            <div className="border-b-2 border-black w-32 inline-block"></div>
-                        </div>
                     </div>
                 </div>
                 <div className="border-t-2 border-b-2 border-black py-2 mb-4 text-xs">
@@ -561,12 +554,6 @@ const PdsForm = ({ initialData, readOnly = false, onSave }) => {
                 {/* 1. PERSONAL INFORMATION */}
                 <div className={`pds-section space-y-6 ${activeTab === 'personal' ? '' : 'hidden'} print-show`}>
                         <h2 className="text-xl font-bold text-gray-800 border-b pb-2">I. PERSONAL INFORMATION</h2>
-                        
-                        {/* 1. CS ID No. (For CSC Use Only) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                            <label htmlFor="cs-id-no" className="text-sm font-medium text-gray-700">1. CS ID No. (Do not fill up. For CSC use only)</label>
-                            <input type="text" id="cs-id-no" disabled className="p-2 border border-dashed border-gray-400 bg-gray-100 rounded-md text-sm" placeholder="CSC Use Only" />
-                        </div>
                         
                         {/* 2. Name Fields - CONNECTED TO STATE */}
                         <h3 className="text-lg font-semibold text-gray-700 mt-6 border-b pb-1">2. Name</h3>

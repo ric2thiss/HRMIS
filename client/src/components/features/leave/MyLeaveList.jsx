@@ -166,8 +166,8 @@ function MyLeaveList({ user }) {
           No leave applications found.
         </div>
       ) : (
-        <div className="overflow-x-auto -mx-6 px-6">
-          <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '800px' }}>
+        <div className="overflow-x-auto px-6" style={{ marginLeft: '-1.5rem', marginRight: '-1.5rem', width: 'calc(100% + 3rem)' }}>
+          <table className="w-full divide-y divide-gray-200" style={{ width: '100%' }}>
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>

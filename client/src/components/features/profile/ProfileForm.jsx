@@ -433,7 +433,7 @@ function ProfileForm({ user, onUpdate }) {
                   name="currentPassword"
                   value={formData.currentPassword}
                   onChange={handleChange}
-                  placeholder="Old Password"
+                  placeholder="Current Password"
                   className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 {formData.currentPassword && (
