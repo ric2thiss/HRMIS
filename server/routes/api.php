@@ -19,6 +19,7 @@ use App\Http\Controllers\ApprovalNameController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\LeaveTypeController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AnnouncementController;
 
 // Apply 'maintenance' and 'log-http' middleware to all API routes
 Route::middleware(['maintenance', \App\Http\Middleware\LogHttpRequests::class])->group(function () {
@@ -132,11 +133,26 @@ Route::middleware(['maintenance', \App\Http\Middleware\LogHttpRequests::class])-
             Route::post('/attendance/import', [AttendanceController::class, 'import']);
             Route::get('/attendance/import-history', [AttendanceController::class, 'importHistory']);
             Route::delete('/attendance/undo-import', [AttendanceController::class, 'undoImport']);
+            
+            // Announcements CRUD (HR only)
+            Route::get('/announcements', [AnnouncementController::class, 'index']);
+            Route::post('/announcements', [AnnouncementController::class, 'store']);
+            Route::get('/announcements/archive', [AnnouncementController::class, 'archive']);
+            Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
+            Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
+            Route::post('/announcements/{id}/react', [AnnouncementController::class, 'react']);
+            Route::get('/announcements/{id}/reaction', [AnnouncementController::class, 'getUserReaction']);
         });
         
         // Attendance routes - All authenticated users can view their own attendance
         // HR and Admin can view all attendance records
         Route::get('/attendance', [AttendanceController::class, 'index']);
+        
+        // Active announcements (all authenticated users can view active announcements)
+        Route::get('/announcements/active', [AnnouncementController::class, 'active']);
+        Route::get('/announcements/{id}', [AnnouncementController::class, 'show']);
+        Route::post('/announcements/{id}/react', [AnnouncementController::class, 'react']);
+        Route::get('/announcements/{id}/reaction', [AnnouncementController::class, 'getUserReaction']);
 
         // Employment Routes
         Route::get('/employment/types', [EmploymentController::class, "index"]);

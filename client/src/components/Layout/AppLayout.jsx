@@ -5,6 +5,7 @@ import Sidebar from "../Sidebar/Sidebar";
 import Hero from "../Hero/Hero";
 import LoadingScreen from "../Loading/LoadingScreen";
 import BackButton from "../ui/BackButton/BackButton";
+import AnnouncementBanner from "../Announcement/AnnouncementBanner";
 import { getUserRole } from "../../utils/userHelpers";
 import { useModuleTracking } from "../../hooks/useModuleTracking";
 
@@ -52,7 +53,12 @@ function AppLayout({ user, logout, loading, title, children, showBackButton = tr
         <main className="flex flex-1 overflow-hidden">
           <Sidebar user={user} role={role} />
           <section className={`flex-1 p-6 overflow-y-auto ${isAdminDashboard || isHrDashboard ? '' : 'space-y-6'}`}>
-            {isDashboard && <Hero user={user} />}
+            {isDashboard && (
+              <>
+                <AnnouncementBanner />
+                <Hero user={user} />
+              </>
+            )}
             {/* <Hero user={user} /> */}
             {shouldShowBack && (
               <div className={isAdminDashboard ? 'mb-0' : ''}>

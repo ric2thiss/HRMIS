@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { createApprovalName, updateApprovalName, deleteApprovalName } from '../../../api/master-lists/approvalNames';
 import { useNotificationStore } from '../../../stores/notificationStore';
 import { useMasterListsStore } from '../../../stores/masterListsStore';
 import { useUserAccountsStore } from '../../../stores/userAccountsStore';
 import { useApprovalNamesTableStore } from '../../../stores/approvalNamesTableStore';
 import { useAuth } from '../../../hooks/useAuth';
+import TableActionButton from '../../ui/TableActionButton';
 
 function ApprovalNamesTable() {
   const { user: currentUser } = useAuth();
@@ -186,18 +188,22 @@ function ApprovalNamesTable() {
                     {approvalName.sort_order}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(approvalName)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(approvalName.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex gap-2 items-center flex-nowrap">
+                      <TableActionButton
+                        variant="indigo"
+                        icon={Pencil}
+                        label="Edit"
+                        onClick={() => handleEdit(approvalName)}
+                        title="Edit approval name"
+                      />
+                      <TableActionButton
+                        variant="red"
+                        icon={Trash2}
+                        label="Delete"
+                        onClick={() => handleDelete(approvalName.id)}
+                        title="Delete approval name"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

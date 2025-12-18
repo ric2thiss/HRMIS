@@ -2,13 +2,14 @@ import React from 'react';
 
 /**
  * Standardized Table Action Button Component
- * Based on the design from /my-leave route
+ * Based on the design from Manage Announcements route
+ * Icon-only buttons with tooltips on hover
  * 
- * @param {string} variant - Color variant: 'blue' | 'green' | 'red' | 'purple' | 'orange' | 'gray' | 'indigo'
+ * @param {string} variant - Color variant: 'blue' | 'green' | 'red' | 'purple' | 'orange' | 'gray' | 'indigo' | 'yellow'
  * @param {ReactNode} icon - Lucide React icon component
- * @param {string} label - Button text label
+ * @param {string} label - Button text label (used for tooltip)
  * @param {function} onClick - Click handler
- * @param {string} title - Tooltip text (optional)
+ * @param {string} title - Tooltip text (optional, defaults to label)
  * @param {boolean} disabled - Disabled state (optional)
  * @param {string} className - Additional custom classes (optional)
  */
@@ -21,30 +22,30 @@ function TableActionButton({
   disabled = false,
   className = ''
 }) {
-  // Color mapping based on variant
+  // Color mapping based on variant - matching Manage Announcements design
   const colorClasses = {
-    blue: 'text-blue-600 hover:text-blue-900 border-blue-600 hover:bg-blue-50',
-    green: 'text-green-600 hover:text-green-900 border-green-600 hover:bg-green-50',
-    red: 'text-red-600 hover:text-red-900 border-red-600 hover:bg-red-50',
-    purple: 'text-purple-600 hover:text-purple-900 border-purple-600 hover:bg-purple-50',
-    orange: 'text-orange-600 hover:text-orange-900 border-orange-600 hover:bg-orange-50',
-    gray: 'text-gray-600 hover:text-gray-900 border-gray-600 hover:bg-gray-50',
-    indigo: 'text-indigo-600 hover:text-indigo-900 border-indigo-600 hover:bg-indigo-50',
-    yellow: 'text-yellow-600 hover:text-yellow-900 border-yellow-600 hover:bg-yellow-50',
+    blue: 'text-blue-600 hover:text-blue-900',
+    green: 'text-green-600 hover:text-green-900',
+    red: 'text-red-600 hover:text-red-900',
+    purple: 'text-purple-600 hover:text-purple-900',
+    orange: 'text-orange-600 hover:text-orange-900',
+    gray: 'text-gray-600 hover:text-gray-900',
+    indigo: 'text-indigo-600 hover:text-indigo-900',
+    yellow: 'text-yellow-600 hover:text-yellow-900',
   };
 
-  const baseClasses = 'flex items-center gap-1 px-3 py-1 transition-colors border rounded disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseClasses = 'transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
   const variantClasses = colorClasses[variant] || colorClasses.blue;
+  const tooltipText = title || label || '';
 
   return (
     <button
       onClick={onClick}
       className={`${baseClasses} ${variantClasses} ${className}`}
-      title={title || label}
+      title={tooltipText}
       disabled={disabled}
     >
-      {Icon && <Icon size={16} />}
-      <span>{label}</span>
+      {Icon && <Icon className="w-5 h-5" />}
     </button>
   );
 }

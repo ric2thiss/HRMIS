@@ -73,7 +73,14 @@ const setupInterceptor = (get) => {
       }
 
       // Handle 401 Unauthorized
+      // Don't logout for announcement reactions - these might fail due to session issues
+      // but shouldn't force a logout
       if (error.response?.status === 401 && user && !isForceLoggingOut) {
+        const requestUrl = originalRequest?.url || '';
+        // Skip logout for announcement reaction endpoints - let them handle their own errors
+        if (requestUrl.includes('/announcements/') && requestUrl.includes('/react')) {
+          return Promise.reject(error);
+        }
         await logout();
       }
 
@@ -167,6 +174,8 @@ export const useAuthStore = create((set, get) => ({
         const { clearCache: clearOfficesCache } = await import('./masterListTablesStore').then(m => m.useOfficesTableStore.getState());
         const { clearCache: clearCapabilitiesCache } = await import('./masterListTablesStore').then(m => m.useCapabilitiesTableStore.getState());
         const { clearCache: clearManageLeaveCache } = await import('./manageLeaveStore').then(m => m.useManageLeaveStore.getState());
+        const { clearCache: clearApprovalNamesCache } = await import('./approvalNamesTableStore').then(m => m.useApprovalNamesTableStore.getState());
+        const { clearCache: clearLeaveTypesTableCache } = await import('./leaveTypesTableStore').then(m => m.useLeaveTypesTableStore.getState());
         
         clearLeaveCreditsCache();
         clearMasterListsCache();
@@ -261,6 +270,8 @@ export const useAuthStore = create((set, get) => ({
         const { clearCache: clearOfficesCache } = await import('./masterListTablesStore').then(m => m.useOfficesTableStore.getState());
         const { clearCache: clearCapabilitiesCache } = await import('./masterListTablesStore').then(m => m.useCapabilitiesTableStore.getState());
         const { clearCache: clearManageLeaveCache } = await import('./manageLeaveStore').then(m => m.useManageLeaveStore.getState());
+        const { clearCache: clearApprovalNamesCache } = await import('./approvalNamesTableStore').then(m => m.useApprovalNamesTableStore.getState());
+        const { clearCache: clearLeaveTypesTableCache } = await import('./leaveTypesTableStore').then(m => m.useLeaveTypesTableStore.getState());
         
         clearLeaveCreditsCache();
         clearMasterListsCache();

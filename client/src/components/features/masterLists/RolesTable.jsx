@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { createRole, updateRole, deleteRole } from '../../../api/master-lists/roles';
 import { useNotificationStore } from '../../../stores/notificationStore';
 import { useMasterListsStore } from '../../../stores/masterListsStore';
 import { useRolesTableStore } from '../../../stores/masterListTablesStore';
+import TableActionButton from '../../ui/TableActionButton';
 
 function RolesTable() {
   const { getRoles, roles, loading } = useRolesTableStore();
@@ -120,18 +122,22 @@ function RolesTable() {
                     {role.access_permissions_scope || 'No description'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(role)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(role.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex gap-2 items-center flex-nowrap">
+                      <TableActionButton
+                        variant="indigo"
+                        icon={Pencil}
+                        label="Edit"
+                        onClick={() => handleEdit(role)}
+                        title="Edit role"
+                      />
+                      <TableActionButton
+                        variant="red"
+                        icon={Trash2}
+                        label="Delete"
+                        onClick={() => handleDelete(role.id)}
+                        title="Delete role"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

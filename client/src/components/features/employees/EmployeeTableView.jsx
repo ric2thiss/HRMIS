@@ -1,4 +1,6 @@
 import React from 'react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
+import TableActionButton from '../../ui/TableActionButton';
 
 function EmployeeTableView({ employees, onAction }) {
   return (
@@ -95,28 +97,28 @@ function EmployeeTableView({ employees, onAction }) {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center space-x-2">
-                    <button 
+                  <div className="flex items-center gap-2">
+                    <TableActionButton
+                      variant="blue"
+                      icon={Eye}
+                      label="View"
                       onClick={() => onAction('View', employee.id)}
-                      className="text-blue-600 hover:text-blue-900 transition-colors"
                       title="View Profile"
-                    >
-                      View
-                    </button>
-                    <button 
+                    />
+                    <TableActionButton
+                      variant="indigo"
+                      icon={Pencil}
+                      label="Edit"
                       onClick={() => onAction('Edit', employee.id)}
-                      className="text-yellow-600 hover:text-yellow-900 transition-colors"
                       title="Edit Employee"
-                    >
-                      Edit
-                    </button>
-                    <button 
+                    />
+                    <TableActionButton
+                      variant="red"
+                      icon={Trash2}
+                      label="Delete"
                       onClick={() => onAction('Delete', employee.id)}
-                      className="text-red-600 hover:text-red-900 transition-colors"
                       title="Delete Employee"
-                    >
-                      Delete
-                    </button>
+                    />
                   </div>
                 </td>
               </tr>

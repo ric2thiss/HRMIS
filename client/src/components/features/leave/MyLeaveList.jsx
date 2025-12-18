@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Printer, Download, Navigation } from 'lucide-react';
+import { Eye, Printer, Download, Navigation, X } from 'lucide-react';
 import { LEAVE_STATUS, LEAVE_STATUS_LABELS } from '../../../data/leaveTypes';
 import { useNotification } from '../../../hooks/useNotification';
 import { updateLeaveApplication } from '../../../api/leave/leaveApplications';
@@ -8,6 +8,7 @@ import { useLeaveCreditsStore } from '../../../stores/leaveCreditsStore';
 import { useLeaveApplicationsStore } from '../../../stores/leaveApplicationsStore';
 import Pagination from '../../common/Pagination';
 import LeavePdfViewModal from './LeavePdfViewModal';
+import TableActionButton from '../../ui/TableActionButton';
 
 function MyLeaveList({ user }) {
   const navigate = useNavigate();
@@ -165,8 +166,8 @@ function MyLeaveList({ user }) {
           No leave applications found.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto -mx-6 px-6">
+          <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '800px' }}>
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
@@ -203,60 +204,56 @@ function MyLeaveList({ user }) {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(leave.status)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex gap-2 items-center flex-wrap">
+                  <td className="px-6 py-4 text-sm font-medium">
+                    <div className="flex items-center gap-2">
                       {leave.status === LEAVE_STATUS.APPROVED || leave.status === LEAVE_STATUS.REJECTED ? (
                         <>
-                          <button
+                          <TableActionButton
+                            variant="blue"
+                            icon={Eye}
+                            label="View"
                             onClick={() => setViewModalLeaveId(leave.id)}
-                            className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:text-blue-900 transition-colors border border-blue-600 rounded hover:bg-blue-50"
                             title="View PDF"
-                          >
-                            <Eye size={16} />
-                            View
-                          </button>
-                          <button
+                          />
+                          <TableActionButton
+                            variant="gray"
+                            icon={Printer}
+                            label="Print"
                             onClick={() => setViewModalLeaveId(leave.id)}
-                            className="flex items-center gap-1 px-3 py-1 text-gray-600 hover:text-gray-900 transition-colors border border-gray-600 rounded hover:bg-gray-50"
                             title="Print PDF - Opens in modal"
-                          >
-                            <Printer size={16} />
-                            Print
-                          </button>
-                          <button
+                          />
+                          <TableActionButton
+                            variant="green"
+                            icon={Download}
+                            label="Download"
                             onClick={() => setViewModalLeaveId(leave.id)}
-                            className="flex items-center gap-1 px-3 py-1 text-green-600 hover:text-green-900 transition-colors border border-green-600 rounded hover:bg-green-50"
                             title="Download PDF - Opens in modal"
-                          >
-                            <Download size={16} />
-                            Download
-                          </button>
-                          <button
+                          />
+                          <TableActionButton
+                            variant="purple"
+                            icon={Navigation}
+                            label="Track"
                             onClick={() => navigate(`/leave-application/${leave.id}/track`)}
-                            className="flex items-center gap-1 px-3 py-1 text-purple-600 hover:text-purple-900 transition-colors border border-purple-600 rounded hover:bg-purple-50"
                             title="Track leave application"
-                          >
-                            <Navigation size={16} />
-                            Track
-                          </button>
+                          />
                         </>
                       ) : (
                         <>
-                          <button
+                          <TableActionButton
+                            variant="blue"
+                            icon={Navigation}
+                            label="Track"
                             onClick={() => navigate(`/leave-application/${leave.id}/track`)}
-                            className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:text-blue-900 transition-colors border border-blue-600 rounded hover:bg-blue-50"
                             title="Track leave application"
-                          >
-                            <Navigation size={16} />
-                            Track
-                          </button>
+                          />
                           {leave.status === LEAVE_STATUS.PENDING && (
-                            <button
+                            <TableActionButton
+                              variant="red"
+                              icon={X}
+                              label="Cancel"
                               onClick={() => handleCancel(leave.id)}
-                              className="px-3 py-1 text-red-600 hover:text-red-900 transition-colors border border-red-600 rounded hover:bg-red-50"
-                            >
-                              Cancel
-                            </button>
+                              title="Cancel leave application"
+                            />
                           )}
                         </>
                       )}

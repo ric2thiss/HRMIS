@@ -14,7 +14,7 @@ class UserController extends Controller
         // Only load necessary fields and relationships to reduce payload
         // Include profile_image and other fields needed by frontend
         $users = User::where('id', '!=', $currentUserId)
-                    ->select('id', 'employee_id', 'first_name', 'middle_initial', 'last_name', 'name', 'email', 'profile_image', 'position_id', 'role_id', 'project_id', 'office_id', 'is_locked', 'has_system_settings_access', 'created_at', 'updated_at')
+                    ->select('id', 'employee_id', 'first_name', 'middle_initial', 'last_name', 'name', 'email', 'sex', 'profile_image', 'position_id', 'role_id', 'project_id', 'office_id', 'is_locked', 'has_system_settings_access', 'created_at', 'updated_at')
                     ->with([
                         'role:id,name',
                         'position:id,title',

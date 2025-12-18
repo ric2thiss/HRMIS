@@ -25,6 +25,10 @@ import AdminDashboard from "../pages/adminDashboard/adminDashboard";
 import HrDashboard from "../pages/hrDashboard/HrDashboard";
 import LockedAccount from '../pages/lockedAccount/LockedAccount';
 import ForceChangePassword from '../pages/forceChangePassword/ForceChangePassword';
+import ManageAnnouncements from '../pages/announcement/ManageAnnouncements';
+import AnnouncementArchive from '../pages/announcement/AnnouncementArchive';
+import ViewAnnouncement from '../pages/announcement/ViewAnnouncement';
+import MyAnnouncements from '../pages/announcement/MyAnnouncements';
 
 export default function Routers() {
     return (
@@ -131,6 +135,30 @@ export default function Routers() {
               <RoleProtectedRoute allowedRoles={['hr', 'admin']}>
                   <ViewAttendance />
               </RoleProtectedRoute>
+          } />
+
+          <Route path="/manage-announcements" element={
+              <RoleProtectedRoute allowedRoles={['hr']}>
+                  <ManageAnnouncements />
+              </RoleProtectedRoute>
+          } />
+
+          <Route path="/announcements/archive" element={
+              <RoleProtectedRoute allowedRoles={['hr']}>
+                  <AnnouncementArchive />
+              </RoleProtectedRoute>
+          } />
+
+          <Route path="/announcements/:id" element={
+              <ProtectedRoute>
+                  <ViewAnnouncement />
+              </ProtectedRoute>
+          } />
+
+          <Route path="/my-announcements" element={
+              <ProtectedRoute>
+                  <MyAnnouncements />
+              </ProtectedRoute>
           } />
 
           {/* Admin only routes */}

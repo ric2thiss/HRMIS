@@ -214,8 +214,49 @@ function ImportAttendanceForm() {
   };
 
   const downloadTemplate = () => {
-    showSuccess('Template download started');
-    // TODO: Implement actual template download
+    try {
+      // CSV headers based on file requirements
+      const headers = ['AC No.', 'Name', 'Date and Time', 'State'];
+      
+      // Example row to show the format
+      const exampleRow = ['12345', 'John Doe', '2024-01-15 08:30:00', 'Check In'];
+      
+      // Helper function to escape CSV values
+      const escapeCsvValue = (value) => {
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      };
+      
+      // Create CSV content with proper escaping
+      const csvContent = [
+        headers.map(escapeCsvValue).join(','),
+        exampleRow.map(escapeCsvValue).join(',')
+      ].join('\n');
+      
+      // Add BOM for UTF-8 to ensure proper encoding in Excel
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'attendance_template.csv');
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL
+      URL.revokeObjectURL(url);
+      
+      showSuccess('Template downloaded successfully');
+    } catch (error) {
+      console.error('Failed to download template:', error);
+      showError('Failed to download template');
+    }
   };
 
   return (

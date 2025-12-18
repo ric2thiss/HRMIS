@@ -1,4 +1,6 @@
 import React from 'react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
+import TableActionButton from '../../ui/TableActionButton';
 
 function EmployeeCardsView({ employees, onAction }) {
   return (
@@ -77,25 +79,28 @@ function EmployeeCardsView({ employees, onAction }) {
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-2 mt-3">
-                  <button 
+                <div className="flex items-center gap-2 mt-3">
+                  <TableActionButton
+                    variant="blue"
+                    icon={Eye}
+                    label="View"
                     onClick={() => onAction('View', employee.id)}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                  >
-                    View →
-                  </button>
-                  <button 
+                    title="View Profile"
+                  />
+                  <TableActionButton
+                    variant="indigo"
+                    icon={Pencil}
+                    label="Edit"
                     onClick={() => onAction('Edit', employee.id)}
-                    className="text-xs text-yellow-600 hover:text-yellow-800 font-medium transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button 
+                    title="Edit Employee"
+                  />
+                  <TableActionButton
+                    variant="red"
+                    icon={Trash2}
+                    label="Delete"
                     onClick={() => onAction('Delete', employee.id)}
-                    className="text-xs text-red-600 hover:text-red-800 font-medium transition-colors"
-                  >
-                    Delete
-                  </button>
+                    title="Delete Employee"
+                  />
                 </div>
               </div>
             </div>

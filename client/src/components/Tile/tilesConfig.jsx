@@ -8,6 +8,7 @@ import LeaveIcon from '../../asset/icons/ManageLeave'
 import MyLeaveIcon from '../../asset/icons/MyLeave'
 import ManageAccountIcon from '../../asset/icons/ManageAccount'
 import SettingsIcon from '../../asset/icons/SystemSettings'
+import AnnouncementIcon from '../../asset/icons/Announcement'
 
 export const tilesConfig = [
   {
@@ -81,5 +82,17 @@ export const tilesConfig = [
     link: "/master-lists",
     icon: <SettingsIcon />,
     roles: ["hr"] // HR only
+  },
+  {
+    title: "Manage Announcements",
+    link: "/manage-announcements",
+    icon: <AnnouncementIcon />,
+    roles: ["hr"] // HR only
+  },
+  {
+    title: "My Announcements",
+    link: "/my-announcements",
+    icon: <AnnouncementIcon />,
+    roles: ["hr", "employee", "admin"] // All users
   }
 ];

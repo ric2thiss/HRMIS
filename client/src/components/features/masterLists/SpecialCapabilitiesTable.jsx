@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { createSpecialCapability, updateSpecialCapability, deleteSpecialCapability } from '../../../api/master-lists/specialCapabilities';
 import { useNotificationStore } from '../../../stores/notificationStore';
 import { useMasterListsStore } from '../../../stores/masterListsStore';
 import { useCapabilitiesTableStore } from '../../../stores/masterListTablesStore';
+import TableActionButton from '../../ui/TableActionButton';
 
 function SpecialCapabilitiesTable() {
   const { getCapabilities, capabilities, loading } = useCapabilitiesTableStore();
@@ -124,18 +126,22 @@ function SpecialCapabilitiesTable() {
                     {capability.description || 'No description'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(capability)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(capability.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex gap-2 items-center flex-nowrap">
+                      <TableActionButton
+                        variant="indigo"
+                        icon={Pencil}
+                        label="Edit"
+                        onClick={() => handleEdit(capability)}
+                        title="Edit capability"
+                      />
+                      <TableActionButton
+                        variant="red"
+                        icon={Trash2}
+                        label="Delete"
+                        onClick={() => handleDelete(capability.id)}
+                        title="Delete capability"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

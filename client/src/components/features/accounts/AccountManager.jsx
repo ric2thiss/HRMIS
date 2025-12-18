@@ -344,8 +344,8 @@ function AccountManager() {
                                             )}
                                         </td>
                                     )}
-                                    <td className="px-6 py-4 text-sm font-medium">
-                                        <div className="flex items-center gap-2 flex-wrap">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex items-center gap-2 flex-nowrap">
                                             <TableActionButton
                                                 variant="indigo"
                                                 icon={Pencil}

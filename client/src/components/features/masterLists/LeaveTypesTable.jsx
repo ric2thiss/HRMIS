@@ -161,7 +161,7 @@ function LeaveTypesTable() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex gap-2 items-center flex-wrap">
+                    <div className="flex gap-2 items-center flex-nowrap">
                       <TableActionButton
                         variant="indigo"
                         icon={Pencil}
