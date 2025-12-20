@@ -26,7 +26,9 @@ return [
 
     'allowed_origins' => [
         'http://localhost:5173',
-        'http://127.0.0.1:5173', // sometimes Vite uses 127.0.0.1
+        'http://127.0.0.1:5173',
+        'http://localhost:3000', // Alternative dev port
+        'http://127.0.0.1:3000',
     ],
 
     'allowed_origins_patterns' => [],

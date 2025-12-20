@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Announcement;
 use App\Models\AnnouncementLike;
+use App\Models\AnnouncementRecipient;
+use App\Services\WebSocketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -47,7 +49,7 @@ class AnnouncementController extends Controller
                 $query->where('posted_by', $user->id);
             }
 
-            $announcements = $query->orderBy('created_at', 'desc')->get();
+            $announcements = $query->with('recipients')->orderBy('created_at', 'desc')->get();
 
             // Load likes/dislikes counts for HR view (if table exists)
             try {
@@ -110,11 +112,61 @@ class AnnouncementController extends Controller
                 ->where('expires_at', '<=', $now)
                 ->update(['status' => 'expired']);
             
-            // Get active announcements - show all active announcements that haven't expired
-            // (regardless of whether scheduled_at has passed, as long as status is active)
-            $announcements = Announcement::where('status', 'active')
-                ->where('expires_at', '>', $now)
-                ->with('postedBy:id,first_name,middle_initial,last_name,name')
+            // Get active announcements - filter by recipients and exclude HR's own announcements
+            // Show announcements that are active and haven't expired
+            // If status is 'active', show it (even if scheduled_at hasn't been reached yet - might have been manually activated)
+            // If status is 'draft' but scheduled_at has passed, it will be auto-activated above
+            $query = Announcement::where('status', 'active')
+                ->where('expires_at', '>', $now);
+            
+            // Exclude announcements created by the current user (HR shouldn't see their own on dashboard)
+            // But allow them on /my-announcements page if include_own parameter is set
+            if ($user && !$request->has('include_own')) {
+                $query->where('posted_by', '!=', $user->id);
+            }
+            
+            // Filter by recipients if user is authenticated
+            if ($user) {
+                $query->where(function($q) use ($user) {
+                    // Show announcements that either:
+                    // 1. Have no recipients (backward compatibility for legacy announcements)
+                    // 2. Have recipients that match the user
+                    $q->whereDoesntHave('recipients')
+                      ->orWhereHas('recipients', function($recipientQuery) use ($user) {
+                          // Build the recipient matching conditions
+                          $recipientQuery->where(function($rq) use ($user) {
+                              // "All" recipient - show to everyone
+                              $rq->where('recipient_type', 'all')
+                                 // Direct user recipient
+                                 ->orWhere(function($subRq) use ($user) {
+                                     $subRq->where('recipient_type', 'user')
+                                           ->where('recipient_id', $user->id);
+                                 });
+                          });
+                          
+                          // Office recipient - check if user belongs to this office
+                          if ($user->office_id) {
+                              $recipientQuery->orWhere(function($rq) use ($user) {
+                                  $rq->where('recipient_type', 'office')
+                                     ->where('recipient_id', $user->office_id);
+                              });
+                          }
+                          
+                          // Position recipient - check if user has this position
+                          if ($user->position_id) {
+                              $recipientQuery->orWhere(function($rq) use ($user) {
+                                  $rq->where('recipient_type', 'position')
+                                     ->where('recipient_id', $user->position_id);
+                              });
+                          }
+                      });
+                });
+            } else {
+                // If no user, only show announcements with no recipients (public announcements)
+                $query->whereDoesntHave('recipients');
+            }
+            
+            $announcements = $query->with('postedBy:id,first_name,middle_initial,last_name,name')
                 ->orderBy('scheduled_at', 'desc')
                 ->get();
 
@@ -207,7 +259,7 @@ class AnnouncementController extends Controller
     public function show($id)
     {
         try {
-            $announcement = Announcement::with('postedBy:id,first_name,middle_initial,last_name,name')->find($id);
+            $announcement = Announcement::with(['postedBy:id,first_name,middle_initial,last_name,name', 'recipients'])->find($id);
 
             if (!$announcement) {
                 return response()->json([
@@ -293,8 +345,71 @@ class AnnouncementController extends Controller
 
             $announcement = Announcement::create($data);
 
+            // Save recipients if provided
+            try {
+                // Check if announcement_recipients table exists
+                if (Schema::hasTable('announcement_recipients')) {
+                    $recipients = [];
+                    if ($request->has('recipients')) {
+                        // Handle JSON string from FormData
+                        if (is_string($request->recipients)) {
+                            $recipients = json_decode($request->recipients, true) ?? [];
+                        } elseif (is_array($request->recipients)) {
+                            $recipients = $request->recipients;
+                        }
+                    }
+                    
+                    // Only proceed if recipients array is not empty
+                    if (!empty($recipients)) {
+                        // Check if "all" is selected
+                        $hasAll = false;
+                        foreach ($recipients as $recipient) {
+                            if (isset($recipient['type']) && $recipient['type'] === 'all') {
+                                $hasAll = true;
+                                break;
+                            }
+                        }
+                        
+                        // If "all" is selected, only save that one recipient
+                        if ($hasAll) {
+                            AnnouncementRecipient::create([
+                                'announcement_id' => $announcement->id,
+                                'recipient_type' => 'all',
+                                'recipient_id' => null,
+                            ]);
+                        } else {
+                            // Otherwise, save individual recipients
+                            foreach ($recipients as $recipient) {
+                                if (isset($recipient['type']) && isset($recipient['id'])) {
+                                    AnnouncementRecipient::create([
+                                        'announcement_id' => $announcement->id,
+                                        'recipient_type' => $recipient['type'], // 'user', 'office', or 'position'
+                                        'recipient_id' => $recipient['id'],
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Table doesn't exist yet - log warning but don't fail
+                    Log::warning('announcement_recipients table does not exist. Please run migrations.');
+                }
+            } catch (\Exception $e) {
+                // Log error but don't fail the announcement creation
+                Log::error('Error saving announcement recipients: ' . $e->getMessage());
+                Log::error('Stack trace: ' . $e->getTraceAsString());
+            }
+
             // Load relationship
             $announcement->load('postedBy:id,first_name,middle_initial,last_name,name');
+
+            // Emit WebSocket event for real-time update
+            try {
+                $websocketService = new WebSocketService();
+                $websocketService->announceUpdate('created', $announcement->toArray());
+            } catch (\Exception $e) {
+                Log::warning('Failed to emit WebSocket event for announcement creation: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'message' => 'Announcement created successfully',
@@ -405,7 +520,59 @@ class AnnouncementController extends Controller
             }
 
             $announcement->update($data);
+            
+            // Update recipients if provided
+            if ($request->has('recipients')) {
+                // Delete existing recipients
+                $announcement->recipients()->delete();
+                
+                // Handle JSON string from FormData
+                $recipients = [];
+                if (is_string($request->recipients)) {
+                    $recipients = json_decode($request->recipients, true) ?? [];
+                } elseif (is_array($request->recipients)) {
+                    $recipients = $request->recipients;
+                }
+                
+                // Check if "all" is selected
+                $hasAll = false;
+                foreach ($recipients as $recipient) {
+                    if (isset($recipient['type']) && $recipient['type'] === 'all') {
+                        $hasAll = true;
+                        break;
+                    }
+                }
+                
+                // If "all" is selected, only save that one recipient
+                if ($hasAll) {
+                    AnnouncementRecipient::create([
+                        'announcement_id' => $announcement->id,
+                        'recipient_type' => 'all',
+                        'recipient_id' => null,
+                    ]);
+                } else {
+                    // Otherwise, save individual recipients
+                    foreach ($recipients as $recipient) {
+                        if (isset($recipient['type']) && isset($recipient['id'])) {
+                            AnnouncementRecipient::create([
+                                'announcement_id' => $announcement->id,
+                                'recipient_type' => $recipient['type'],
+                                'recipient_id' => $recipient['id'],
+                            ]);
+                        }
+                    }
+                }
+            }
+            
             $announcement->load('postedBy:id,first_name,middle_initial,last_name,name');
+
+            // Emit WebSocket event for real-time update
+            try {
+                $websocketService = new WebSocketService();
+                $websocketService->announceUpdate('updated', $announcement->toArray());
+            } catch (\Exception $e) {
+                Log::warning('Failed to emit WebSocket event for announcement update: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'message' => 'Announcement updated successfully',
@@ -450,7 +617,16 @@ class AnnouncementController extends Controller
                 }
             }
 
+            $announcementId = $announcement->id;
             $announcement->delete();
+
+            // Emit WebSocket event for real-time update
+            try {
+                $websocketService = new WebSocketService();
+                $websocketService->announceUpdate('deleted', ['id' => $announcementId]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to emit WebSocket event for announcement deletion: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'message' => 'Announcement deleted successfully'
@@ -485,12 +661,28 @@ class AnnouncementController extends Controller
             if ($announcement->status === 'draft' && $announcement->scheduled_at <= $now && $announcement->expires_at > $now) {
                 $announcement->status = 'active';
                 $announcement->save();
+                
+                // Emit WebSocket event for real-time update
+                try {
+                    $websocketService = new WebSocketService();
+                    $websocketService->announceUpdate('activated', $announcement->toArray());
+                } catch (\Exception $e) {
+                    Log::warning('Failed to emit WebSocket event for announcement activation: ' . $e->getMessage());
+                }
             }
 
             // If expired, mark as expired
             if ($announcement->expires_at <= $now && $announcement->status !== 'expired') {
                 $announcement->status = 'expired';
                 $announcement->save();
+                
+                // Emit WebSocket event for real-time update
+                try {
+                    $websocketService = new WebSocketService();
+                    $websocketService->announceUpdate('expired', $announcement->toArray());
+                } catch (\Exception $e) {
+                    Log::warning('Failed to emit WebSocket event for announcement expiration: ' . $e->getMessage());
+                }
             }
 
             return response()->json([

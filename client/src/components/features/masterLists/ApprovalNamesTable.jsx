@@ -15,6 +15,7 @@ function ApprovalNamesTable() {
   const { getApprovalNames, approvalNames, loading } = useApprovalNamesTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingApprovalName, setEditingApprovalName] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     user_id: '',
     type: 'general',
@@ -27,6 +28,7 @@ function ApprovalNamesTable() {
   const showError = useNotificationStore((state) => state.showError);
 
   useEffect(() => {
+    // Load approval names - will use prefetched data if available
     loadApprovalNames();
     // Load users from cache
     getAccounts();
@@ -42,9 +44,9 @@ function ApprovalNamesTable() {
     return user.name || user.email || 'Unknown User';
   };
 
-  const loadApprovalNames = async () => {
+  const loadApprovalNames = async (forceRefresh = false) => {
     try {
-      await getApprovalNames(); // Uses cache if available (5 min TTL)
+      await getApprovalNames(forceRefresh); // Uses cache if available (5 min TTL) unless forceRefresh is true
     } catch (err) {
       showError('Failed to load approval names');
     }
@@ -52,21 +54,32 @@ function ApprovalNamesTable() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate user selection
+    if (!formData.user_id) {
+      showError('Please select a user');
+      return;
+    }
+    
     try {
-      setLoading(true);
+      setSubmitting(true);
       
       // Find selected user and format name
       const selectedUser = users.find(u => u.id === parseInt(formData.user_id));
       if (!selectedUser) {
-        showError('Please select a user');
+        showError('Selected user not found');
+        setSubmitting(false);
         return;
       }
       
       const userName = formatUserName(selectedUser);
       const submissionData = {
-        ...formData,
         name: userName,
-        user_id: parseInt(formData.user_id)
+        user_id: parseInt(formData.user_id),
+        type: formData.type || 'general',
+        description: formData.description || '',
+        is_active: formData.is_active !== undefined ? formData.is_active : true,
+        sort_order: formData.sort_order || 0
       };
       
       if (editingApprovalName) {
@@ -79,12 +92,18 @@ function ApprovalNamesTable() {
       setIsFormVisible(false);
       setEditingApprovalName(null);
       setFormData({ user_id: '', type: 'general', description: '', is_active: true, sort_order: 0 });
-      loadApprovalNames();
+      loadApprovalNames(true); // Force refresh to show new data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
-      showError(err?.response?.data?.message || 'Operation failed');
+      console.error('Approval name creation error:', err);
+      const errorMessage = err?.response?.data?.message 
+        || err?.response?.data?.error 
+        || (err?.response?.data?.errors ? JSON.stringify(err.response.data.errors) : null)
+        || err?.message 
+        || 'Operation failed';
+      showError(errorMessage);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -108,15 +127,20 @@ function ApprovalNamesTable() {
     if (!window.confirm('Are you sure you want to delete this approval name?')) return;
     
     try {
-      setLoading(true);
+      setSubmitting(true);
       await deleteApprovalName(id);
       showSuccess('Approval name deleted successfully');
-      loadApprovalNames();
+      loadApprovalNames(true); // Force refresh to show updated data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
-      showError(err?.response?.data?.message || 'Delete failed');
+      console.error('Approval name deletion error:', err);
+      const errorMessage = err?.response?.data?.message 
+        || err?.response?.data?.error 
+        || err?.message 
+        || 'Delete failed';
+      showError(errorMessage);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -140,7 +164,7 @@ function ApprovalNamesTable() {
         <button
           onClick={() => setIsFormVisible(true)}
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-          disabled={loading}
+          disabled={loading || submitting}
         >
           ➕ Add Approval Name
         </button>
@@ -222,7 +246,7 @@ function ApprovalNamesTable() {
               <button
                 onClick={handleCancel}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                disabled={loading}
+                disabled={submitting}
               >
                 &times;
               </button>
@@ -235,7 +259,7 @@ function ApprovalNamesTable() {
                   value={formData.user_id}
                   onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
                   required
-                  disabled={loading || loadingUsers}
+                  disabled={submitting || loadingUsers}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 >
                   <option value="">Select employee</option>
@@ -255,7 +279,7 @@ function ApprovalNamesTable() {
                 <select
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  disabled={loading}
+                  disabled={submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 >
                   {approvalTypes.map(type => (
@@ -269,7 +293,7 @@ function ApprovalNamesTable() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  disabled={loading}
+                  disabled={submitting}
                   rows="3"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Description..."
@@ -282,7 +306,7 @@ function ApprovalNamesTable() {
                   type="number"
                   value={formData.sort_order}
                   onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                  disabled={loading}
+                  disabled={submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="0"
                 />
@@ -294,7 +318,7 @@ function ApprovalNamesTable() {
                     type="checkbox"
                     checked={formData.is_active}
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                    disabled={loading}
+                    disabled={submitting}
                     className="mr-2"
                   />
                   <span className="text-sm font-medium text-gray-700">Active</span>
@@ -305,17 +329,17 @@ function ApprovalNamesTable() {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  disabled={loading}
+                  disabled={submitting}
                   className="py-2 px-4 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={submitting}
                   className="py-2 px-4 rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : editingApprovalName ? 'Update' : 'Create'}
+                  {submitting ? 'Saving...' : editingApprovalName ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

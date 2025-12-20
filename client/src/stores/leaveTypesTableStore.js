@@ -17,6 +17,11 @@ export const useLeaveTypesTableStore = create((set, get) => ({
       return state.leaveTypes;
     }
 
+    // If already loading and not forcing refresh, return cached data (prevent duplicate requests)
+    if (state.loading && !forceRefresh) {
+      return state.leaveTypes.length > 0 ? state.leaveTypes : [];
+    }
+
     // Fetch new data (includes both active and inactive)
     set({ loading: true });
     try {

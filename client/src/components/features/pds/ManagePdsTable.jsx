@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, Eye, CheckCircle, FileEdit, XCircle, Printer, Trash2, MessageSquare } from 'lucide-react';
 import { notifyEmployee, reviewPds, deletePds, getPds } from '../../../api/pds/pds';
 import { useNotification } from '../../../hooks/useNotification';
@@ -22,21 +23,45 @@ function ManagePdsTable() {
     const { invalidateAllPdsQueries } = useInvalidatePdsQueries();
     
     // Determine what status to fetch based on active filter
+    // For 'for-revision' and 'all', fetch all PDS and filter client-side
+    // For specific statuses, fetch directly from API
     let statusFilter = null;
-    if (activeFilter === 'for-revision') {
-        statusFilter = 'declined';
-    } else if (activeFilter === 'for-approval') {
+    if (activeFilter === 'for-approval') {
         statusFilter = 'pending';
     } else if (activeFilter === 'approved') {
         statusFilter = 'approved';
     } else if (activeFilter === 'declined') {
         statusFilter = 'declined';
+    } else if (activeFilter === 'for-revision') {
+        // Fetch all PDS and filter client-side to include both 'for-revision' and 'declined'
+        statusFilter = null;
+    } else {
+        // 'all' or other filters - fetch all
+        statusFilter = null;
     }
 
     // Fetch data using React Query - this will use cached data when available
-    const { data: allPdsList = [], isLoading: isLoadingPds } = useAllPds(activeFilter === 'no-pds' ? undefined : statusFilter);
-    const { data: employeesWithoutPdsList = [], isLoading: isLoadingNoPds } = useEmployeesWithoutPds();
+    const { data: allPdsList = [], isLoading: isLoadingPds, refetch: refetchPds } = useAllPds(activeFilter === 'no-pds' ? undefined : statusFilter);
+    const { data: employeesWithoutPdsList = [], isLoading: isLoadingNoPds, refetch: refetchNoPds } = useEmployeesWithoutPds();
     const { counts } = usePdsCounts();
+
+    // Listen for real-time PDS updates
+    useEffect(() => {
+        const handlePdsUpdate = (event) => {
+            console.log('ManagePdsTable: PDS update received:', event.detail);
+            // Immediately invalidate - marks queries as stale
+            invalidateAllPdsQueries();
+            // Force immediate refetch - bypasses all caching
+            refetchPds({ cancelRefetch: false });
+            refetchNoPds({ cancelRefetch: false });
+        };
+
+        window.addEventListener('pds-updated', handlePdsUpdate);
+
+        return () => {
+            window.removeEventListener('pds-updated', handlePdsUpdate);
+        };
+    }, [invalidateAllPdsQueries, refetchPds, refetchNoPds]);
 
     // Determine which data to display based on filter
     const pdsList = activeFilter === 'no-pds' ? [] : allPdsList;
@@ -505,13 +530,16 @@ function ManagePdsTable() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex gap-2 items-center flex-nowrap">
-                                                    <TableActionButton
-                                                        variant="blue"
-                                                        icon={Eye}
-                                                        label="View"
-                                                        onClick={() => setSelectedPds({ ...pds, action: 'view' })}
-                                                        title="View PDS"
-                                                    />
+                                                    {/* View button - show for all statuses except for-revision and declined */}
+                                                    {(pds.status !== 'declined' && pds.status !== 'for-revision') && (
+                                                        <TableActionButton
+                                                            variant="blue"
+                                                            icon={Eye}
+                                                            label="View"
+                                                            onClick={() => setSelectedPds({ ...pds, action: 'view' })}
+                                                            title="View PDS"
+                                                        />
+                                                    )}
                                                     {pds.status === 'pending' && (
                                                         <>
                                                             <TableActionButton
@@ -556,6 +584,7 @@ function ManagePdsTable() {
                                                             />
                                                         </>
                                                     )}
+                                                    {/* For revision and declined status - only show View Comments button */}
                                                     {(pds.status === 'declined' || pds.status === 'for-revision') && (
                                                         <TableActionButton
                                                             variant="purple"
@@ -608,8 +637,8 @@ function ManagePdsTable() {
             )}
 
             {/* Comments Modal for Declined/For Revision PDS */}
-            {viewingComments && (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+            {viewingComments && createPortal(
+                <div className="fixed top-0 left-0 right-0 bottom-0 z-[9999] h-screen w-screen overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4" style={{ position: 'fixed', margin: 0 }}>
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
                         <div className="p-6">
                             <div className="flex justify-between items-center mb-4">
@@ -666,7 +695,8 @@ function ManagePdsTable() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PositionsTable from './PositionsTable';
 import RolesTable from './RolesTable';
 import ProjectsTable from './ProjectsTable';
@@ -6,9 +6,51 @@ import SpecialCapabilitiesTable from './SpecialCapabilitiesTable';
 import OfficesTable from './OfficesTable';
 import ApprovalNamesTable from './ApprovalNamesTable';
 import LeaveTypesTable from './LeaveTypesTable';
+import StandardTimeSettingsTable from './StandardTimeSettingsTable';
+import { usePositionsTableStore } from '../../../stores/masterListTablesStore';
+import { useRolesTableStore } from '../../../stores/masterListTablesStore';
+import { useProjectsTableStore } from '../../../stores/masterListTablesStore';
+import { useOfficesTableStore } from '../../../stores/masterListTablesStore';
+import { useCapabilitiesTableStore } from '../../../stores/masterListTablesStore';
+import { useApprovalNamesTableStore } from '../../../stores/approvalNamesTableStore';
+import { useLeaveTypesTableStore } from '../../../stores/leaveTypesTableStore';
 
 function MasterListsManager() {
   const [activeTab, setActiveTab] = useState('positions');
+  
+  // Get all store methods for prefetching
+  const { getPositions } = usePositionsTableStore();
+  const { getRoles } = useRolesTableStore();
+  const { getProjects } = useProjectsTableStore();
+  const { getOffices } = useOfficesTableStore();
+  const { getCapabilities } = useCapabilitiesTableStore();
+  const { getApprovalNames } = useApprovalNamesTableStore();
+  const { getLeaveTypesForTable } = useLeaveTypesTableStore();
+
+  // Prefetch all master list data when component mounts
+  useEffect(() => {
+    const prefetchAllMasterLists = async () => {
+      try {
+        // Prefetch all master list data in parallel
+        // This ensures all tabs have data ready even if not visited yet
+        await Promise.all([
+          getPositions(false), // false = use cache if available
+          getRoles(false),
+          getProjects(false),
+          getOffices(false),
+          getCapabilities(false),
+          getApprovalNames(false),
+          getLeaveTypesForTable(false),
+        ]);
+        console.log('✅ All master lists prefetched successfully');
+      } catch (error) {
+        console.error('❌ Error prefetching master lists:', error);
+        // Don't show error to user, individual tables will handle their own errors
+      }
+    };
+
+    prefetchAllMasterLists();
+  }, [getPositions, getRoles, getProjects, getOffices, getCapabilities, getApprovalNames, getLeaveTypesForTable]);
 
   const tabs = [
     { id: 'positions', label: 'Positions/Designations', component: PositionsTable },
@@ -18,6 +60,7 @@ function MasterListsManager() {
     { id: 'capabilities', label: 'Special Capabilities', component: SpecialCapabilitiesTable },
     { id: 'approval-names', label: 'Approval Names', component: ApprovalNamesTable },
     { id: 'leave-types', label: 'Leave Types', component: LeaveTypesTable },
+    { id: 'time-settings', label: 'Standard Time Settings', component: StandardTimeSettingsTable },
   ];
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || PositionsTable;

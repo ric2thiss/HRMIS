@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, CheckCircle, FileEdit, XCircle } from 'lucide-react';
 import { reviewPds } from '../../../api/pds/pds';
 import { useNotification } from '../../../hooks/useNotification';
@@ -8,15 +8,44 @@ import PdsReviewModal from './PdsReviewModal';
 import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
 import TableActionButton from '../../ui/TableActionButton';
 
-function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview }) {
+function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview, statusFilter = 'pending', pdsList: externalPdsList = null }) {
     const { showSuccess, showError } = useNotification();
     const { user } = useAuth();
     const [selectedPds, setSelectedPds] = useState(null);
     const searchQuery = externalSearchQuery;
 
-    // Use React Query to fetch PDS data with caching
-    const { data: pendingPds = [], isLoading: loading } = usePendingPdsApprovals(user);
+    // Use React Query to fetch PDS data with caching (only if external list not provided)
+    const { data: pendingPds = [], isLoading: loading, refetch } = usePendingPdsApprovals(user);
     const { invalidateAllApprovalQueries } = useInvalidateApprovalQueries();
+    
+    // Use external list if provided, otherwise use fetched data
+    const pdsData = externalPdsList !== null ? externalPdsList : pendingPds;
+
+    // Listen for real-time PDS updates via WebSocket
+    useEffect(() => {
+        const handlePdsUpdate = (event) => {
+            const data = event.detail;
+            console.log('PdsReviewList: PDS update received via WebSocket:', data);
+            
+            // If PDS was reviewed (approved/declined/for-revision), it should be removed from pending list
+            if (data.action === 'approve' || data.action === 'decline' || data.action === 'for-revision') {
+                console.log('PDS was reviewed, removing from list immediately');
+            }
+            
+            // Immediately invalidate and refetch - this will remove reviewed PDS from the list
+            invalidateAllApprovalQueries();
+            // Force immediate refetch - bypasses all caching
+            setTimeout(() => {
+                refetch({ cancelRefetch: false });
+            }, 100);
+        };
+
+        window.addEventListener('pds-updated', handlePdsUpdate);
+
+        return () => {
+            window.removeEventListener('pds-updated', handlePdsUpdate);
+        };
+    }, [invalidateAllApprovalQueries, refetch]);
 
     const handleReview = async (pdsId, action, comments = null) => {
         try {
@@ -28,9 +57,11 @@ function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview }) {
                 showSuccess('PDS approved! The employee has been notified.');
             }
             
-            // Invalidate approval queries to refetch fresh data
+            // Immediately invalidate and refetch - WebSocket will also trigger update
             invalidateAllApprovalQueries();
+            refetch({ cancelRefetch: false });
             setSelectedPds(null);
+            
             // Notify parent to update count
             if (onReview) {
                 onReview();
@@ -41,22 +72,30 @@ function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview }) {
         }
     };
 
-    // Filter PDS list based on search query
+    // Filter PDS list based on search query and status
     const getFilteredPdsList = () => {
-        if (!searchQuery.trim()) {
-            return pendingPds;
+        let filtered = pdsData;
+        
+        // Filter by status if needed (for external lists)
+        if (statusFilter && statusFilter !== 'pending') {
+            filtered = filtered.filter(pds => pds.status === statusFilter);
         }
         
-        const query = searchQuery.toLowerCase().trim();
-        return pendingPds.filter(pds => {
-            const name = (pds.user?.name || '').toLowerCase();
-            const email = (pds.user?.email || '').toLowerCase();
-            const employeeId = (pds.user?.employee_id || '').toLowerCase();
-            
-            return name.includes(query) || 
-                   email.includes(query) || 
-                   employeeId.includes(query);
-        });
+        // Filter by search query
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter(pds => {
+                const name = (pds.user?.name || '').toLowerCase();
+                const email = (pds.user?.email || '').toLowerCase();
+                const employeeId = (pds.user?.employee_id || '').toLowerCase();
+                
+                return name.includes(query) || 
+                       email.includes(query) || 
+                       employeeId.includes(query);
+            });
+        }
+        
+        return filtered;
     };
     
     const displayedPdsList = getFilteredPdsList();
@@ -81,7 +120,9 @@ function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview }) {
                     <p className="mt-2">
                         {searchQuery.trim() 
                             ? 'No PDS found matching your search' 
-                            : 'No pending PDS submissions'}
+                            : statusFilter === 'for-revision' 
+                                ? 'No PDS for revision' 
+                                : 'No pending PDS submissions'}
                     </p>
                 </div>
             ) : (
@@ -134,8 +175,12 @@ function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview }) {
                                             : 'N/A'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                            FOR APPROVAL
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                            pds.status === 'for-revision' 
+                                                ? 'bg-orange-100 text-orange-800'
+                                                : 'bg-yellow-100 text-yellow-800'
+                                        }`}>
+                                            {pds.status === 'for-revision' ? 'FOR REVISION' : 'FOR APPROVAL'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -147,27 +192,36 @@ function PdsReviewList({ searchQuery: externalSearchQuery = '', onReview }) {
                                                 onClick={() => setSelectedPds({ ...pds, action: 'view' })}
                                                 title="View PDS"
                                             />
-                                            <TableActionButton
-                                                variant="green"
-                                                icon={CheckCircle}
-                                                label="Approve"
-                                                onClick={() => setSelectedPds({ ...pds, action: 'approve' })}
-                                                title="Approve PDS"
-                                            />
-                                            <TableActionButton
-                                                variant="orange"
-                                                icon={FileEdit}
-                                                label="For Revision"
-                                                onClick={() => setSelectedPds({ ...pds, action: 'for-revision' })}
-                                                title="Request revision"
-                                            />
-                                            <TableActionButton
-                                                variant="red"
-                                                icon={XCircle}
-                                                label="Decline"
-                                                onClick={() => setSelectedPds({ ...pds, action: 'decline' })}
-                                                title="Decline PDS"
-                                            />
+                                            {pds.status === 'pending' && (
+                                                <>
+                                                    <TableActionButton
+                                                        variant="green"
+                                                        icon={CheckCircle}
+                                                        label="Approve"
+                                                        onClick={() => setSelectedPds({ ...pds, action: 'approve' })}
+                                                        title="Approve PDS"
+                                                    />
+                                                    <TableActionButton
+                                                        variant="orange"
+                                                        icon={FileEdit}
+                                                        label="For Revision"
+                                                        onClick={() => setSelectedPds({ ...pds, action: 'for-revision' })}
+                                                        title="Request revision"
+                                                    />
+                                                    <TableActionButton
+                                                        variant="red"
+                                                        icon={XCircle}
+                                                        label="Decline"
+                                                        onClick={() => setSelectedPds({ ...pds, action: 'decline' })}
+                                                        title="Decline PDS"
+                                                    />
+                                                </>
+                                            )}
+                                            {pds.status === 'for-revision' && (
+                                                <span className="text-sm text-gray-500 italic">
+                                                    Waiting for employee revision
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

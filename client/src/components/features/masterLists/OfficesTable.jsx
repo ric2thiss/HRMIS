@@ -10,6 +10,7 @@ function OfficesTable() {
   const { getOffices, offices, loading } = useOfficesTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingOffice, setEditingOffice] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -26,12 +27,13 @@ function OfficesTable() {
   const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
+    // Load offices - will use prefetched data if available
     loadOffices();
   }, []);
 
-  const loadOffices = async () => {
+  const loadOffices = async (forceRefresh = false) => {
     try {
-      await getOffices(); // Uses cache if available
+      await getOffices(forceRefresh); // Uses cache if available unless forceRefresh is true
     } catch (err) {
       showError('Failed to load offices');
     }
@@ -40,7 +42,7 @@ function OfficesTable() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
+      setSubmitting(true);
       if (editingOffice) {
         await updateOffice(editingOffice.id, formData);
         showSuccess('Office updated successfully');
@@ -60,12 +62,12 @@ function OfficesTable() {
         contact_phone: '',
         status: 'active'
       });
-      loadOffices();
+      loadOffices(true); // Force refresh to show new data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -88,15 +90,15 @@ function OfficesTable() {
     if (!window.confirm('Are you sure you want to delete this office?')) return;
     
     try {
-      setLoading(true);
+      setSubmitting(true);
       await deleteOffice(id);
       showSuccess('Office deleted successfully');
-      loadOffices();
+      loadOffices(true); // Force refresh to show updated data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -130,7 +132,7 @@ function OfficesTable() {
         <button
           onClick={() => setIsFormVisible(true)}
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-          disabled={loading}
+          disabled={loading || submitting}
         >
           ➕ Add Office
         </button>
@@ -208,7 +210,7 @@ function OfficesTable() {
               <button
                 onClick={handleCancel}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                disabled={loading}
+                disabled={loading || submitting}
               >
                 &times;
               </button>
@@ -223,7 +225,7 @@ function OfficesTable() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                     placeholder="e.g., DICT Region 13"
                   />
@@ -235,7 +237,7 @@ function OfficesTable() {
                     type="text"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                     placeholder="e.g., DICT-R13"
                   />
@@ -247,7 +249,7 @@ function OfficesTable() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   rows="3"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Office description"
@@ -260,7 +262,7 @@ function OfficesTable() {
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Office address"
                 />
@@ -273,7 +275,7 @@ function OfficesTable() {
                     type="text"
                     value={formData.contact_person}
                     onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                     placeholder="Contact person name"
                   />
@@ -285,7 +287,7 @@ function OfficesTable() {
                     type="email"
                     value={formData.contact_email}
                     onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                     placeholder="contact@example.com"
                   />
@@ -299,7 +301,7 @@ function OfficesTable() {
                     type="text"
                     value={formData.contact_phone}
                     onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                     placeholder="+63 XXX XXX XXXX"
                   />
@@ -311,7 +313,7 @@ function OfficesTable() {
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     required
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   >
                     <option value="active">Active</option>
@@ -324,17 +326,17 @@ function OfficesTable() {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : editingOffice ? 'Update' : 'Create'}
+                  {submitting ? 'Saving...' : editingOffice ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

@@ -6,10 +6,12 @@ import { getAllPds, getEmployeesWithoutPds } from '../api/pds/pds';
 import { getMyPendingApprovals, getLeaveApplications } from '../api/leave/leaveApplications';
 import { getAllMasterLists } from '../api/master-lists/masterLists';
 import { checkIfApprover } from '../api/master-lists/approvalNames';
+import { useEmployeesStore } from '../stores/employeesStore';
 
 // Import query keys
 import { pdsQueryKeys } from './usePdsData';
 import { approvalQueryKeys } from './useApprovalData';
+import { dashboardQueryKeys } from './useDashboardData';
 
 /**
  * Global prefetch hook - prefetches all critical data after login
@@ -49,7 +51,20 @@ export const useGlobalPrefetch = () => {
       // HR/ADMIN SPECIFIC DATA
       // ===================================
       if (isHROrAdmin) {
-        // 1. PDS Management Data
+        // 1. Employees Data (with caching)
+        prefetchPromises.push(
+          // Prefetch employees using the store (will use cache if available)
+          Promise.resolve().then(async () => {
+            try {
+              const { getEmployees } = useEmployeesStore.getState();
+              await getEmployees();
+            } catch (err) {
+              console.warn('Failed to prefetch employees:', err);
+            }
+          })
+        );
+
+        // 2. PDS Management Data
         prefetchPromises.push(
           // All PDS
           queryClient.prefetchQuery({
@@ -80,7 +95,7 @@ export const useGlobalPrefetch = () => {
           })
         );
 
-        // 2. Approval/Leave Management Data
+        // 3. Approval/Leave Management Data
         prefetchPromises.push(
           // Pending leave approvals
           queryClient.prefetchQuery({
@@ -99,6 +114,109 @@ export const useGlobalPrefetch = () => {
               return response.pds || [];
             },
             staleTime: 5 * 60 * 1000,
+          }),
+          // For Revision PDS approvals
+          queryClient.prefetchQuery({
+            queryKey: approvalQueryKeys.forRevisionPds(),
+            queryFn: async () => {
+              const response = await getAllPds('for-revision');
+              return response.pds || [];
+            },
+            staleTime: 5 * 60 * 1000,
+          })
+        );
+
+        // 4. Dashboard Data (HR/Admin)
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        
+        prefetchPromises.push(
+          // Employees count
+          queryClient.prefetchQuery({
+            queryKey: dashboardQueryKeys.employees(),
+            queryFn: async () => {
+              await api.get("/sanctum/csrf-cookie", { withCredentials: true });
+              const response = await api.get("/api/employees", { withCredentials: true });
+              return {
+                total_employees: response.data?.total_employees || 0,
+                total_plantilla: response.data?.total_plantilla || 0,
+                total_jo: response.data?.total_jo || 0,
+              };
+            },
+            staleTime: 30 * 1000,
+          }),
+          
+          // PDS chart data
+          queryClient.prefetchQuery({
+            queryKey: dashboardQueryKeys.pdsChart(),
+            queryFn: async () => {
+              const [pdsResponse, noPdsResponse] = await Promise.all([
+                getAllPds(),
+                getEmployeesWithoutPds().catch(() => ({ employees: [] })),
+              ]);
+              
+              const allPds = pdsResponse.pds || [];
+              const noPdsEmployees = noPdsResponse.employees || [];
+              
+              const draftCount = allPds.filter(pds => !pds.status || pds.status === 'draft').length;
+              const approvedCount = allPds.filter(pds => pds.status === 'approved').length;
+              const forApprovalCount = allPds.filter(pds => pds.status === 'pending').length;
+              const forRevisionCount = allPds.filter(pds => pds.status === 'for-revision').length;
+              const declinedCount = allPds.filter(pds => pds.status === 'declined').length;
+              const noPdsCount = noPdsEmployees.length;
+              
+              return [
+                { name: 'Draft', value: draftCount, color: '#9C27B0' },
+                { name: 'Approved', value: approvedCount, color: '#FDD835' },
+                { name: 'For Approval', value: forApprovalCount, color: '#2196F3' },
+                { name: 'For Revision', value: forRevisionCount, color: '#FF7043' },
+                { name: 'Declined', value: declinedCount, color: '#E53935' },
+                { name: 'No PDS', value: noPdsCount, color: '#4CAF50' },
+              ];
+            },
+            staleTime: 30 * 1000,
+          }),
+          
+          // Daily login activity
+          queryClient.prefetchQuery({
+            queryKey: dashboardQueryKeys.loginActivity(currentYear, currentMonth),
+            queryFn: async () => {
+              const response = await getDailyLoginActivity(currentYear, currentMonth);
+              return response.daily_logins || [];
+            },
+            staleTime: 60 * 1000,
+          }),
+          
+          // Module usage
+          queryClient.prefetchQuery({
+            queryKey: dashboardQueryKeys.moduleUsage(currentYear, currentMonth),
+            queryFn: async () => {
+              const response = await getModuleUsage(currentYear, currentMonth);
+              return response.modules || [];
+            },
+            staleTime: 60 * 1000,
+          }),
+          
+          // Positions by office
+          queryClient.prefetchQuery({
+            queryKey: dashboardQueryKeys.positionsByOffice(),
+            queryFn: async () => {
+              const response = await getPositionsByOffice();
+              const offices = response.offices || [];
+              return offices.map(office => ({
+                ...office,
+                displayLabel: office.office_code || office.office || 'N/A'
+              }));
+            },
+            staleTime: 2 * 60 * 1000,
+          }),
+          
+          // System version
+          queryClient.prefetchQuery({
+            queryKey: dashboardQueryKeys.systemVersion(),
+            queryFn: async () => await getSystemVersion(),
+            staleTime: 10 * 60 * 1000,
           })
         );
 
@@ -197,7 +315,7 @@ export const useGlobalPrefetch = () => {
         break;
 
       case 'my-approval':
-        await Promise.allSettled([
+        const approvalPrefetches = [
           queryClient.prefetchQuery({
             queryKey: approvalQueryKeys.pendingLeaves(role),
             queryFn: async () => {
@@ -211,15 +329,127 @@ export const useGlobalPrefetch = () => {
             },
             staleTime: 5 * 60 * 1000,
           }),
-          isHROrAdmin && queryClient.prefetchQuery({
-            queryKey: approvalQueryKeys.pendingPds(),
-            queryFn: async () => {
-              const response = await getAllPds('pending');
-              return response.pds || [];
-            },
-            staleTime: 5 * 60 * 1000,
-          }),
-        ]);
+        ];
+        
+        if (isHROrAdmin) {
+          approvalPrefetches.push(
+            queryClient.prefetchQuery({
+              queryKey: approvalQueryKeys.pendingPds(),
+              queryFn: async () => {
+                const response = await getAllPds('pending');
+                return response.pds || [];
+              },
+              staleTime: 5 * 60 * 1000,
+            }),
+            queryClient.prefetchQuery({
+              queryKey: approvalQueryKeys.forRevisionPds(),
+              queryFn: async () => {
+                const response = await getAllPds('for-revision');
+                return response.pds || [];
+              },
+              staleTime: 5 * 60 * 1000,
+            })
+          );
+        }
+        
+        await Promise.allSettled(approvalPrefetches);
+        break;
+
+      case 'hr-dashboard':
+        if (isHROrAdmin) {
+          const now = new Date();
+          const currentYear = now.getFullYear();
+          const currentMonth = now.getMonth() + 1;
+          
+          await Promise.allSettled([
+            // Employees count
+            queryClient.prefetchQuery({
+              queryKey: dashboardQueryKeys.employees(),
+              queryFn: async () => {
+                await api.get("/sanctum/csrf-cookie", { withCredentials: true });
+                const response = await api.get("/api/employees", { withCredentials: true });
+                return {
+                  total_employees: response.data?.total_employees || 0,
+                  total_plantilla: response.data?.total_plantilla || 0,
+                  total_jo: response.data?.total_jo || 0,
+                };
+              },
+              staleTime: 30 * 1000,
+            }),
+            
+            // PDS chart data
+            queryClient.prefetchQuery({
+              queryKey: dashboardQueryKeys.pdsChart(),
+              queryFn: async () => {
+                const [pdsResponse, noPdsResponse] = await Promise.all([
+                  getAllPds(),
+                  getEmployeesWithoutPds().catch(() => ({ employees: [] })),
+                ]);
+                
+                const allPds = pdsResponse.pds || [];
+                const noPdsEmployees = noPdsResponse.employees || [];
+                
+                const draftCount = allPds.filter(pds => !pds.status || pds.status === 'draft').length;
+                const approvedCount = allPds.filter(pds => pds.status === 'approved').length;
+                const forApprovalCount = allPds.filter(pds => pds.status === 'pending').length;
+                const forRevisionCount = allPds.filter(pds => pds.status === 'for-revision').length;
+                const declinedCount = allPds.filter(pds => pds.status === 'declined').length;
+                const noPdsCount = noPdsEmployees.length;
+                
+                return [
+                  { name: 'Draft', value: draftCount, color: '#9C27B0' },
+                  { name: 'Approved', value: approvedCount, color: '#FDD835' },
+                  { name: 'For Approval', value: forApprovalCount, color: '#2196F3' },
+                  { name: 'For Revision', value: forRevisionCount, color: '#FF7043' },
+                  { name: 'Declined', value: declinedCount, color: '#E53935' },
+                  { name: 'No PDS', value: noPdsCount, color: '#4CAF50' },
+                ];
+              },
+              staleTime: 30 * 1000,
+            }),
+            
+            // Daily login activity
+            queryClient.prefetchQuery({
+              queryKey: dashboardQueryKeys.loginActivity(currentYear, currentMonth),
+              queryFn: async () => {
+                const response = await getDailyLoginActivity(currentYear, currentMonth);
+                return response.daily_logins || [];
+              },
+              staleTime: 60 * 1000,
+            }),
+            
+            // Module usage
+            queryClient.prefetchQuery({
+              queryKey: dashboardQueryKeys.moduleUsage(currentYear, currentMonth),
+              queryFn: async () => {
+                const response = await getModuleUsage(currentYear, currentMonth);
+                return response.modules || [];
+              },
+              staleTime: 60 * 1000,
+            }),
+            
+            // Positions by office
+            queryClient.prefetchQuery({
+              queryKey: dashboardQueryKeys.positionsByOffice(),
+              queryFn: async () => {
+                const response = await getPositionsByOffice();
+                const offices = response.offices || [];
+                return offices.map(office => ({
+                  ...office,
+                  displayLabel: office.office_code || office.office || 'N/A'
+                }));
+              },
+              staleTime: 2 * 60 * 1000,
+            }),
+            
+            // System version
+            queryClient.prefetchQuery({
+              queryKey: dashboardQueryKeys.systemVersion(),
+              queryFn: async () => await getSystemVersion(),
+              staleTime: 10 * 60 * 1000,
+            }),
+          ]);
+        }
         break;
 
       // Add more modules as needed

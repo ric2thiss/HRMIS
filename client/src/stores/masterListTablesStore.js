@@ -17,8 +17,14 @@ export const usePositionsTableStore = create((set, get) => ({
     const state = get();
     const now = Date.now();
 
+    // Return cached data if still valid and not forcing refresh
     if (!forceRefresh && state.positions.length > 0 && state.lastFetched && (now - state.lastFetched) < CACHE_DURATION) {
       return state.positions;
+    }
+
+    // If already loading and not forcing refresh, return cached data (prevent duplicate requests)
+    if (state.loading && !forceRefresh) {
+      return state.positions.length > 0 ? state.positions : [];
     }
 
     set({ loading: true });
@@ -46,8 +52,14 @@ export const useRolesTableStore = create((set, get) => ({
     const state = get();
     const now = Date.now();
 
+    // Return cached data if still valid and not forcing refresh
     if (!forceRefresh && state.roles.length > 0 && state.lastFetched && (now - state.lastFetched) < CACHE_DURATION) {
       return state.roles;
+    }
+
+    // If already loading and not forcing refresh, return cached data (prevent duplicate requests)
+    if (state.loading && !forceRefresh) {
+      return state.roles.length > 0 ? state.roles : [];
     }
 
     set({ loading: true });
@@ -75,8 +87,14 @@ export const useProjectsTableStore = create((set, get) => ({
     const state = get();
     const now = Date.now();
 
+    // Return cached data if still valid and not forcing refresh
     if (!forceRefresh && state.projects.length > 0 && state.lastFetched && (now - state.lastFetched) < CACHE_DURATION) {
       return state.projects;
+    }
+
+    // If already loading and not forcing refresh, return cached data (prevent duplicate requests)
+    if (state.loading && !forceRefresh) {
+      return state.projects.length > 0 ? state.projects : [];
     }
 
     set({ loading: true });
@@ -104,8 +122,14 @@ export const useOfficesTableStore = create((set, get) => ({
     const state = get();
     const now = Date.now();
 
+    // Return cached data if still valid and not forcing refresh
     if (!forceRefresh && state.offices.length > 0 && state.lastFetched && (now - state.lastFetched) < CACHE_DURATION) {
       return state.offices;
+    }
+
+    // If already loading and not forcing refresh, return cached data (prevent duplicate requests)
+    if (state.loading && !forceRefresh) {
+      return state.offices.length > 0 ? state.offices : [];
     }
 
     set({ loading: true });
@@ -133,8 +157,14 @@ export const useCapabilitiesTableStore = create((set, get) => ({
     const state = get();
     const now = Date.now();
 
+    // Return cached data if still valid and not forcing refresh
     if (!forceRefresh && state.capabilities.length > 0 && state.lastFetched && (now - state.lastFetched) < CACHE_DURATION) {
       return state.capabilities;
+    }
+
+    // If already loading and not forcing refresh, return cached data (prevent duplicate requests)
+    if (state.loading && !forceRefresh) {
+      return state.capabilities.length > 0 ? state.capabilities : [];
     }
 
     set({ loading: true });

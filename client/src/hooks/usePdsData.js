@@ -19,8 +19,10 @@ export const useAllPds = (statusFilter = null) => {
       const response = await getAllPds(statusFilter);
       return response.pds || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always consider stale - refetch on invalidate/WebSocket events
     gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 };
 
@@ -34,8 +36,10 @@ export const useEmployeesWithoutPds = () => {
       const response = await getEmployeesWithoutPds();
       return response.employees || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Real-time - no caching
     gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -98,7 +102,11 @@ export const useInvalidatePdsQueries = () => {
   const queryClient = useQueryClient();
 
   const invalidateAllPdsQueries = () => {
-    queryClient.invalidateQueries({ queryKey: pdsQueryKeys.all });
+    // Invalidate all PDS queries and force refetch of active ones
+    queryClient.invalidateQueries({ 
+      queryKey: pdsQueryKeys.all,
+      refetchType: 'active' // Only refetch active queries
+    });
   };
 
   return { invalidateAllPdsQueries };

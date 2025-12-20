@@ -10,6 +10,7 @@ function SpecialCapabilitiesTable() {
   const { getCapabilities, capabilities, loading } = useCapabilitiesTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingCapability, setEditingCapability] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: ''
@@ -20,12 +21,13 @@ function SpecialCapabilitiesTable() {
   const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
+    // Load capabilities - will use prefetched data if available
     loadCapabilities();
   }, []);
 
-  const loadCapabilities = async () => {
+  const loadCapabilities = async (forceRefresh = false) => {
     try {
-      await getCapabilities(); // Uses cache if available
+      await getCapabilities(forceRefresh); // Uses cache if available unless forceRefresh is true
     } catch (err) {
       showError('Failed to load special capabilities');
     }
@@ -34,7 +36,7 @@ function SpecialCapabilitiesTable() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
+      setSubmitting(true);
       if (editingCapability) {
         await updateSpecialCapability(editingCapability.id, formData);
         showSuccess('Special capability updated successfully');
@@ -45,12 +47,12 @@ function SpecialCapabilitiesTable() {
       setIsFormVisible(false);
       setEditingCapability(null);
       setFormData({ name: '', description: '' });
-      loadCapabilities();
+      loadCapabilities(true); // Force refresh to show new data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -67,15 +69,15 @@ function SpecialCapabilitiesTable() {
     if (!window.confirm('Are you sure you want to delete this special capability?')) return;
     
     try {
-      setLoading(true);
+      setSubmitting(true);
       await deleteSpecialCapability(id);
       showSuccess('Special capability deleted successfully');
-      loadCapabilities();
+      loadCapabilities(true); // Force refresh to show updated data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -96,7 +98,7 @@ function SpecialCapabilitiesTable() {
         <button
           onClick={() => setIsFormVisible(true)}
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-          disabled={loading}
+          disabled={loading || submitting}
         >
           ➕ Add Capability
         </button>
@@ -160,7 +162,7 @@ function SpecialCapabilitiesTable() {
               <button
                 onClick={handleCancel}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                disabled={loading}
+                disabled={loading || submitting}
               >
                 &times;
               </button>
@@ -174,7 +176,7 @@ function SpecialCapabilitiesTable() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="e.g., Advanced Reporting Access"
                 />
@@ -185,7 +187,7 @@ function SpecialCapabilitiesTable() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   rows="3"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Describe what this capability allows..."
@@ -196,17 +198,17 @@ function SpecialCapabilitiesTable() {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : editingCapability ? 'Update' : 'Create'}
+                  {submitting ? 'Saving...' : editingCapability ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

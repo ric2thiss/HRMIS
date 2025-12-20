@@ -6,12 +6,16 @@ import { useAuthStore } from "./stores/authStore";
 import { queryClient } from "./config/queryClient";
 import NotificationContainer from "./components/ui/Notification/NotificationContainer";
 import GlobalPrefetch from "./components/GlobalPrefetch";
+import { useWebSocket } from "./hooks/useWebSocket";
 import App from './App';
 import './index.css';
 
 // Initialize auth store on app load
 function AppWithInit() {
   const initialize = useAuthStore((state) => state.initialize);
+  
+  // Initialize WebSocket connection
+  useWebSocket();
 
   useEffect(() => {
     initialize();
@@ -27,11 +31,11 @@ function AppWithInit() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <AppWithInit />
       </QueryClientProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  // </React.StrictMode>
 );

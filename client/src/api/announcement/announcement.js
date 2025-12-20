@@ -21,12 +21,18 @@ export const getAnnouncements = async (filters = {}) => {
 
 /**
  * Get active announcements (for all users - shown on dashboard)
+ * @param {boolean} includeOwn - Whether to include user's own announcements (for /my-announcements page)
  * @returns {Promise<Object>} Active announcements list
  */
-export const getActiveAnnouncements = async () => {
+export const getActiveAnnouncements = async (includeOwn = false) => {
     await api.get('/sanctum/csrf-cookie');
 
-    const response = await api.get('/api/announcements/active', {
+    const params = new URLSearchParams();
+    if (includeOwn) {
+        params.append('include_own', '1');
+    }
+
+    const response = await api.get(`/api/announcements/active?${params.toString()}`, {
         withCredentials: true,
     });
 
@@ -83,6 +89,15 @@ export const createAnnouncement = async (data) => {
     if (data.image) {
         formData.append('image', data.image);
     }
+    
+    // Add recipients if provided
+    if (data.recipients !== undefined) {
+        if (Array.isArray(data.recipients) && data.recipients.length > 0) {
+            formData.append('recipients', JSON.stringify(data.recipients));
+        } else {
+            formData.append('recipients', JSON.stringify([]));
+        }
+    }
 
     const response = await api.post('/api/announcements', formData, {
         headers: {
@@ -117,6 +132,15 @@ export const updateAnnouncement = async (id, data) => {
     // If remove_image flag is set, send it
     if (data.remove_image !== undefined) {
         formData.append('remove_image', data.remove_image ? '1' : '0');
+    }
+    
+    // Add recipients if provided
+    if (data.recipients !== undefined) {
+        if (Array.isArray(data.recipients) && data.recipients.length > 0) {
+            formData.append('recipients', JSON.stringify(data.recipients));
+        } else {
+            formData.append('recipients', JSON.stringify([]));
+        }
     }
 
     const response = await api.put(`/api/announcements/${id}`, formData, {

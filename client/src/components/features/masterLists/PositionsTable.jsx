@@ -10,6 +10,7 @@ function PositionsTable() {
   const { getPositions, positions, loading } = usePositionsTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingPosition, setEditingPosition] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: ''
@@ -20,12 +21,13 @@ function PositionsTable() {
   const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
+    // Load positions - will use prefetched data if available
     loadPositions();
   }, []);
 
-  const loadPositions = async () => {
+  const loadPositions = async (forceRefresh = false) => {
     try {
-      await getPositions(); // Uses cache if available
+      await getPositions(forceRefresh); // Uses cache if available unless forceRefresh is true
     } catch (err) {
       showError('Failed to load positions');
     }
@@ -34,7 +36,7 @@ function PositionsTable() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
+      setSubmitting(true);
       if (editingPosition) {
         await updatePosition(editingPosition.id, formData);
         showSuccess('Position updated successfully');
@@ -45,12 +47,12 @@ function PositionsTable() {
       setIsFormVisible(false);
       setEditingPosition(null);
       setFormData({ title: '', description: '' });
-      loadPositions();
+      loadPositions(true); // Force refresh to show new data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -67,14 +69,14 @@ function PositionsTable() {
     if (!window.confirm('Are you sure you want to delete this position?')) return;
     
     try {
-      setLoading(true);
+      setSubmitting(true);
       await deletePosition(id);
       showSuccess('Position deleted successfully');
-      loadPositions();
+      loadPositions(true); // Force refresh to show updated data
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -91,7 +93,7 @@ function PositionsTable() {
         <button
           onClick={() => setIsFormVisible(true)}
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-          disabled={loading}
+          disabled={loading || submitting}
         >
           ➕ Add Position
         </button>
@@ -155,7 +157,7 @@ function PositionsTable() {
               <button
                 onClick={handleCancel}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                disabled={loading}
+                disabled={loading || submitting}
               >
                 &times;
               </button>
@@ -169,7 +171,7 @@ function PositionsTable() {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="e.g., IT Officer 1"
                 />
@@ -191,17 +193,17 @@ function PositionsTable() {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : editingPosition ? 'Update' : 'Create'}
+                  {submitting ? 'Saving...' : editingPosition ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

@@ -42,6 +42,14 @@ class Announcement extends Model
     }
 
     /**
+     * Get all recipients for this announcement
+     */
+    public function recipients()
+    {
+        return $this->hasMany(AnnouncementRecipient::class);
+    }
+
+    /**
      * Scope to get active announcements (scheduled and not expired)
      * Includes both 'active' status and 'draft' status announcements that have passed their scheduled_at time
      */

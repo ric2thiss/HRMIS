@@ -18,12 +18,25 @@ function MyAnnouncementsList({ user }) {
 
   useEffect(() => {
     loadAnnouncements();
+    
+    // Listen for announcement updates via WebSocket
+    const handleAnnouncementUpdate = () => {
+      // Refresh announcements when they are activated/updated
+      loadAnnouncements();
+    };
+    
+    window.addEventListener('announcement-updated', handleAnnouncementUpdate);
+    
+    return () => {
+      window.removeEventListener('announcement-updated', handleAnnouncementUpdate);
+    };
   }, []);
 
   const loadAnnouncements = async () => {
     try {
       setLoading(true);
-      const response = await getActiveAnnouncements();
+      // Include own announcements on /my-announcements page
+      const response = await getActiveAnnouncements(true);
       setAnnouncements(response.announcements || []);
     } catch (error) {
       console.error('Error loading announcements:', error);

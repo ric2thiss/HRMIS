@@ -8,7 +8,8 @@ import { useAuth } from '../../../hooks/useAuth';
 import { getUserRole } from '../../../utils/userHelpers';
 import { 
   usePendingLeaveApprovals, 
-  usePendingPdsApprovals, 
+  usePendingPdsApprovals,
+  useForRevisionPdsApprovals,
   useMasterLists,
   useApprovalCounts,
   useInvalidateApprovalQueries 
@@ -21,17 +22,18 @@ function ApprovalList() {
   const { user } = useAuth();
   const [selectedApproval, setSelectedApproval] = useState(null);
   const [approvalModalLeave, setApprovalModalLeave] = useState(null);
-  const [activeTab, setActiveTab] = useState('leave'); // 'leave' or 'pds'
+  const [activeTab, setActiveTab] = useState('leave'); // 'leave', 'pds', or 'for-revision'
   const [searchQuery, setSearchQuery] = useState('');
 
   // Use React Query hooks for data fetching with caching
   const { invalidateAllApprovalQueries } = useInvalidateApprovalQueries();
   const { data: approvals = [], isLoading: loadingLeaves } = usePendingLeaveApprovals(user);
   const { data: pdsApprovals = [], isLoading: loadingPds } = usePendingPdsApprovals(user);
+  const { data: forRevisionPds = [], isLoading: loadingForRevision } = useForRevisionPdsApprovals(user);
   const { data: masterLists, isLoading: loadingMasterLists } = useMasterLists(user);
   const { counts } = useApprovalCounts(user);
 
-  const loading = loadingLeaves || loadingPds || loadingMasterLists;
+  const loading = loadingLeaves || loadingPds || loadingForRevision || loadingMasterLists;
   const role = getUserRole(user);
   const isHROrAdmin = role === 'hr' || role === 'admin';
 
@@ -44,15 +46,25 @@ function ApprovalList() {
       .map(an => an.id);
   }, [masterLists, user]);
 
-  // Redirect to leave tab if not HR/Admin and on PDS tab
+  // Redirect to leave tab if not HR/Admin and on PDS/For Revision tab
   useEffect(() => {
-    if (activeTab === 'pds' && !isHROrAdmin) {
+    if ((activeTab === 'pds' || activeTab === 'for-revision') && !isHROrAdmin) {
       setActiveTab('leave');
     }
   }, [activeTab, isHROrAdmin]);
 
   const handleApprove = async (approvalData) => {
     try {
+      if (!approvalData || !approvalData.id) {
+        showError('Invalid leave application data');
+        return;
+      }
+      
+      if (!approvalData.signature) {
+        showError('E-signature is required to approve this leave application');
+        return;
+      }
+
       await approveLeaveApplication(approvalData.id, {
         status: 'approved',
         approval_remarks: approvalData.approval_remarks || 'Approved',
@@ -64,6 +76,7 @@ function ApprovalList() {
       // Invalidate all approval queries to refetch fresh data
       invalidateAllApprovalQueries();
     } catch (err) {
+      console.error('Error approving leave application:', err);
       showError(err?.response?.data?.message || 'Failed to approve application');
     }
   };
@@ -182,7 +195,12 @@ function ApprovalList() {
     // Stage 1: Leave Credit Authorized Officer must approve first
     if (!approval.leave_credit_officer_approved) {
       // It's Stage 1 - check if user is the Leave Credit Authorized Officer
-      return userApprovalNameIds.includes(approval.leave_credit_authorized_officer_id);
+      // Also check if user hasn't already approved at this stage
+      if (userApprovalNameIds.includes(approval.leave_credit_authorized_officer_id)) {
+        // User is assigned, check if they've already approved
+        return approval.leave_credit_officer_approved_by !== user.id;
+      }
+      return false;
     }
     
     // Stage 2: Recommendation Officer can only approve after Stage 1
@@ -191,7 +209,11 @@ function ApprovalList() {
       if (!approval.leave_credit_officer_approved) {
         return false; // Stage 1 must be approved first
       }
-      return userApprovalNameIds.includes(approval.recommendation_approver_id);
+      if (userApprovalNameIds.includes(approval.recommendation_approver_id)) {
+        // User is assigned, check if they've already approved
+        return approval.recommendation_approver_approved_by !== user.id;
+      }
+      return false;
     }
     
     // Stage 3: Leave Approver can only approve after Stage 2
@@ -200,7 +222,11 @@ function ApprovalList() {
       if (!approval.leave_credit_officer_approved || !approval.recommendation_approver_approved) {
         return false; // Previous stages must be approved first
       }
-      return userApprovalNameIds.includes(approval.leave_approver_id);
+      if (userApprovalNameIds.includes(approval.leave_approver_id)) {
+        // User is assigned, check if they've already approved
+        return approval.leave_approver_approved_by !== user.id;
+      }
+      return false;
     }
     
     // All stages completed or user is not assigned as any approver
@@ -281,26 +307,46 @@ function ApprovalList() {
                 </span>
               )}
             </button>
-            {/* Only show PDS tab for HR/Admin */}
+            {/* Only show PDS tabs for HR/Admin */}
             {isHROrAdmin && (
-              <button
-                onClick={() => {
-                  setActiveTab('pds');
-                  setSearchQuery('');
-                }}
-                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors relative ${
-                  activeTab === 'pds'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                PDS Submissions
-                {counts.pdsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
-                    {counts.pdsCount > 99 ? '99+' : counts.pdsCount}
-                  </span>
-                )}
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setActiveTab('pds');
+                    setSearchQuery('');
+                  }}
+                  className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors relative ${
+                    activeTab === 'pds'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  PDS Submissions
+                  {counts.pdsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                      {counts.pdsCount > 99 ? '99+' : counts.pdsCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('for-revision');
+                    setSearchQuery('');
+                  }}
+                  className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors relative ${
+                    activeTab === 'for-revision'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  For Revision
+                  {counts.forRevisionCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px]">
+                      {counts.forRevisionCount > 99 ? '99+' : counts.forRevisionCount}
+                    </span>
+                  )}
+                </button>
+              </>
             )}
           </div>
           
@@ -358,7 +404,9 @@ function ApprovalList() {
       {loading ? (
         <div className="text-center py-10 text-gray-500">Loading approvals...</div>
       ) : activeTab === 'pds' ? (
-        <PdsReviewList searchQuery={searchQuery} onReview={handlePdsReview} />
+        <PdsReviewList searchQuery={searchQuery} onReview={handlePdsReview} statusFilter="pending" />
+      ) : activeTab === 'for-revision' ? (
+        <PdsReviewList searchQuery={searchQuery} onReview={handlePdsReview} statusFilter="for-revision" pdsList={forRevisionPds} />
       ) : (
         <div className="bg-white rounded-xl shadow-lg p-6">
           <>

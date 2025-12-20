@@ -1,12 +1,10 @@
-# DICT Project Documentation
+# DICT HRMIS Documentation
 
 ## 📖 Overview
 
-Welcome to the DICT (Department of Information and Communications Technology) Project documentation. This is a comprehensive Human Resources Management System designed to streamline HR operations including attendance tracking, leave management, employee data management, and more.
+Welcome to the DICT (Department of Information and Communications Technology) Human Resources Management Information System (HRMIS) documentation. This system is designed to streamline HR operations including employee management, leave management, attendance tracking, and more.
 
 ## 🏗️ System Architecture
-
-This application is built using a modern full-stack architecture:
 
 ### Frontend
 - **Framework**: React 19 with Vite
@@ -15,102 +13,98 @@ This application is built using a modern full-stack architecture:
 - **Styling**: Tailwind CSS
 - **Routing**: React Router DOM v7
 - **API Communication**: Axios
-- **Charts**: Recharts
-- **PDF Generation**: jsPDF
+- **Real-time**: Socket.IO Client
 
 ### Backend
 - **Framework**: Laravel 12
 - **Authentication**: Laravel Sanctum
-- **Database**: SQLite (development), MySQL/PostgreSQL (production ready)
+- **Database**: SQLite (development), MySQL/PostgreSQL (production)
 - **API**: RESTful API architecture
+- **Real-time**: Socket.IO Server
+
+## 👥 User Roles
+
+The system has three main roles:
+
+1. **Admin** - Full system access with administrative privileges
+2. **HR** - Human Resources management access
+3. **Employee** - Basic employee self-service access
 
 ## 📚 Documentation Structure
 
-### [Setup Guide](./setup/README.md)
-Step-by-step instructions for setting up the development environment and deploying the application.
+### Step 1: Getting Started
+Start here if you're new to the project:
+- **[Documentation Guide](./DOCUMENTATION_GUIDE.md)** - How to use and maintain this documentation
+- **[Setup Guide](./setup/README.md)** - Installation and configuration instructions
 
-- [Prerequisites](./setup/PREREQUISITES.md)
-- [Installation](./setup/INSTALLATION.md)
-- [Configuration](./setup/CONFIGURATION.md)
-- [Deployment](./setup/DEPLOYMENT.md)
+### Step 2: System Setup
+Follow these guides in order:
+1. **[Prerequisites](./setup/PREREQUISITES.md)** - Required software and tools
+2. **[Installation](./setup/INSTALLATION.md)** - Step-by-step installation
+3. **[Configuration](./setup/CONFIGURATION.md)** - Environment and system setup
+4. **[Deployment](./setup/DEPLOYMENT.md)** - Production deployment guide
 
-### [General Documentation](./general/README.md)
-Architecture, coding standards, and best practices.
+### Step 3: Understanding the System
+Learn about the system architecture and features:
+- **[Modules Documentation](./modules/README.md)** - Feature-by-feature documentation
+- **[API Documentation](./api/README.md)** - Complete API reference
 
-- [Architecture Overview](./general/ARCHITECTURE.md)
-- [API Conventions](./general/API_CONVENTIONS.md)
-- [State Management](./general/STATE_MANAGEMENT.md)
-- [Security](./general/SECURITY.md)
-- [Testing Guidelines](./general/TESTING.md)
+### Step 4: Development
+For developers working on the system:
+- **[Architecture](./general/ARCHITECTURE.md)** - System architecture overview
+- **[API Conventions](./general/API_CONVENTIONS.md)** - API design standards
+- **[Security](./general/SECURITY.md)** - Security best practices
 
-### [Modules Documentation](./modules/README.md)
-Detailed documentation for each feature module.
+## 🎯 Core Features
 
-- [Authentication](./modules/AUTHENTICATION.md)
-- [Attendance Management](./modules/ATTENDANCE.md)
-- [Leave Management](./modules/LEAVE_MANAGEMENT.md)
-- [Personal Data Sheet (PDS)](./modules/PDS.md)
-- [User Management](./modules/USER_MANAGEMENT.md)
-- [Dashboard](./modules/DASHBOARD.md)
-- [Master Lists](./modules/MASTER_LISTS.md)
-- [Approval Workflows](./modules/APPROVAL.md)
+### 1. Authentication & User Management
+- User login/logout
+- Account management
+- Role-based access control
+- Password management
+- Account locking
 
-### [Diagrams](./diagram/README.md)
-Visual representations of system architecture and workflows.
+### 2. Personal Data Sheet (PDS)
+- Employee information management
+- Multi-section forms
+- Submission and approval workflow
+- PDF generation
 
-- [Entity Relationship Diagram](./diagram/erd/README.md)
-- [Process Flow Diagrams](./diagram/process-flow/README.md)
-
-## 🎯 Key Features
-
-### 1. **Authentication & Authorization**
-- Secure login/logout with session management
-- Role-based access control (Admin, HR, Employee)
-- Password reset and force password change
-- Account locking mechanisms
-
-### 2. **Attendance Management**
-- Daily time-in/time-out recording
-- Digital Time Record (DTR) generation
-- Attendance reports and analytics
-
-### 3. **Leave Management**
+### 3. Leave Management
 - Leave application submission
 - Multi-level approval workflows
 - Leave credits tracking
-- Leave type configuration
-- PDF generation for leave forms
+- Leave type management
 
-### 4. **Personal Data Sheet (PDS)**
-- Comprehensive employee information management
-- Multi-section form (Personal, Family, Education, Work Experience, etc.)
-- PDF export functionality
-- Document management
+### 4. Attendance Management
+- Daily Time Record (DTR) tracking
+- Attendance import
+- Attendance viewing and reports
 
-### 5. **User Management**
-- Employee account creation and management
-- Role and permission assignment
-- Account status management
-- Bulk operations
+### 5. Announcements
+- Create and manage announcements
+- Announcement reactions
+- Archive management
 
-### 6. **Dashboards**
-- Admin dashboard with system analytics
-- HR dashboard for HR operations
-- Employee dashboard for self-service
+### 6. Notifications
+- Real-time notifications
+- Notification management
 
-### 7. **Master Lists**
+### 7. Master Lists
 - Offices management
 - Positions management
-- Employment types
+- Projects management
+- Roles management
 - Leave types
-- Approval names/authorities
-- Project listings
+- Employment types
+- Approval names
+- Special capabilities
 
-### 8. **System Settings**
+### 8. System Administration
 - System maintenance mode
-- Configuration management
-- Activity logging
-- System notifications
+- System version management
+- Admin dashboard
+- HR dashboard
 
 ## 🚀 Quick Start
 
@@ -125,121 +119,25 @@ composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
-php artisan serve
 
-# Frontend setup (in a new terminal)
-cd client
+# Frontend setup
+cd ../client
 npm install
-npm run dev
-```
 
-Visit `http://localhost:5173` for the frontend and `http://localhost:8000` for the API.
-
-## 🔧 Development
-
-### Running Development Servers
-
-```bash
-# Backend (Laravel)
-cd server
+# Run development servers
+cd ../server
 composer run dev
-
-# Frontend (React + Vite)
-cd client
-npm run dev
 ```
 
-### Building for Production
-
-```bash
-# Frontend build
-cd client
-npm run build
-
-# The built files will be in client/dist/
-```
-
-## 📝 API Documentation
-
-The API follows RESTful conventions. Base URL: `http://localhost:8000/api`
-
-### Authentication Endpoints
-- `POST /api/login` - User login
-- `POST /api/logout` - User logout
-- `POST /api/register` - User registration
-- `POST /api/forgot-password` - Password reset request
-
-### Resource Endpoints
-- `/api/attendance` - Attendance management
-- `/api/leave` - Leave management
-- `/api/pds` - Personal Data Sheet
-- `/api/users` - User management
-- `/api/master-lists` - Master data management
-
-For detailed API documentation, see [API Conventions](./general/API_CONVENTIONS.md).
-
-## 🧪 Testing
-
-```bash
-# Backend tests
-cd server
-php artisan test
-
-# Frontend tests (if configured)
-cd client
-npm run test
-```
-
-## 📦 Project Structure
-
-```
-DICT-Project/
-├── client/                 # Frontend React application
-│   ├── src/
-│   │   ├── api/           # API service layer
-│   │   ├── components/    # Reusable components
-│   │   ├── pages/         # Page components
-│   │   ├── stores/        # Zustand state stores
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── routes/        # Route definitions
-│   │   └── utils/         # Utility functions
-│   └── dist/              # Production build
-├── server/                # Backend Laravel application
-│   ├── app/
-│   │   ├── Http/
-│   │   │   ├── Controllers/   # API controllers
-│   │   │   ├── Middleware/    # Custom middleware
-│   │   │   └── Requests/      # Form requests
-│   │   ├── Models/            # Eloquent models
-│   │   ├── Repositories/      # Repository pattern
-│   │   └── Services/          # Business logic services
-│   ├── database/
-│   │   ├── migrations/        # Database migrations
-│   │   └── seeders/           # Database seeders
-│   └── routes/                # API routes
-└── docs/                  # Documentation
-```
-
-## 🤝 Contributing
-
-Please read the [Documentation Guide](./DOCUMENTATION_GUIDE.md) for information on maintaining and updating documentation.
+Visit `http://localhost:5173` for the frontend.
 
 ## 📞 Support
 
-For issues, questions, or contributions:
-1. Check the relevant module documentation
+For questions or issues:
+1. Check the relevant documentation section
 2. Review the troubleshooting guides
 3. Contact the development team
 
-## 📄 License
-
-[Specify License Here]
-
-## 🔄 Version History
-
-- **v1.0.0** - Initial release with core HR management features
-
 ---
 
-*Last Updated: December 2025*
-
+*Last Updated: January 2025*

@@ -181,6 +181,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Get user's notifications
+     */
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Get user's unread notifications
+     */
+    public function unreadNotifications()
+    {
+        return $this->hasMany(Notification::class)->where('is_read', false);
+    }
+
+    /**
      * Get the full name attribute (combines first_name, middle_initial, last_name)
      * Falls back to 'name' field if name parts are not available
      */

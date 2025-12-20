@@ -39,21 +39,43 @@ class ApprovalNameController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:approval_names,name',
-            'user_id' => 'required|integer|exists:users,id',
-            'type' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-            'sort_order' => 'nullable|integer',
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255|unique:approval_names,name',
+                'user_id' => 'required|integer|exists:users,id',
+                'type' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'is_active' => 'nullable|boolean',
+                'sort_order' => 'nullable|integer',
+            ]);
 
-        $approvalName = ApprovalName::create($validated);
+            // Ensure boolean values are properly cast
+            if (isset($validated['is_active'])) {
+                $validated['is_active'] = filter_var($validated['is_active'], FILTER_VALIDATE_BOOLEAN);
+            } else {
+                $validated['is_active'] = true; // Default to active
+            }
 
-        return response()->json([
-            'message' => 'Approval name created successfully',
-            'approval_name' => $approvalName
-        ], 201);
+            $approvalName = ApprovalName::create($validated);
+
+            return response()->json([
+                'message' => 'Approval name created successfully',
+                'approval_name' => $approvalName
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error creating approval name: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'message' => 'Failed to create approval name',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -61,23 +83,43 @@ class ApprovalNameController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $approvalName = ApprovalName::findOrFail($id);
+        try {
+            $approvalName = ApprovalName::findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:approval_names,name,' . $id,
-            'user_id' => 'nullable|integer|exists:users,id',
-            'type' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-            'sort_order' => 'nullable|integer',
-        ]);
+            $validated = $request->validate([
+                'name' => 'required|string|max:255|unique:approval_names,name,' . $id,
+                'user_id' => 'nullable|integer|exists:users,id',
+                'type' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'is_active' => 'nullable|boolean',
+                'sort_order' => 'nullable|integer',
+            ]);
 
-        $approvalName->update($validated);
+            // Ensure boolean values are properly cast
+            if (isset($validated['is_active'])) {
+                $validated['is_active'] = filter_var($validated['is_active'], FILTER_VALIDATE_BOOLEAN);
+            }
 
-        return response()->json([
-            'message' => 'Approval name updated successfully',
-            'approval_name' => $approvalName
-        ]);
+            $approvalName->update($validated);
+
+            return response()->json([
+                'message' => 'Approval name updated successfully',
+                'approval_name' => $approvalName->fresh()
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error updating approval name: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'message' => 'Failed to update approval name',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**

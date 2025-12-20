@@ -885,7 +885,7 @@ function ViewAttendanceTable() {
                 onChange={(e) => setDtrFilters(prev => ({ ...prev, year: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                {YEARS.map(y => <option key={`dtr-year-${y}`} value={y}>{y}</option>)}
               </select>
             </div>
             <div>
@@ -897,7 +897,7 @@ function ViewAttendanceTable() {
                 onChange={(e) => setDtrFilters(prev => ({ ...prev, month: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {MONTHS.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}
+                {MONTHS.map(m => <option key={`dtr-month-${m.value}`} value={m.value}>{m.name}</option>)}
               </select>
             </div>
             <div>
@@ -909,7 +909,7 @@ function ViewAttendanceTable() {
                 onChange={(e) => setDtrFilters(prev => ({ ...prev, period: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {PERIODS.map(p => <option key={p.value} value={p.value}>{p.name}</option>)}
+                {PERIODS.map(p => <option key={`dtr-period-${p.value}`} value={p.value}>{p.name}</option>)}
               </select>
             </div>
             <div className="flex items-end gap-2">
@@ -1413,7 +1413,7 @@ function BulkDTROperationsModal({ users, onClose, onGenerate }) {
                 onChange={(e) => setBulkDtrFilters(prev => ({ ...prev, year: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                {YEARS.map(y => <option key={`bulk-year-${y}`} value={y}>{y}</option>)}
               </select>
             </div>
             <div>
@@ -1423,7 +1423,7 @@ function BulkDTROperationsModal({ users, onClose, onGenerate }) {
                 onChange={(e) => setBulkDtrFilters(prev => ({ ...prev, month: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                {MONTHS.map(m => <option key={m.value} value={m.value}>{m.name}</option>)}
+                {MONTHS.map(m => <option key={`bulk-month-${m.value}`} value={m.value}>{m.name}</option>)}
               </select>
             </div>
             <div>
@@ -1433,7 +1433,7 @@ function BulkDTROperationsModal({ users, onClose, onGenerate }) {
                 onChange={(e) => setBulkDtrFilters(prev => ({ ...prev, period: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                {PERIODS.map(p => <option key={p.value} value={p.value}>{p.name}</option>)}
+                {PERIODS.map(p => <option key={`bulk-period-${p.value}`} value={p.value}>{p.name}</option>)}
               </select>
             </div>
           </div>

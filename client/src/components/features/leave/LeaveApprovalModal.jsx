@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import SignatureModal from '../profile/SignatureModal';
 import { useNotification } from '../../../hooks/useNotification';
@@ -10,7 +11,7 @@ function LeaveApprovalModal({ isOpen, onClose, onApprove, user: userProp, leave 
   const { refreshUser, user: authUser } = useAuth();
   // Use authUser if available, otherwise fall back to userProp
   const user = authUser || userProp;
-  const [signature, setSignature] = useState(user?.signature || '');
+  const [signature, setSignature] = useState('');
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [approvalRemarks, setApprovalRemarks] = useState('');
   const [savingSignature, setSavingSignature] = useState(false);
@@ -23,6 +24,11 @@ function LeaveApprovalModal({ isOpen, onClose, onApprove, user: userProp, leave 
       setApprovalRemarks('');
     }
   }, [isOpen, authUser, userProp]);
+
+  // Don't render if leave is not provided
+  if (!isOpen || !leave) {
+    return null;
+  }
 
   const handleApprove = () => {
     if (!signature) {
@@ -38,11 +44,19 @@ function LeaveApprovalModal({ isOpen, onClose, onApprove, user: userProp, leave 
     });
   };
 
-  if (!isOpen) return null;
+  // Safely get employee name
+  const getEmployeeName = () => {
+    if (!leave?.user) return 'Unknown';
+    const { first_name, middle_initial, last_name, name } = leave.user;
+    if (first_name || last_name) {
+      return `${first_name || ''} ${middle_initial || ''} ${last_name || ''}`.trim();
+    }
+    return name || 'Unknown';
+  };
 
-  return (
+  const modalContent = (
     <>
-      <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+      <div className="fixed top-0 left-0 right-0 bottom-0 z-[9999] h-screen w-screen overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4" style={{ position: 'fixed', margin: 0 }}>
         <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
@@ -58,13 +72,13 @@ function LeaveApprovalModal({ isOpen, onClose, onApprove, user: userProp, leave 
             {/* Leave Application Info */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600 mb-2">
-                <strong>Employee:</strong> {leave?.user?.first_name} {leave?.user?.middle_initial} {leave?.user?.last_name}
+                <strong>Employee:</strong> {getEmployeeName()}
               </p>
               <p className="text-sm text-gray-600 mb-2">
-                <strong>Leave Type:</strong> {leave?.leave_type?.name} ({leave?.working_days} days)
+                <strong>Leave Type:</strong> {leave?.leave_type?.name || 'N/A'} ({leave?.working_days || 0} days)
               </p>
               <p className="text-sm text-gray-600">
-                <strong>Date Range:</strong> {new Date(leave?.start_date).toLocaleDateString()} to {new Date(leave?.end_date).toLocaleDateString()}
+                <strong>Date Range:</strong> {leave?.start_date ? new Date(leave.start_date).toLocaleDateString() : 'N/A'} to {leave?.end_date ? new Date(leave.end_date).toLocaleDateString() : 'N/A'}
               </p>
             </div>
 
@@ -173,6 +187,8 @@ function LeaveApprovalModal({ isOpen, onClose, onApprove, user: userProp, leave 
       />
     </>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 export default LeaveApprovalModal;

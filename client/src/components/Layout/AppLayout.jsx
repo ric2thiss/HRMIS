@@ -53,10 +53,10 @@ function AppLayout({ user, logout, loading, title, children, showBackButton = tr
         <main className="flex flex-1 overflow-hidden">
           <Sidebar user={user} role={role} />
           <section className={`flex-1 p-6 overflow-y-auto ${isAdminDashboard || isHrDashboard ? '' : 'space-y-6'}`}>
-            {isDashboard && (
+            {(isDashboard || isHrDashboard || isAdminDashboard) && (
               <>
                 <AnnouncementBanner />
-                <Hero user={user} />
+                {isDashboard && <Hero user={user} />}
               </>
             )}
             {/* <Hero user={user} /> */}

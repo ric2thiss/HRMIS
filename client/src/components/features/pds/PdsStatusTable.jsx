@@ -385,11 +385,10 @@ function PdsStatusTable({ pds, onUpdate, onRefresh, isHR = false, isAdmin = fals
                                         }
                                     />
                                     
-                                    {/* Submit button - show for employees and admin users (HR cannot submit) */}
+                                    {/* Submit button - show for employees, admin, and HR users */}
                                     {/* Hide button when status is approved - user must update first to change status to draft */}
                                     {/* Hide button when status is pending - already submitted */}
-                                    {!isHR && // HR cannot submit, but Admin can (like employees)
-                                     pds.status !== 'approved' &&
+                                    {pds.status !== 'approved' &&
                                      pds.status !== 'pending' &&
                                      (pds.status === 'draft' || 
                                       pds.status === 'declined' || 
@@ -412,8 +411,7 @@ function PdsStatusTable({ pds, onUpdate, onRefresh, isHR = false, isAdmin = fals
                                         />
                                     )}
                                     {/* Show message if PDS exists but hasn't been saved yet (only for non-approved, non-pending statuses) */}
-                                    {!isHR && // HR cannot submit, but Admin can (like employees)
-                                     pds.status !== 'approved' &&
+                                    {pds.status !== 'approved' &&
                                      pds.status !== 'pending' &&
                                      (pds.status === 'draft' || 
                                       pds.status === 'declined' || 

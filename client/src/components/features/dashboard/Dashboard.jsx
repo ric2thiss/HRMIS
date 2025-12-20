@@ -1,244 +1,263 @@
 // Dashboard.js
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     PieChart, Pie, Cell, Tooltip,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
     LineChart, Line, ResponsiveContainer
 } from 'recharts';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip as ChartTooltip,
+    Legend as ChartLegend,
+    Filler
+} from 'chart.js';
+import { Line as ChartLine } from 'react-chartjs-2';
 import StatCard from './StatCard';
+
+// Register Chart.js components
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    ChartTooltip,
+    ChartLegend,
+    Filler
+);
 import ChartCard from './ChartCard';
 import BackButton from '../../ui/BackButton/BackButton';
 import LoadingSpinner from '../../Loading/LoadingSpinner';
-import api from '../../../api/axios';
-import { getAllPds, getEmployeesWithoutPds } from '../../../api/pds/pds';
-import { getDailyLoginActivity, getPositionsByOffice } from '../../../api/dashboard/dashboard';
-import { getModuleUsage } from '../../../api/modules/moduleAccess';
-import { getSystemVersion } from '../../../api/system/maintenance-mode';
+import {
+  useEmployeesCount,
+  usePdsChartData,
+  useDailyLoginActivity,
+  useModuleUsage,
+  usePositionsByOffice,
+  useSystemVersion,
+  useInvalidateDashboardQueries,
+  useAttendanceStatistics
+} from '../../../hooks/useDashboardData';
 
 // --- Main Dashboard Component ---
 
 const Dashboard = () => {
-
-    const [employeesNumber, setEmployeesNumber] = useState(0);
-    const [plantillaNumber, setPlantillaNumber] = useState(0);
-    const [joNumber, setJoNumber] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [plantillaLoading, setPlantillaLoading] = useState(true);
-    const [joLoading, setJoLoading] = useState(true);
+    // Use React Query hooks for data fetching with caching
+    const { data: employeesData, isLoading: employeesLoading } = useEmployeesCount();
+    const { data: pdsChartData = [], isLoading: pdsChartLoading } = usePdsChartData();
+    const { data: loginData = [], isLoading: loginLoading } = useDailyLoginActivity();
+    const { data: moduleData = [], isLoading: moduleLoading } = useModuleUsage();
+    const { data: officesData = [], isLoading: officesLoading } = usePositionsByOffice();
+    const { data: systemVersion = '1.0.0', isLoading: systemVersionLoading } = useSystemVersion();
+    const { invalidateDashboardQueries } = useInvalidateDashboardQueries();
     
-    // PDS Chart Data
-    const [pdsChartData, setPdsChartData] = useState([
-        { name: 'Draft', value: 0, color: '#9C27B0' },      // Purple
-        { name: 'Approved', value: 0, color: '#FDD835' },    // Yellow
-        { name: 'For Approval', value: 0, color: '#2196F3' }, // Blue
-        { name: 'For Revision', value: 0, color: '#FF7043' }, // Orange
-        { name: 'Declined', value: 0, color: '#E53935' },    // Red
-        { name: 'No PDS', value: 0, color: '#4CAF50' },     // Green
-    ]);
-    const [pdsChartLoading, setPdsChartLoading] = useState(true);
+    // Get current month for attendance statistics
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const { data: attendanceStats, isLoading: attendanceStatsLoading } = useAttendanceStatistics(currentMonthStart, currentMonthEnd);
     
-    // Daily Login Activity Data
-    const [loginData, setLoginData] = useState([]);
-    const [loginLoading, setLoginLoading] = useState(true);
+    // Prepare Chart.js data
+    const attendanceChartData = React.useMemo(() => {
+        if (!attendanceStats || !attendanceStats.statistics || attendanceStats.statistics.length === 0) {
+            return null;
+        }
+        
+        const labels = attendanceStats.statistics.map(item => {
+            const date = new Date(item.date);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
+        
+        return {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'On Time',
+                    data: attendanceStats.statistics.map(item => item.on_time),
+                    borderColor: '#10B981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointHoverBorderWidth: 2,
+                    pointHoverBorderColor: '#10B981',
+                    pointBackgroundColor: '#10B981',
+                    pointBorderColor: '#ffffff',
+                },
+                {
+                    label: 'Late',
+                    data: attendanceStats.statistics.map(item => item.late),
+                    borderColor: '#F59E0B',
+                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointHoverBorderWidth: 2,
+                    pointHoverBorderColor: '#F59E0B',
+                    pointBackgroundColor: '#F59E0B',
+                    pointBorderColor: '#ffffff',
+                },
+                {
+                    label: 'Overtime',
+                    data: attendanceStats.statistics.map(item => item.overtime),
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointHoverBorderWidth: 2,
+                    pointHoverBorderColor: '#3B82F6',
+                    pointBackgroundColor: '#3B82F6',
+                    pointBorderColor: '#ffffff',
+                },
+            ],
+        };
+    }, [attendanceStats]);
     
-    // Module Usage Data
-    const [moduleData, setModuleData] = useState([]);
-    const [moduleLoading, setModuleLoading] = useState(true);
+    const attendanceChartOptions = React.useMemo(() => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: {
+                    usePointStyle: true,
+                    padding: 15,
+                    font: {
+                        size: 12,
+                        weight: '500',
+                        family: "'Inter', 'Segoe UI', sans-serif",
+                    },
+                    color: '#374151',
+                },
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false,
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: {
+                    size: 13,
+                    weight: '600',
+                },
+                bodyFont: {
+                    size: 12,
+                },
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1,
+                cornerRadius: 8,
+                displayColors: true,
+                callbacks: {
+                    title: function(context) {
+                        if (!attendanceStats || !attendanceStats.statistics) return '';
+                        const index = context[0].dataIndex;
+                        const date = new Date(attendanceStats.statistics[index].date);
+                        return `📅 ${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`;
+                    },
+                    label: function(context) {
+                        return `${context.dataset.label}: ${context.parsed.y} ${context.parsed.y === 1 ? 'employee' : 'employees'}`;
+                    },
+                },
+            },
+        },
+        scales: {
+            x: {
+                display: true,
+                grid: {
+                    display: true,
+                    drawBorder: false,
+                    color: 'rgba(0, 0, 0, 0.05)',
+                },
+                ticks: {
+                    font: {
+                        size: 11,
+                        family: "'Inter', 'Segoe UI', sans-serif",
+                    },
+                    color: '#6B7280',
+                    maxRotation: 45,
+                    minRotation: 45,
+                },
+            },
+            y: {
+                display: true,
+                beginAtZero: true,
+                grid: {
+                    display: true,
+                    drawBorder: false,
+                    color: 'rgba(0, 0, 0, 0.05)',
+                },
+                ticks: {
+                    font: {
+                        size: 11,
+                        family: "'Inter', 'Segoe UI', sans-serif",
+                    },
+                    color: '#6B7280',
+                    stepSize: 1,
+                },
+            },
+        },
+        interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false,
+        },
+        elements: {
+            point: {
+                hoverRadius: 6,
+                hoverBorderWidth: 2,
+            },
+            line: {
+                tension: 0.4,
+                borderWidth: 2.5,
+            },
+        },
+    }), [attendanceStats]);
     
-    // Positions by Office Data
-    const [officesData, setOfficesData] = useState([]);
-    const [officesLoading, setOfficesLoading] = useState(true);
-    
-    // System Version
-    const [systemVersion, setSystemVersion] = useState('1.0.0');
+    // Extract employee counts
+    const employeesNumber = employeesData?.total_employees || 0;
+    const plantillaNumber = employeesData?.total_plantilla || 0;
+    const joNumber = employeesData?.total_jo || 0;
+    const loading = employeesLoading;
+    const plantillaLoading = employeesLoading;
+    const joLoading = employeesLoading;
     
     // Module chart container ref for width calculation
     const moduleChartRef = useRef(null);
     const [moduleChartWidth, setModuleChartWidth] = useState(800);
     
-    const fetchPdsChartData = async () => {
-        try {
-            setPdsChartLoading(true);
-            
-            // Get CSRF cookie first
-            await api.get("/sanctum/csrf-cookie", { withCredentials: true });
-            
-            // Fetch all PDS
-            const pdsResponse = await getAllPds();
-            const allPds = pdsResponse.pds || [];
-            
-            // Count PDS by status
-            const draftCount = allPds.filter(pds => !pds.status || pds.status === 'draft').length;
-            const approvedCount = allPds.filter(pds => pds.status === 'approved').length;
-            const forApprovalCount = allPds.filter(pds => pds.status === 'pending').length;
-            const forRevisionCount = allPds.filter(pds => pds.status === 'for-revision').length;
-            const declinedCount = allPds.filter(pds => pds.status === 'declined').length;
-            
-            // Fetch employees without PDS
-            let noPdsCount = 0;
-            try {
-                const noPdsResponse = await getEmployeesWithoutPds();
-                noPdsCount = (noPdsResponse.employees || []).length;
-            } catch (err) {
-                console.error('Error fetching employees without PDS:', err);
-            }
-            
-            // Update chart data
-            setPdsChartData([
-                { name: 'Draft', value: draftCount, color: '#9C27B0' },
-                { name: 'Approved', value: approvedCount, color: '#FDD835' },
-                { name: 'For Approval', value: forApprovalCount, color: '#2196F3' },
-                { name: 'For Revision', value: forRevisionCount, color: '#FF7043' },
-                { name: 'Declined', value: declinedCount, color: '#E53935' },
-                { name: 'No PDS', value: noPdsCount, color: '#4CAF50' },
-            ]);
-        } catch (error) {
-            console.error('Error fetching PDS chart data:', error);
-            // Keep default values (0) on error
-        } finally {
-            setPdsChartLoading(false);
-        }
-    };
-    
-    const fetchDailyLoginActivity = async () => {
-        try {
-            setLoginLoading(true);
-            
-            // Get CSRF cookie first
-            await api.get("/sanctum/csrf-cookie", { withCredentials: true });
-            
-            // Fetch daily login activity for current month
-            const response = await getDailyLoginActivity();
-            const dailyLogins = response.daily_logins || [];
-            
-            setLoginData(dailyLogins);
-        } catch (error) {
-            console.error('Error fetching daily login activity:', error);
-            // Keep empty array on error
-            setLoginData([]);
-        } finally {
-            setLoginLoading(false);
-        }
-    };
-    
-    const fetchModuleUsage = async () => {
-        try {
-            setModuleLoading(true);
-            
-            // Get CSRF cookie first
-            await api.get("/sanctum/csrf-cookie", { withCredentials: true });
-            
-            // Fetch module usage for current month
-            const response = await getModuleUsage();
-            const modules = response.modules || [];
-            
-            setModuleData(modules);
-        } catch (error) {
-            console.error('Error fetching module usage:', error);
-            // Keep empty array on error
-            setModuleData([]);
-        } finally {
-            setModuleLoading(false);
-        }
-    };
-    
-    const fetchPositionsByOffice = async () => {
-        try {
-            setOfficesLoading(true);
-            
-            // Get CSRF cookie first
-            await api.get("/sanctum/csrf-cookie", { withCredentials: true });
-            
-            // Fetch positions by office
-            const response = await getPositionsByOffice();
-            const offices = response.offices || [];
-            
-            // Add display label (use code if available, otherwise use name or "N/A")
-            const officesWithDisplayLabel = offices.map(office => ({
-                ...office,
-                displayLabel: office.office_code || office.office || 'N/A'
-            }));
-            
-            setOfficesData(officesWithDisplayLabel);
-        } catch (error) {
-            console.error('Error fetching positions by office:', error);
-            // Keep empty array on error
-            setOfficesData([]);
-        } finally {
-            setOfficesLoading(false);
-        }
-    };
-
-    const fetchSystemVersion = async () => {
-        try {
-            const version = await getSystemVersion();
-            setSystemVersion(version);
-        } catch (error) {
-            console.error('Error fetching system version:', error);
-            // Keep default version on error
-            setSystemVersion('1.0.0');
-        }
-    };
-
+    // Listen for real-time updates via WebSocket events
     useEffect(() => {
-        const fetchEmployees = async () => {
-            try {
-                setLoading(true);
-                setPlantillaLoading(true);
-                setJoLoading(true);
-                // Get CSRF cookie first
-                await api.get("/sanctum/csrf-cookie", { withCredentials: true });
-                
-                // Fetch employees count, plantilla count, and JO count
-                const response = await api.get("/api/employees", { withCredentials: true });
-                
-                // Extract data from response
-                if (response.data) {
-                    if (response.data.total_employees !== undefined) {
-                        setEmployeesNumber(response.data.total_employees);
-                    } else {
-                        console.warn('total_employees not found in response:', response.data);
-                        setEmployeesNumber(0);
-                    }
-                    
-                    if (response.data.total_plantilla !== undefined) {
-                        setPlantillaNumber(response.data.total_plantilla);
-                    } else {
-                        console.warn('total_plantilla not found in response:', response.data);
-                        setPlantillaNumber(0);
-                    }
-                    
-                    if (response.data.total_jo !== undefined) {
-                        setJoNumber(response.data.total_jo);
-                    } else {
-                        console.warn('total_jo not found in response:', response.data);
-                        setJoNumber(0);
-                    }
-                } else {
-                    console.warn('Unexpected response format:', response.data);
-                    setEmployeesNumber(0);
-                    setPlantillaNumber(0);
-                    setJoNumber(0);
-                }
-            } catch (error) {
-                console.error('Error fetching employees count:', error);
-                setEmployeesNumber(0);
-                setPlantillaNumber(0);
-                setJoNumber(0);
-            } finally {
-                setLoading(false);
-                setPlantillaLoading(false);
-                setJoLoading(false);
-            }
+        const handlePdsUpdate = (event) => {
+            console.log('Dashboard: PDS update received, invalidating dashboard queries');
+            // Invalidate PDS chart data when PDS is updated
+            invalidateDashboardQueries();
         };
 
-        fetchEmployees();
-        fetchPdsChartData();
-        fetchDailyLoginActivity();
-        fetchModuleUsage();
-        fetchPositionsByOffice();
-        fetchSystemVersion();
-    }, []);
+        const handleEmployeeUpdate = (event) => {
+            console.log('Dashboard: Employee update received, invalidating dashboard queries');
+            // Invalidate employee count when employees are updated
+            invalidateDashboardQueries();
+        };
+
+        window.addEventListener('pds-updated', handlePdsUpdate);
+        window.addEventListener('employee-updated', handleEmployeeUpdate);
+
+        return () => {
+            window.removeEventListener('pds-updated', handlePdsUpdate);
+            window.removeEventListener('employee-updated', handleEmployeeUpdate);
+        };
+    }, [invalidateDashboardQueries]);
     
     // Separate effect for module chart width calculation
     useEffect(() => {
@@ -481,7 +500,7 @@ const Dashboard = () => {
                             <p>No office data available</p>
                         </div>
                     ) : (
-                        <div className="w-full overflow-x-auto">
+                        <div className="w-full overflow-x-auto flex-1 flex items-end">
                             <div style={{ minWidth: '550px', width: '100%' }}>
                                 <ResponsiveContainer width="100%" height={Math.max(300, officesData.length * 50)}>
                                     <BarChart 
@@ -519,6 +538,43 @@ const Dashboard = () => {
                                         />
                                     </BarChart>
                                 </ResponsiveContainer>
+                            </div>
+                        </div>
+                    )}
+                </ChartCard>
+            </div>
+
+            {/* Attendance Monitoring Chart - Full Width */}
+            <div className="mt-4 sm:mt-5">
+                <ChartCard title="ATTENDANCE MONITORING (THIS MONTH)">
+                    {attendanceStatsLoading ? (
+                        <div className="flex items-center justify-center h-[250px]">
+                            <LoadingSpinner size="md" inline={false} />
+                        </div>
+                    ) : !attendanceChartData ? (
+                        <div className="flex items-center justify-center h-[250px] text-gray-500">
+                            <p>No attendance data available for this month</p>
+                        </div>
+                    ) : (
+                        <div className="w-full bg-gradient-to-br from-gray-50 to-white rounded-lg p-4" style={{ height: '400px' }}>
+                            <ChartLine data={attendanceChartData} options={attendanceChartOptions} />
+                        </div>
+                    )}
+                    {attendanceStats && attendanceStats.totals && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                            <div className="grid grid-cols-3 gap-4 text-center">
+                                <div>
+                                    <p className="text-xs text-gray-500">Total On Time</p>
+                                    <p className="text-lg font-bold text-green-600">{attendanceStats.totals.on_time || 0}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Total Late</p>
+                                    <p className="text-lg font-bold text-orange-600">{attendanceStats.totals.late || 0}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Total Overtime</p>
+                                    <p className="text-lg font-bold text-blue-600">{attendanceStats.totals.overtime || 0}</p>
+                                </div>
                             </div>
                         </div>
                     )}

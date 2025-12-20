@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate, useLocation  } from 'react-router-dom'
 
 import Logo from '../../asset/DICT logo.svg'
+import NotificationDropdown from './NotificationDropdown';
 import '../../styles/drop-down.css';
 
 function Header({ user, logout }) {
@@ -37,25 +38,7 @@ function Header({ user, logout }) {
           // Logged In: Notifications and Profile Dropdowns
           <>
             {/* Notification Dropdown */}
-            <details className="relative">
-              <summary className="p-2 rounded-full hover:bg-gray-100 focus:outline-none cursor-pointer relative">
-                <svg className="w-6 h-6 text-gray-600 hover:text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-2.81A3 3 0 0018 10V6a2 2 0 00-2-2H8a2 2 0 00-2 2v4c0 .72.235 1.406.67 1.984L4 17h5m6 0a3 3 0 11-6 0m6 0H9"></path></svg>
-                <span className="absolute top-1 right-1 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500"></span>
-              </summary>
-
-              <div className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-xl z-50 overflow-hidden">
-                <div className="px-4 py-3 border-b text-sm font-semibold text-gray-800">Notifications (2 New)</div>
-                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b">
-                  <p className="font-medium">Leave approved by Manager.</p>
-                  <p className="text-xs text-gray-500">5 minutes ago</p>
-                </a>
-                <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b">
-                  <p className="font-medium">New DTR available for review.</p>
-                  <p className="text-xs text-gray-500">1 hour ago</p>
-                </a>
-                <a href="#" className="block text-center py-2 text-xs font-medium text-blue-600 hover:bg-gray-50">View All</a>
-              </div>
-            </details>
+            <NotificationDropdown />
 
             {/* Vertical Separator */}
             <div className="h-6 w-px bg-gray-300"></div>

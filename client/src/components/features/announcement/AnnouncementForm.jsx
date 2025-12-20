@@ -1,25 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { createAnnouncement, updateAnnouncement } from '../../../api/announcement/announcement';
 import { useNotificationStore } from '../../../stores/notificationStore';
+import { useMasterListsStore } from '../../../stores/masterListsStore';
 import LoadingSpinner from '../../Loading/LoadingSpinner';
 import { getImageUrl } from '../../../utils/imageUtils';
+import api from '../../../api/axios';
 
 function AnnouncementForm({ announcement, onSuccess, onCancel }) {
   const showSuccess = useNotificationStore((state) => state.showSuccess);
   const showError = useNotificationStore((state) => state.showError);
+  const { getMasterLists, masterLists } = useMasterListsStore();
   const [loading, setLoading] = useState(false);
+  const [loadingRecipients, setLoadingRecipients] = useState(true);
+  const [users, setUsers] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     image: null,
     scheduled_at: '',
     duration_days: 7,
+    recipients: [],
   });
   const [imagePreview, setImagePreview] = useState(null);
   const [removeImage, setRemoveImage] = useState(false);
+  const [recipientTab, setRecipientTab] = useState('user'); // 'user', 'office', 'position'
+
+  // Load users and master lists
+  useEffect(() => {
+    const loadRecipients = async () => {
+      try {
+        setLoadingRecipients(true);
+        await api.get('/sanctum/csrf-cookie');
+        const [usersRes] = await Promise.all([
+          api.get('/api/users', { withCredentials: true }),
+          getMasterLists(),
+        ]);
+        setUsers(usersRes.data.users || []);
+      } catch (error) {
+        console.error('Error loading recipients:', error);
+        showError('Failed to load recipient options');
+      } finally {
+        setLoadingRecipients(false);
+      }
+    };
+    loadRecipients();
+  }, [getMasterLists, showError]);
 
   useEffect(() => {
     if (announcement) {
+      // Load recipients from announcement
+      const recipients = (announcement.recipients || []).map(r => ({
+        type: r.recipient_type,
+        id: r.recipient_id || null, // Handle 'all' type which has null id
+      }));
+      
       setFormData({
         title: announcement.title || '',
         content: announcement.content || '',
@@ -28,6 +62,7 @@ function AnnouncementForm({ announcement, onSuccess, onCancel }) {
           ? new Date(announcement.scheduled_at).toISOString().slice(0, 16)
           : '',
         duration_days: announcement.duration_days || 7,
+        recipients: recipients,
       });
       setRemoveImage(false);
       if (announcement.image) {
@@ -45,6 +80,7 @@ function AnnouncementForm({ announcement, onSuccess, onCancel }) {
         image: null,
         scheduled_at: '',
         duration_days: 7,
+        recipients: [],
       });
       setImagePreview(null);
       setRemoveImage(false);
@@ -102,6 +138,52 @@ function AnnouncementForm({ announcement, onSuccess, onCancel }) {
     }
   };
 
+  const handleRecipientToggle = (type, id) => {
+    // Don't allow individual selections if "All" is selected
+    if (isAllSelected()) {
+      return;
+    }
+    
+    setFormData(prev => {
+      const recipients = [...prev.recipients];
+      const index = recipients.findIndex(r => r.type === type && r.id === id);
+      
+      if (index >= 0) {
+        // Remove recipient
+        recipients.splice(index, 1);
+      } else {
+        // Add recipient
+        recipients.push({ type, id });
+      }
+      
+      return { ...prev, recipients };
+    });
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      // Select "All" - clear other selections
+      setFormData(prev => ({
+        ...prev,
+        recipients: [{ type: 'all', id: null }]
+      }));
+    } else {
+      // Deselect "All" - clear recipients
+      setFormData(prev => ({
+        ...prev,
+        recipients: []
+      }));
+    }
+  };
+
+  const isRecipientSelected = (type, id) => {
+    return formData.recipients.some(r => r.type === type && r.id === id);
+  };
+
+  const isAllSelected = () => {
+    return formData.recipients.some(r => r.type === 'all');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -117,6 +199,11 @@ function AnnouncementForm({ announcement, onSuccess, onCancel }) {
 
     if (!formData.scheduled_at) {
       showError('Scheduled date and time is required');
+      return;
+    }
+
+    if (!formData.recipients || formData.recipients.length === 0) {
+      showError('Please select at least one recipient or select "All Employees"');
       return;
     }
 
@@ -263,6 +350,167 @@ function AnnouncementForm({ announcement, onSuccess, onCancel }) {
           />
           <p className="mt-1 text-sm text-gray-500">How many days to display the announcement</p>
         </div>
+      </div>
+
+      {/* Recipients Selection */}
+      <div className="border border-gray-300 rounded-lg p-4">
+        <label className="block text-sm font-medium text-gray-700 mb-3">
+          Recipients <span className="text-red-500">*</span>
+          <span className="text-xs font-normal text-gray-500 ml-2">
+            Select who should see this announcement
+          </span>
+        </label>
+        
+        {loadingRecipients ? (
+          <div className="text-center py-4">
+            <LoadingSpinner size="sm" inline={true} />
+            <span className="ml-2 text-sm text-gray-500">Loading recipients...</span>
+          </div>
+        ) : (
+          <>
+            {/* Select All Option */}
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <label className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected()}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-semibold text-gray-700">All Employees</span>
+                <span className="text-xs text-gray-500">(Send to everyone)</span>
+              </label>
+            </div>
+
+            {/* Tabs */}
+            <div className={`flex gap-2 border-b border-gray-200 mb-4 ${isAllSelected() ? 'opacity-50 pointer-events-none' : ''}`}>
+              <button
+                type="button"
+                onClick={() => setRecipientTab('user')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  recipientTab === 'user'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Employees ({formData.recipients.filter(r => r.type === 'user').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecipientTab('office')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  recipientTab === 'office'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Offices ({formData.recipients.filter(r => r.type === 'office').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecipientTab('position')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  recipientTab === 'position'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Positions ({formData.recipients.filter(r => r.type === 'position').length})
+              </button>
+            </div>
+
+            {/* Recipient Lists */}
+            <div className={`max-h-64 overflow-y-auto ${isAllSelected() ? 'opacity-50 pointer-events-none' : ''}`}>
+              {recipientTab === 'user' && (
+                <div className="space-y-2">
+                  {users.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">No employees available</p>
+                  ) : (
+                    users.map((user) => {
+                      const name = user.name || `${user.first_name || ''} ${user.middle_initial || ''} ${user.last_name || ''}`.trim() || user.email;
+                      return (
+                        <label
+                          key={user.id}
+                          className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isRecipientSelected('user', user.id)}
+                            onChange={() => handleRecipientToggle('user', user.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{name}</span>
+                          {user.position?.title && (
+                            <span className="text-xs text-gray-500">({user.position.title})</span>
+                          )}
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {recipientTab === 'office' && (
+                <div className="space-y-2">
+                  {masterLists.offices?.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">No offices available</p>
+                  ) : (
+                    masterLists.offices?.map((office) => (
+                      <label
+                        key={office.id}
+                        className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isRecipientSelected('office', office.id)}
+                          onChange={() => handleRecipientToggle('office', office.id)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{office.name}</span>
+                        {office.code && (
+                          <span className="text-xs text-gray-500">({office.code})</span>
+                        )}
+                      </label>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {recipientTab === 'position' && (
+                <div className="space-y-2">
+                  {masterLists.positions?.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">No positions available</p>
+                  ) : (
+                    masterLists.positions?.map((position) => (
+                      <label
+                        key={position.id}
+                        className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isRecipientSelected('position', position.id)}
+                          onChange={() => handleRecipientToggle('position', position.id)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{position.title}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {formData.recipients.length === 0 && (
+              <p className="text-sm text-red-500 mt-2">Please select at least one recipient or select "All Employees"</p>
+            )}
+            
+            {isAllSelected() && (
+              <p className="text-sm text-blue-600 mt-2 font-medium">
+                ✓ This announcement will be visible to all employees
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       <div className="flex justify-end gap-4 pt-4 border-t">

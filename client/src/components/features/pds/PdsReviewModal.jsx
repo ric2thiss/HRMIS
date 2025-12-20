@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getPds } from '../../../api/pds/pds';
 import PdsForm from '../../PdsForm/PdsForm';
 import PdsPrintView from '../../PdsForm/PdsPrintView';
@@ -256,8 +257,8 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline, onForRevision, onD
         // Check if PDS status is pending
         const currentStatus = pdsData?.status || pds?.status;
         if (currentStatus !== 'pending') {
-            return (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+            const modalContent = (
+                <div className="fixed top-0 left-0 right-0 bottom-0 z-[9999] h-screen w-screen overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4" style={{ position: 'fixed', margin: 0 }}>
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
                         <div className="p-6">
                             <h3 className="text-xl font-medium text-gray-900 mb-4">Cannot Approve PDS</h3>
@@ -277,10 +278,11 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline, onForRevision, onD
                     </div>
                 </div>
             );
+            return createPortal(modalContent, document.body);
         }
 
-        return (
-            <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+        const modalContent = (
+            <div className="fixed top-0 left-0 right-0 bottom-0 z-[9999] h-screen w-screen overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4" style={{ position: 'fixed', margin: 0 }}>
                 <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
                     <div className="p-6">
                         <h3 className="text-xl font-medium text-gray-900 mb-4">Approve PDS</h3>
@@ -305,14 +307,15 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline, onForRevision, onD
                 </div>
             </div>
         );
+        return createPortal(modalContent, document.body);
     }
 
     if (pds.action === 'for-revision') {
         // Check if PDS status is pending
         const currentStatus = pdsData?.status || pds?.status;
         if (currentStatus !== 'pending') {
-            return (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+            const modalContent = (
+                <div className="fixed top-0 left-0 right-0 bottom-0 z-[9999] h-screen w-screen overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4" style={{ position: 'fixed', margin: 0 }}>
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
                         <div className="p-6">
                             <h3 className="text-xl font-medium text-gray-900 mb-4">Cannot Send for Revision</h3>
@@ -332,10 +335,11 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline, onForRevision, onD
                     </div>
                 </div>
             );
+            return createPortal(modalContent, document.body);
         }
 
-        return (
-            <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+        const modalContent = (
+            <div className="fixed top-0 left-0 right-0 bottom-0 z-[9999] h-screen w-screen overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4" style={{ position: 'fixed', margin: 0 }}>
                 <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
                     <div className="p-6">
                         <h3 className="text-xl font-medium text-gray-900 mb-4">Send PDS for Revision</h3>
@@ -376,14 +380,15 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline, onForRevision, onD
                 </div>
             </div>
         );
+        return createPortal(modalContent, document.body);
     }
 
     if (pds.action === 'decline') {
         // Check if PDS status is pending
         const currentStatus = pdsData?.status || pds?.status;
         if (currentStatus !== 'pending') {
-            return (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+            const modalContent = (
+                <div className="fixed top-0 left-0 right-0 bottom-0 z-[9999] h-screen w-screen overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4" style={{ position: 'fixed', margin: 0 }}>
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
                         <div className="p-6">
                             <h3 className="text-xl font-medium text-gray-900 mb-4">Cannot Decline PDS</h3>
@@ -403,10 +408,11 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline, onForRevision, onD
                     </div>
                 </div>
             );
+            return createPortal(modalContent, document.body);
         }
 
-        return (
-            <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4">
+        const modalContent = (
+            <div className="fixed top-0 left-0 right-0 bottom-0 z-[9999] h-screen w-screen overflow-y-auto bg-gray-600 bg-opacity-50 flex justify-center items-center p-4" style={{ position: 'fixed', margin: 0 }}>
                 <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
                     <div className="p-6">
                         <h3 className="text-xl font-medium text-gray-900 mb-4">Decline PDS</h3>
@@ -447,6 +453,7 @@ function PdsReviewModal({ pds, onClose, onApprove, onDecline, onForRevision, onD
                 </div>
             </div>
         );
+        return createPortal(modalContent, document.body);
     }
 
     // View mode - show PDF in iframe (inline container)

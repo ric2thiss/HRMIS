@@ -7,9 +7,21 @@ This document defines the API conventions used in the DICT Project. Following th
 ## 🌐 Base URL
 
 ```
-Development: http://localhost:8000/api
-Production:  https://yourdomain.com/api
+Development: http://localhost:8000/api/v1
+Production:  https://yourdomain.com/api/v1
 ```
+
+**Note:** API versioning is implemented. Use `/api/v1` for all requests. Legacy routes at `/api` are maintained for backward compatibility but will be deprecated.
+
+## 🔢 API Versioning
+
+The API uses versioning to ensure backward compatibility and smooth transitions:
+
+- **Current Version:** v1
+- **Versioned Routes:** `/api/v1/*`
+- **Legacy Routes:** `/api/*` (backward compatibility, will be deprecated)
+
+All new endpoints should use the versioned path. Rate limiting is applied to all authenticated routes.
 
 ## 📡 RESTful Principles
 

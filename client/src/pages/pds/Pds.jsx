@@ -43,6 +43,21 @@ function Pds() {
     }
   }, [user]);
 
+  // Listen for real-time PDS updates
+  useEffect(() => {
+    const handlePdsUpdate = (event) => {
+      console.log('Pds page: PDS update received:', event.detail);
+      // Reload PDS when updates occur
+      handleRefresh();
+    };
+
+    window.addEventListener('pds-updated', handlePdsUpdate);
+
+    return () => {
+      window.removeEventListener('pds-updated', handlePdsUpdate);
+    };
+  }, []);
+
   const handleRefresh = async () => {
     setLoadingPds(true);
     try {
@@ -77,7 +92,7 @@ function Pds() {
           {isHR && (
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded">
               <p className="text-sm text-blue-700">
-                <strong>Note:</strong> As HR, you can maintain your own PDS for record-keeping. This PDS will remain in draft status and cannot be submitted for approval.
+                <strong>Note:</strong> As HR, you can maintain and submit your own PDS for approval.
               </p>
             </div>
           )}

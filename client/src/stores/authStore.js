@@ -176,6 +176,7 @@ export const useAuthStore = create((set, get) => ({
         const { clearCache: clearManageLeaveCache } = await import('./manageLeaveStore').then(m => m.useManageLeaveStore.getState());
         const { clearCache: clearApprovalNamesCache } = await import('./approvalNamesTableStore').then(m => m.useApprovalNamesTableStore.getState());
         const { clearCache: clearLeaveTypesTableCache } = await import('./leaveTypesTableStore').then(m => m.useLeaveTypesTableStore.getState());
+        const { clearCache: clearEmployeesCache } = await import('./employeesStore').then(m => m.useEmployeesStore.getState());
         
         clearLeaveCreditsCache();
         clearMasterListsCache();
@@ -193,6 +194,7 @@ export const useAuthStore = create((set, get) => ({
         clearApprovalNamesCache();
         clearLeaveTypesTableCache();
         clearManageLeaveCache();
+        clearEmployeesCache();
       } catch (cacheErr) {
         console.error('Error clearing cache on login:', cacheErr);
       }
@@ -272,6 +274,7 @@ export const useAuthStore = create((set, get) => ({
         const { clearCache: clearManageLeaveCache } = await import('./manageLeaveStore').then(m => m.useManageLeaveStore.getState());
         const { clearCache: clearApprovalNamesCache } = await import('./approvalNamesTableStore').then(m => m.useApprovalNamesTableStore.getState());
         const { clearCache: clearLeaveTypesTableCache } = await import('./leaveTypesTableStore').then(m => m.useLeaveTypesTableStore.getState());
+        const { clearCache: clearEmployeesCache } = await import('./employeesStore').then(m => m.useEmployeesStore.getState());
         
         clearLeaveCreditsCache();
         clearMasterListsCache();
@@ -289,6 +292,7 @@ export const useAuthStore = create((set, get) => ({
         clearApprovalNamesCache();
         clearLeaveTypesTableCache();
         clearManageLeaveCache();
+        clearEmployeesCache();
       } catch (cacheErr) {
         console.error('Error clearing cache on logout:', cacheErr);
       }

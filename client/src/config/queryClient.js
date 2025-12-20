@@ -1,23 +1,27 @@
 import { QueryClient } from '@tanstack/react-query';
 
 // Create a QueryClient instance with caching configuration
+// Optimized caching strategy: static data cached longer, real-time data cached shorter
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Cache data for 5 minutes
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      // Keep unused data in cache for 5 minutes before garbage collection
-      gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
-      // Refetch on window focus
+      // Default staleTime: 30 seconds for real-time data
+      // Static data (master lists, roles, etc.) should override with longer staleTime
+      staleTime: 30 * 1000, // 30 seconds - balance between freshness and performance
+      // Keep unused data in cache for 10 minutes before garbage collection
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      // Refetch on window focus (but only if data is stale)
       refetchOnWindowFocus: true,
       // Refetch on reconnect
       refetchOnReconnect: true,
-      // Don't refetch on mount if data is fresh
-      refetchOnMount: false,
-      // Retry failed requests once
-      retry: 1,
-      // Retry delay
+      // Refetch on mount only if data is stale
+      refetchOnMount: 'always', // Changed to always for better UX
+      // Retry failed requests twice
+      retry: 2,
+      // Retry delay with exponential backoff
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      // Network mode: prefer cache but refetch in background
+      networkMode: 'online',
     },
   },
 });

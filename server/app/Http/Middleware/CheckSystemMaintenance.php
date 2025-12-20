@@ -13,6 +13,11 @@ class CheckSystemMaintenance
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Allow CORS preflight requests to pass through
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
+        
         $maintenance = SystemMaintenance::first();
 
         // -----------------------------------------

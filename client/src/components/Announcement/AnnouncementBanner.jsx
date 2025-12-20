@@ -14,6 +14,18 @@ function AnnouncementBanner() {
     // Load dismissed announcements from localStorage
     const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
     setDismissedIds(dismissed);
+    
+    // Listen for announcement updates via WebSocket
+    const handleAnnouncementUpdate = () => {
+      // Refresh announcements when they are activated/updated
+      loadAnnouncements();
+    };
+    
+    window.addEventListener('announcement-updated', handleAnnouncementUpdate);
+    
+    return () => {
+      window.removeEventListener('announcement-updated', handleAnnouncementUpdate);
+    };
   }, []);
 
   const loadAnnouncements = async () => {

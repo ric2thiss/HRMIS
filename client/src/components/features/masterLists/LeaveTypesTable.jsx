@@ -10,6 +10,7 @@ function LeaveTypesTable() {
   const { getLeaveTypesForTable, leaveTypes, loading } = useLeaveTypesTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingLeaveType, setEditingLeaveType] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -25,12 +26,13 @@ function LeaveTypesTable() {
   const { clearCache: clearLeaveTypesCache } = useLeaveTypesStore();
 
   useEffect(() => {
+    // Load leave types - will use prefetched data if available
     loadLeaveTypes();
   }, []);
 
-  const loadLeaveTypes = async () => {
+  const loadLeaveTypes = async (forceRefresh = false) => {
     try {
-      await getLeaveTypesForTable(); // Uses cache if available (5 min TTL)
+      await getLeaveTypesForTable(forceRefresh); // Uses cache if available (5 min TTL) unless forceRefresh is true
     } catch (err) {
       showError('Failed to load leave types');
     }
@@ -39,7 +41,7 @@ function LeaveTypesTable() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
+      setSubmitting(true);
       if (editingLeaveType) {
         await updateLeaveType(editingLeaveType.id, formData);
         showSuccess('Leave type updated successfully');
@@ -58,12 +60,12 @@ function LeaveTypesTable() {
         requires_approval: true,
         is_active: true
       });
-      loadLeaveTypes();
+      loadLeaveTypes(true); // Force refresh to show new data
       clearLeaveTypesCache(); // Clear leave types cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -85,14 +87,14 @@ function LeaveTypesTable() {
     if (!window.confirm('Are you sure you want to delete this leave type?')) return;
     
     try {
-      setLoading(true);
+      setSubmitting(true);
       await deleteLeaveType(id);
       showSuccess('Leave type deleted successfully');
-      loadLeaveTypes();
+      loadLeaveTypes(true); // Force refresh to show updated data
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -117,7 +119,7 @@ function LeaveTypesTable() {
         <button
           onClick={() => setIsFormVisible(true)}
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-          disabled={loading}
+          disabled={loading || submitting}
         >
           ➕ Add Leave Type
         </button>
@@ -195,7 +197,7 @@ function LeaveTypesTable() {
               <button
                 onClick={handleCancel}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                disabled={loading}
+                disabled={loading || submitting}
               >
                 &times;
               </button>
@@ -228,7 +230,7 @@ function LeaveTypesTable() {
                     value={formData.max_days}
                     onChange={(e) => setFormData({ ...formData, max_days: parseInt(e.target.value) || 0 })}
                     required
-                    disabled={loading}
+                    disabled={loading || submitting}
                     min="0"
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                     placeholder="e.g., 15"
@@ -245,7 +247,7 @@ function LeaveTypesTable() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="e.g., Vacation Leave"
                 />
@@ -256,7 +258,7 @@ function LeaveTypesTable() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   rows="3"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Leave type description..."
@@ -270,7 +272,7 @@ function LeaveTypesTable() {
                     id="requires_document"
                     checked={formData.requires_document}
                     onChange={(e) => setFormData({ ...formData, requires_document: e.target.checked })}
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                   <label htmlFor="requires_document" className="ml-2 block text-sm text-gray-700">
@@ -284,7 +286,7 @@ function LeaveTypesTable() {
                     id="requires_approval"
                     checked={formData.requires_approval}
                     onChange={(e) => setFormData({ ...formData, requires_approval: e.target.checked })}
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                   <label htmlFor="requires_approval" className="ml-2 block text-sm text-gray-700">
@@ -298,7 +300,7 @@ function LeaveTypesTable() {
                     id="is_active"
                     checked={formData.is_active}
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                    disabled={loading}
+                    disabled={loading || submitting}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                   <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700">
@@ -311,17 +313,17 @@ function LeaveTypesTable() {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : editingLeaveType ? 'Update' : 'Create'}
+                  {submitting ? 'Saving...' : editingLeaveType ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

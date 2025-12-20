@@ -14,7 +14,7 @@ import updateProfile from '../../../api/user/updateProfile';
 function LeaveApplicationForm({ user }) {
   const { showSuccess, showError } = useNotification();
   const { user: authUser, refreshUser } = useAuth();
-  const { getLeaveCredits, getHeroLeaveCredits, loading: loadingCredits } = useLeaveCreditsStore();
+  const { getLeaveCredits, getHeroLeaveCredits, leaveCredits, loading: loadingCredits } = useLeaveCreditsStore();
   const { getMasterLists, getApprovalNames, loading: loadingMasterLists } = useMasterListsStore();
   const { getLeaveTypes, leaveTypes, loading: loadingLeaveTypes } = useLeaveTypesStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -49,6 +49,17 @@ function LeaveApplicationForm({ user }) {
       getLeaveCredits();
     }
   }, [user, getLeaveCredits]);
+
+  // Get available credits for a specific leave type
+  const getAvailableCredits = (leaveTypeId) => {
+    const credit = leaveCredits.find(c => c.id === leaveTypeId);
+    return credit ? credit.remaining_days : 0;
+  };
+
+  // Check if leave type has available credits
+  const hasAvailableCredits = (leaveTypeId) => {
+    return getAvailableCredits(leaveTypeId) > 0;
+  };
 
   // Load master lists and leave types on mount (cached)
   useEffect(() => {
@@ -130,6 +141,24 @@ function LeaveApplicationForm({ user }) {
           [field]: checked,
         },
       }));
+    } else if (name === 'leave_type_id') {
+      // Check if selected leave type has available credits
+      const selectedLeaveTypeId = parseInt(value);
+      const availableCredits = getAvailableCredits(selectedLeaveTypeId);
+      
+      if (availableCredits <= 0 && value !== '') {
+        showError('This leave type has no available credits. Please select another leave type.');
+        setFormData(prev => ({
+          ...prev,
+          [name]: '',
+        }));
+        return;
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
@@ -159,6 +188,14 @@ function LeaveApplicationForm({ user }) {
         return;
       }
 
+      // Check if user has available credits for this leave type
+      const availableCredits = getAvailableCredits(parseInt(formData.leave_type_id));
+      if (availableCredits <= 0) {
+        showError(`You have exhausted all available credits for ${selectedLeaveType.name}. You cannot apply for this leave type.`);
+        setLoading(false);
+        return;
+      }
+
       if (selectedDates.length === 0) {
         showError('Please select at least one date');
         setLoading(false);
@@ -167,6 +204,13 @@ function LeaveApplicationForm({ user }) {
 
       if (workingDays === 0) {
         showError('Please select at least one working day');
+        setLoading(false);
+        return;
+      }
+
+      // Check if requested days exceed available credits
+      if (workingDays > availableCredits) {
+        showError(`You only have ${availableCredits} remaining day(s) for ${selectedLeaveType.name}. You cannot apply for ${workingDays} day(s).`);
         setLoading(false);
         return;
       }
@@ -377,12 +421,33 @@ function LeaveApplicationForm({ user }) {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 disabled:bg-gray-100"
                 >
                   <option value="">_SELECT_</option>
-                  {leaveTypes.map(type => (
-                    <option key={type.id} value={type.id}>
-                      {type.name} ({type.code})
-                    </option>
-                  ))}
+                  {leaveTypes.map(type => {
+                    const availableCredits = getAvailableCredits(type.id);
+                    const isDisabled = availableCredits <= 0;
+                    return (
+                      <option 
+                        key={type.id} 
+                        value={type.id}
+                        disabled={isDisabled}
+                        className={isDisabled ? 'text-gray-400' : ''}
+                      >
+                        {type.name} ({type.code}){isDisabled ? ' - No credits available' : ` - ${availableCredits} day(s) remaining`}
+                      </option>
+                    );
+                  })}
                 </select>
+                {formData.leave_type_id && (() => {
+                  const selectedType = leaveTypes.find(t => t.id === parseInt(formData.leave_type_id));
+                  const availableCredits = getAvailableCredits(parseInt(formData.leave_type_id));
+                  if (selectedType && availableCredits > 0) {
+                    return (
+                      <p className="mt-2 text-sm text-blue-600">
+                        Available credits: <strong>{availableCredits} day(s)</strong>
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Exclusive Dates Calendar */}

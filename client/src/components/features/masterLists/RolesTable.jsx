@@ -10,6 +10,7 @@ function RolesTable() {
   const { getRoles, roles, loading } = useRolesTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     access_permissions_scope: ''
@@ -20,12 +21,13 @@ function RolesTable() {
   const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
+    // Load roles - will use prefetched data if available
     loadRoles();
   }, []);
 
-  const loadRoles = async () => {
+  const loadRoles = async (forceRefresh = false) => {
     try {
-      await getRoles(); // Uses cache if available
+      await getRoles(forceRefresh); // Uses cache if available unless forceRefresh is true
     } catch (err) {
       showError('Failed to load roles');
     }
@@ -34,7 +36,7 @@ function RolesTable() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
+      setSubmitting(true);
       if (editingRole) {
         await updateRole(editingRole.id, formData);
         showSuccess('Role updated successfully');
@@ -45,12 +47,12 @@ function RolesTable() {
       setIsFormVisible(false);
       setEditingRole(null);
       setFormData({ name: '', access_permissions_scope: '' });
-      loadRoles();
+      loadRoles(true); // Force refresh to show new data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -67,15 +69,15 @@ function RolesTable() {
     if (!window.confirm('Are you sure you want to delete this role?')) return;
     
     try {
-      setLoading(true);
+      setSubmitting(true);
       await deleteRole(id);
       showSuccess('Role deleted successfully');
-      loadRoles();
+      loadRoles(true); // Force refresh to show updated data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -92,7 +94,7 @@ function RolesTable() {
         <button
           onClick={() => setIsFormVisible(true)}
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-          disabled={loading}
+          disabled={loading || submitting}
         >
           ➕ Add Role
         </button>
@@ -156,7 +158,7 @@ function RolesTable() {
               <button
                 onClick={handleCancel}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                disabled={loading}
+                disabled={loading || submitting}
               >
                 &times;
               </button>
@@ -170,7 +172,7 @@ function RolesTable() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="e.g., Employee, HR, Admin"
                 />
@@ -181,7 +183,7 @@ function RolesTable() {
                 <textarea
                   value={formData.access_permissions_scope}
                   onChange={(e) => setFormData({ ...formData, access_permissions_scope: e.target.value })}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   rows="4"
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Describe the system access rights and permissions for this role..."
@@ -192,17 +194,17 @@ function RolesTable() {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : editingRole ? 'Update' : 'Create'}
+                  {submitting ? 'Saving...' : editingRole ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

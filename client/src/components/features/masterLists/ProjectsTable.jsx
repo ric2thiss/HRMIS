@@ -10,6 +10,7 @@ function ProjectsTable() {
   const { getProjects, projects, loading } = useProjectsTableStore();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     project_code: '',
@@ -22,12 +23,13 @@ function ProjectsTable() {
   const { clearCache: clearMasterListsCache } = useMasterListsStore();
 
   useEffect(() => {
+    // Load projects - will use prefetched data if available
     loadProjects();
   }, []);
 
-  const loadProjects = async () => {
+  const loadProjects = async (forceRefresh = false) => {
     try {
-      await getProjects(); // Uses cache if available
+      await getProjects(forceRefresh); // Uses cache if available unless forceRefresh is true
     } catch (err) {
       showError('Failed to load projects');
     }
@@ -36,7 +38,7 @@ function ProjectsTable() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      setLoading(true);
+      setSubmitting(true);
       if (editingProject) {
         await updateProject(editingProject.id, formData);
         showSuccess('Project updated successfully');
@@ -47,12 +49,12 @@ function ProjectsTable() {
       setIsFormVisible(false);
       setEditingProject(null);
       setFormData({ name: '', project_code: '', status: 'active', project_manager: '' });
-      loadProjects();
+      loadProjects(true); // Force refresh to show new data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Operation failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -71,15 +73,15 @@ function ProjectsTable() {
     if (!window.confirm('Are you sure you want to delete this project?')) return;
     
     try {
-      setLoading(true);
+      setSubmitting(true);
       await deleteProject(id);
       showSuccess('Project deleted successfully');
-      loadProjects();
+      loadProjects(true); // Force refresh to show updated data
       clearMasterListsCache(); // Clear master lists cache after CRUD operation
     } catch (err) {
       showError(err?.response?.data?.message || 'Delete failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -106,7 +108,7 @@ function ProjectsTable() {
         <button
           onClick={() => setIsFormVisible(true)}
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-          disabled={loading}
+          disabled={loading || submitting}
         >
           ➕ Add Project
         </button>
@@ -180,7 +182,7 @@ function ProjectsTable() {
               <button
                 onClick={handleCancel}
                 className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                disabled={loading}
+                disabled={loading || submitting}
               >
                 &times;
               </button>
@@ -194,7 +196,7 @@ function ProjectsTable() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="e.g., Digital Transformation Project"
                 />
@@ -206,7 +208,7 @@ function ProjectsTable() {
                   type="text"
                   value={formData.project_code}
                   onChange={(e) => setFormData({ ...formData, project_code: e.target.value })}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="e.g., DTP-2025"
                 />
@@ -218,7 +220,7 @@ function ProjectsTable() {
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   required
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 >
                   <option value="active">Active</option>
@@ -234,7 +236,7 @@ function ProjectsTable() {
                   type="text"
                   value={formData.project_manager}
                   onChange={(e) => setFormData({ ...formData, project_manager: e.target.value })}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   placeholder="Project focal name"
                 />
@@ -244,17 +246,17 @@ function ProjectsTable() {
                 <button
                   type="button"
                   onClick={handleCancel}
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || submitting}
                   className="py-2 px-4 rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : editingProject ? 'Update' : 'Create'}
+                  {submitting ? 'Saving...' : editingProject ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

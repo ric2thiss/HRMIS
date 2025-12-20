@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\PersonalDataSheet;
+use App\Services\WebSocketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class PersonalDataSheetController extends Controller
 {
@@ -95,9 +97,21 @@ class PersonalDataSheetController extends Controller
             'status' => 'draft',
         ]);
 
+        $pds->load('user');
+
+        // Emit WebSocket event for PDS creation (HR can see new drafts)
+        try {
+            $websocketService = new WebSocketService();
+            $websocketService->emitUpdate('pds', 'created', [
+                'pds' => $pds->toArray(),
+            ], ['type' => 'role', 'role' => 'hr']);
+        } catch (\Exception $e) {
+            Log::warning('Failed to emit WebSocket event for PDS creation: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'PDS created successfully',
-            'pds' => $pds->load('user')
+            'pds' => $pds
         ], 201);
     }
 
@@ -160,10 +174,12 @@ class PersonalDataSheetController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        $oldStatus = $pds->status;
         $pds->form_data = $request->form_data;
         
         // If updating a pending, declined, or approved PDS, reset status to draft
         // This removes it from pending/for approval list
+        $statusChanged = false;
         if ($pds->status === 'pending' || $pds->status === 'declined' || $pds->status === 'approved') {
             $pds->status = 'draft';
             $pds->hr_comments = null;
@@ -172,13 +188,67 @@ class PersonalDataSheetController extends Controller
             $pds->reviewed_by = null;
             $pds->reviewed_at = null;
             $pds->approved_at = null;
+            $statusChanged = true;
         }
         
         $pds->save();
+        $pds->load('user');
+
+        // Notify HR if PDS was removed from pending/approval list
+        if ($statusChanged && $oldStatus === 'pending') {
+            try {
+                $websocketService = new WebSocketService();
+                
+                // Get employee name for notification
+                $employeeName = $pds->user->first_name . ' ' . $pds->user->last_name;
+                if (empty(trim($employeeName))) {
+                    $employeeName = $pds->user->name;
+                }
+                
+                // Notify HR that PDS was updated and removed from pending
+                $websocketService->notifyRole('hr', [
+                    'type' => 'warning',
+                    'title' => 'PDS Updated',
+                    'message' => $employeeName . ' has updated their PDS. It has been removed from the approval queue.',
+                    'entity_type' => 'pds',
+                    'entity_id' => $pds->id,
+                    'data' => [
+                        'pds_id' => $pds->id,
+                        'user_id' => $pds->user_id,
+                        'employee_name' => $employeeName,
+                        'old_status' => $oldStatus,
+                        'new_status' => 'draft',
+                    ]
+                ]);
+                
+                // Emit PDS update event for real-time UI updates
+                $websocketService->emitUpdate('pds', 'updated', [
+                    'pds' => $pds->toArray(),
+                    'old_status' => $oldStatus,
+                    'new_status' => 'draft',
+                ], ['type' => 'role', 'role' => 'hr']);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send WebSocket notification for PDS update: ' . $e->getMessage());
+            }
+        } else if ($statusChanged) {
+            // PDS status changed (not from pending), still notify HR
+            try {
+                $websocketService = new WebSocketService();
+                
+                // Emit PDS update event for real-time UI updates
+                $websocketService->emitUpdate('pds', 'updated', [
+                    'pds' => $pds->toArray(),
+                    'old_status' => $oldStatus,
+                    'new_status' => 'draft',
+                ], ['type' => 'role', 'role' => 'hr']);
+            } catch (\Exception $e) {
+                Log::warning('Failed to emit WebSocket event for PDS update: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'message' => 'PDS updated successfully',
-            'pds' => $pds->load('user')
+            'pds' => $pds
         ]);
     }
 
@@ -192,13 +262,8 @@ class PersonalDataSheetController extends Controller
         $user->load('roles');
         $userRole = $user->roles->first()?->name ?? null;
 
-        // HR cannot submit PDS (they can only maintain drafts)
-        // Admin users can submit PDS like regular employees
-        if ($userRole === 'hr') {
-            return response()->json([
-                'message' => 'HR users cannot submit PDS for approval. Your PDS will remain in draft status for record-keeping.'
-            ], 403);
-        }
+        // HR and Admin users can submit PDS like regular employees
+        // (Previously HR could not submit, but now allowed per requirements)
 
         $pds = PersonalDataSheet::find($id);
 
@@ -218,14 +283,65 @@ class PersonalDataSheetController extends Controller
             ], 400);
         }
 
+        // Prevent duplicate submissions - check if already pending and submitted recently
+        $wasAlreadyPending = $pds->status === 'pending';
+        $recentlySubmitted = $pds->submitted_at && $pds->submitted_at->isAfter(now()->subMinutes(5));
+        
+        // Skip notification if this was already pending and submitted recently (prevent duplicates)
+        if ($wasAlreadyPending && $recentlySubmitted) {
+            return response()->json([
+                'message' => 'PDS already submitted',
+                'pds' => $pds->load('user')
+            ]);
+        }
+
+        $oldStatus = $pds->status;
         $pds->status = 'pending';
         $pds->submitted_at = now();
         $pds->hr_comments = null; // Clear previous comments
         $pds->save();
+        
+        $pds->load('user');
+
+        // Notify all HR users about new PDS submission
+        try {
+            $websocketService = new WebSocketService();
+            
+            // Get employee name for notification
+            $employeeName = $pds->user->first_name . ' ' . $pds->user->last_name;
+            if (empty(trim($employeeName))) {
+                $employeeName = $pds->user->name;
+            }
+            
+            // Notify HR role (exclude the submitter from receiving this notification)
+            $websocketService->notifyRole('hr', [
+                'type' => 'info',
+                'title' => 'New PDS Submitted',
+                'message' => $employeeName . ' has submitted a PDS for approval.',
+                'entity_type' => 'pds',
+                'entity_id' => $pds->id,
+                'data' => [
+                    'pds_id' => $pds->id,
+                    'user_id' => $pds->user_id,
+                    'employee_name' => $employeeName,
+                    'status' => 'pending',
+                    'action_by_user_id' => $pds->user_id, // Track who performed the action
+                ]
+            ]);
+            
+            // Also emit PDS update event for real-time UI updates
+            $websocketService->emitUpdate('pds', 'submitted', [
+                'pds' => $pds->toArray(),
+                'old_status' => $oldStatus,
+                'new_status' => 'pending',
+            ], ['type' => 'role', 'role' => 'hr']);
+        } catch (\Exception $e) {
+            Log::warning('Failed to send WebSocket notification for PDS submission: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'PDS submitted for approval',
-            'pds' => $pds->load('user')
+            'pds' => $pds
         ]);
     }
 
@@ -288,6 +404,7 @@ class PersonalDataSheetController extends Controller
         }
 
         $pds->save();
+        $pds->load('user');
 
         $actionMessage = $request->action === 'approve' ? 'approved' : ($request->action === 'for-revision' ? 'sent for revision' : 'declined');
         $notificationMessage = $request->action === 'approve' 
@@ -295,6 +412,33 @@ class PersonalDataSheetController extends Controller
             : ($request->action === 'for-revision' 
                 ? 'Your PDS has been sent for revision. Please review the comments and update.'
                 : 'Your PDS has been declined. Please review the comments and update.');
+
+        // Send real-time notification to the PDS owner
+        try {
+            $websocketService = new WebSocketService();
+            $websocketService->notifyUser($pds->user_id, [
+                'type' => $request->action === 'approve' ? 'success' : 'info',
+                'title' => 'PDS Update',
+                'message' => $notificationMessage,
+                'entity_type' => 'pds',
+                'entity_id' => $pds->id,
+                'data' => [
+                    'pds_id' => $pds->id,
+                    'action' => $request->action,
+                ]
+            ]);
+            
+            // Emit PDS update event for real-time UI updates (HR sees status change)
+            // This removes the PDS from pending list immediately
+            $websocketService->emitUpdate('pds', 'reviewed', [
+                'pds' => $pds->toArray(),
+                'action' => $request->action,
+                'old_status' => 'pending',
+                'new_status' => $pds->status,
+            ], ['type' => 'role', 'role' => 'hr']);
+        } catch (\Exception $e) {
+            Log::warning('Failed to send WebSocket notification for PDS review: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'PDS ' . $actionMessage . ' successfully',

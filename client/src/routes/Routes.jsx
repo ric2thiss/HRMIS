@@ -29,6 +29,8 @@ import ManageAnnouncements from '../pages/announcement/ManageAnnouncements';
 import AnnouncementArchive from '../pages/announcement/AnnouncementArchive';
 import ViewAnnouncement from '../pages/announcement/ViewAnnouncement';
 import MyAnnouncements from '../pages/announcement/MyAnnouncements';
+import NotificationsList from '../pages/notifications/NotificationsList';
+import NotificationDetail from '../pages/notifications/NotificationDetail';
 
 export default function Routers() {
     return (
@@ -158,6 +160,18 @@ export default function Routers() {
           <Route path="/my-announcements" element={
               <ProtectedRoute>
                   <MyAnnouncements />
+              </ProtectedRoute>
+          } />
+
+          <Route path="/notifications" element={
+              <ProtectedRoute>
+                  <NotificationsList />
+              </ProtectedRoute>
+          } />
+
+          <Route path="/notifications/:id" element={
+              <ProtectedRoute>
+                  <NotificationDetail />
               </ProtectedRoute>
           } />
 

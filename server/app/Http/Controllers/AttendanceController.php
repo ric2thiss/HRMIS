@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Attendance;
 use App\Models\User;
+use App\Models\StandardTimeSetting;
 use Carbon\Carbon;
 
 class AttendanceController extends Controller
@@ -203,7 +204,15 @@ class AttendanceController extends Controller
         // If user is not HR or Admin, restrict to their own records only
         if ($userRole !== 'hr' && $userRole !== 'admin') {
             // Employees can only see their own attendance
-            $query->where('user_id', $user->id);
+            // Use OR condition to match both user_id and employee_id
+            // This handles cases where imported records have null user_id but matching employee_id
+            $query->where(function($q) use ($user) {
+                $q->where('user_id', $user->id);
+                // Also match by employee_id if user has one (for imported records)
+                if ($user->employee_id) {
+                    $q->orWhere('employee_id', $user->employee_id);
+                }
+            });
         } else {
             // HR and Admin can filter by user_id if provided
             if ($request->has('user_id')) {
@@ -304,6 +313,107 @@ class AttendanceController extends Controller
         return response()->json([
             'message' => "Successfully deleted {$deleted} attendance record(s) from import file: {$filename}",
             'deleted_count' => $deleted
+        ], 200);
+    }
+
+    /**
+     * Get attendance statistics (late, overtime, on-time)
+     * Returns daily statistics for the current month or specified date range
+     */
+    public function statistics(Request $request)
+    {
+        // Get date range (default to current month)
+        $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->toDateString());
+
+        // Get standard time settings
+        $settings = StandardTimeSetting::getSettings();
+        $standardTimeIn = Carbon::parse($settings->time_in);
+        $standardTimeOut = Carbon::parse($settings->time_out);
+
+        // Get all attendance records in the date range
+        $attendances = Attendance::whereBetween('date', [$startDate, $endDate])
+            ->whereNotNull('user_id')
+            ->orderBy('date')
+            ->orderBy('time')
+            ->get();
+
+        // Group by date and user - track processed users per date
+        $dailyStats = [];
+        $processedUsers = []; // Track which users we've already counted per date
+        
+        foreach ($attendances as $attendance) {
+            $date = $attendance->date->format('Y-m-d');
+            $userId = $attendance->user_id;
+            $key = $date . '_' . $userId;
+            
+            // Skip if we've already processed this user for this date
+            if (isset($processedUsers[$key])) {
+                continue;
+            }
+            
+            if (!isset($dailyStats[$date])) {
+                $dailyStats[$date] = [
+                    'date' => $date,
+                    'on_time' => 0,
+                    'late' => 0,
+                    'overtime' => 0,
+                ];
+            }
+
+            // Get all records for this user on this date
+            $userAttendances = $attendances->filter(function($a) use ($date, $userId) {
+                return $a->date->format('Y-m-d') === $date && $a->user_id === $userId;
+            })->sortBy('time');
+
+            if ($userAttendances->count() > 0) {
+                $firstRecord = $userAttendances->first();
+                $lastRecord = $userAttendances->last();
+                
+                // Check time in (first record of the day)
+                $timeIn = Carbon::parse($date . ' ' . $firstRecord->time);
+                $timeInDiff = $timeIn->diffInMinutes($standardTimeIn, false);
+                
+                // Check time out (last record of the day)
+                $timeOut = Carbon::parse($date . ' ' . $lastRecord->time);
+                $timeOutDiff = $timeOut->diffInMinutes($standardTimeOut, false);
+
+                // Count as late if time in is after standard time in (more than 0 minutes late)
+                if ($timeInDiff > 0) {
+                    $dailyStats[$date]['late']++;
+                } else {
+                    $dailyStats[$date]['on_time']++;
+                }
+
+                // Count as overtime if time out is after standard time out (more than 0 minutes)
+                if ($timeOutDiff > 0) {
+                    $dailyStats[$date]['overtime']++;
+                }
+                
+                // Mark this user as processed for this date
+                $processedUsers[$key] = true;
+            }
+        }
+
+        // Convert to array format for chart
+        $chartData = array_values($dailyStats);
+
+        // Calculate totals
+        $totals = [
+            'on_time' => array_sum(array_column($chartData, 'on_time')),
+            'late' => array_sum(array_column($chartData, 'late')),
+            'overtime' => array_sum(array_column($chartData, 'overtime')),
+        ];
+
+        return response()->json([
+            'statistics' => $chartData,
+            'totals' => $totals,
+            'standard_time_in' => $settings->time_in,
+            'standard_time_out' => $settings->time_out,
+            'date_range' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ],
         ], 200);
     }
 

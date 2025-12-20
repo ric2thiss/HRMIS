@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | WebSocket Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for WebSocket server connection
+    |
+    */
+
+    'websocket_url' => env('WEBSOCKET_URL', 'http://localhost:3001'),
+    'websocket_secret_key' => env('WEBSOCKET_SECRET_KEY', 'your-secret-key-change-in-production'),
+
 ];

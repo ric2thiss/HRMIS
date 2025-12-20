@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-This guide provides step-by-step instructions for installing the DICT Project on your local development environment.
+This guide provides step-by-step instructions for installing the DICT HRMIS on your local development environment.
 
 > ℹ️ **Note**: Ensure you have completed all [Prerequisites](./PREREQUISITES.md) before proceeding.
 
@@ -18,27 +18,25 @@ git clone <repository-url>
 cd DICT-Project
 ```
 
-If you don't have the repository URL, contact your team lead or check your project management system.
+If you don't have the repository URL, contact your team lead.
 
 ### Step 2: Backend Setup (Laravel)
 
-#### 2.1 Navigate to Server Directory
+#### Step 2.1: Navigate to Server Directory
 
 ```bash
 cd server
 ```
 
-#### 2.2 Install PHP Dependencies
+#### Step 2.2: Install PHP Dependencies
 
 ```bash
 composer install
 ```
 
-This will install all Laravel dependencies defined in `composer.json`.
+This installs all Laravel dependencies. May take 2-5 minutes.
 
-> ⏱️ **Time**: This may take 2-5 minutes depending on your internet connection.
-
-#### 2.3 Create Environment File
+#### Step 2.3: Create Environment File
 
 ```bash
 # Copy the example environment file
@@ -48,7 +46,7 @@ cp .env.example .env
 copy .env.example .env
 ```
 
-#### 2.4 Generate Application Key
+#### Step 2.4: Generate Application Key
 
 ```bash
 php artisan key:generate
@@ -56,7 +54,7 @@ php artisan key:generate
 
 This generates a unique encryption key for your application.
 
-#### 2.5 Configure Database
+#### Step 2.5: Configure Database
 
 Open the `.env` file and configure your database settings.
 
@@ -79,8 +77,6 @@ touch database/database.sqlite
 
 # Windows
 type nul > database\database.sqlite
-
-# Or the file may already exist
 ```
 
 **Option B: MySQL**
@@ -96,26 +92,12 @@ DB_PASSWORD=your_password
 
 Create the database:
 ```bash
-# Log into MySQL
 mysql -u root -p
-
-# Create database
 CREATE DATABASE dict_db;
 EXIT;
 ```
 
-**Option C: PostgreSQL**
-
-```env
-DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DATABASE=dict_db
-DB_USERNAME=your_username
-DB_PASSWORD=your_password
-```
-
-#### 2.6 Run Database Migrations
+#### Step 2.6: Run Database Migrations
 
 ```bash
 php artisan migrate
@@ -123,7 +105,7 @@ php artisan migrate
 
 This creates all necessary database tables.
 
-#### 2.7 Seed Database (Optional but Recommended)
+#### Step 2.7: Seed Database (Optional but Recommended)
 
 ```bash
 php artisan db:seed
@@ -139,7 +121,9 @@ This populates the database with:
 - HR: `hr@dict.gov.ph` / `password`
 - Employee: `employee@dict.gov.ph` / `password`
 
-#### 2.8 Configure Storage
+> ⚠️ **Security**: Change these passwords immediately in production!
+
+#### Step 2.8: Configure Storage
 
 ```bash
 # Create symbolic link for storage
@@ -149,7 +133,7 @@ php artisan storage:link
 chmod -R 775 storage bootstrap/cache
 ```
 
-#### 2.9 Verify Backend Installation
+#### Step 2.9: Verify Backend Installation
 
 ```bash
 # Start the development server
@@ -163,11 +147,11 @@ INFO  Server running on [http://127.0.0.1:8000]
 
 Test in browser: `http://localhost:8000`
 
-Press `Ctrl+C` to stop the server when done testing.
+Press `Ctrl+C` to stop the server.
 
 ### Step 3: Frontend Setup (React + Vite)
 
-#### 3.1 Navigate to Client Directory
+#### Step 3.1: Navigate to Client Directory
 
 ```bash
 # From project root
@@ -177,15 +161,15 @@ cd client
 cd ../client
 ```
 
-#### 3.2 Install Node Dependencies
+#### Step 3.2: Install Node Dependencies
 
 ```bash
 npm install
 ```
 
-> ⏱️ **Time**: This may take 3-7 minutes depending on your internet connection.
+May take 3-7 minutes depending on your internet connection.
 
-#### 3.3 Configure Environment Variables
+#### Step 3.3: Configure Environment Variables
 
 Create a `.env` file in the `client` directory:
 
@@ -205,7 +189,7 @@ VITE_API_BASE_URL=http://localhost:8000/api
 
 > ℹ️ **Note**: Adjust the URL if your Laravel server runs on a different port.
 
-#### 3.4 Verify Frontend Installation
+#### Step 3.4: Verify Frontend Installation
 
 ```bash
 # Start the development server
@@ -224,7 +208,7 @@ Open `http://localhost:5173` in your browser.
 
 ### Step 4: Full System Verification
 
-#### 4.1 Run Both Servers
+#### Step 4.1: Run Both Servers
 
 You need two terminal windows/tabs:
 
@@ -240,21 +224,39 @@ cd client
 npm run dev
 ```
 
-#### 4.2 Access the Application
+#### Step 4.2: Access the Application
 
 Open your browser and navigate to: `http://localhost:5173`
 
-#### 4.3 Test Login
+#### Step 4.3: Test Login
 
 Try logging in with seeded credentials:
 - Email: `admin@dict.gov.ph`
 - Password: `password`
 
-#### 4.4 Check for Errors
+#### Step 4.4: Check for Errors
 
 - Open browser console (F12) and check for errors
 - Verify API requests are reaching the backend
 - Ensure pages load without issues
+
+## 🎯 Alternative: Using Laravel's Concurrent Script
+
+Laravel provides a convenient script to run multiple services:
+
+```bash
+cd server
+composer run dev
+```
+
+This will start:
+- Laravel development server
+- Queue worker
+- Task scheduler (`schedule:work`)
+- Log viewer (Pail)
+- Vite development server
+
+> ℹ️ **Note**: This requires `concurrently` to be installed globally or the script may need adjustment.
 
 ## ✅ Installation Verification Checklist
 
@@ -274,23 +276,6 @@ Try logging in with seeded credentials:
 - [ ] Can log in with seeded account
 - [ ] No console errors in browser
 - [ ] API requests working correctly
-
-## 🎯 Alternative: Using Laravel's Concurrent Script
-
-Laravel provides a convenient script to run multiple services:
-
-```bash
-cd server
-composer run dev
-```
-
-This will start:
-- Laravel development server
-- Queue worker
-- Log viewer (Pail)
-- Vite development server
-
-> ℹ️ **Note**: This requires `concurrently` to be installed globally or the script may need adjustment.
 
 ## 🐛 Troubleshooting
 
@@ -339,7 +324,6 @@ npm run dev -- --port 5174
 - Verify database server is running
 - Check database credentials in `.env`
 - Ensure database exists
-- Test connection manually
 
 For SQLite:
 ```bash
@@ -355,24 +339,12 @@ chmod 664 database/database.sqlite
 # Unix/Mac
 cd server
 chmod -R 775 storage bootstrap/cache
-chown -R $USER:www-data storage bootstrap/cache
-
-# Or
-chmod -R 777 storage bootstrap/cache  # Less secure but works
 ```
 
 ### Issue: CORS Errors
 
 **Solution:**
-Check `server/config/cors.php` and ensure it's configured correctly:
-
-```php
-'paths' => ['api/*', 'sanctum/csrf-cookie'],
-'allowed_origins' => ['http://localhost:5173'],
-'allowed_methods' => ['*'],
-'allowed_headers' => ['*'],
-'supports_credentials' => true,
-```
+Check `server/config/cors.php` and ensure it's configured correctly.
 
 ### Issue: API Requests Fail (404)
 
@@ -380,7 +352,6 @@ Check `server/config/cors.php` and ensure it's configured correctly:
 - Verify backend server is running on correct port
 - Check `VITE_API_BASE_URL` in client `.env`
 - Check browser console for actual error
-- Test API directly: `curl http://localhost:8000/api/health`
 
 ### Issue: "Class not found" Errors
 
@@ -390,51 +361,6 @@ cd server
 composer dump-autoload
 php artisan config:clear
 php artisan cache:clear
-```
-
-### Issue: Frontend Shows Blank Page
-
-**Solution:**
-- Check browser console for JavaScript errors
-- Verify all dependencies installed correctly
-- Clear browser cache
-- Try in incognito/private window
-
-## 🔄 Reinstalling
-
-If you need to start fresh:
-
-### Backend
-```bash
-cd server
-
-# Remove dependencies
-rm -rf vendor
-
-# Remove environment and cache
-rm .env
-php artisan config:clear
-php artisan cache:clear
-
-# Reinstall
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate:fresh --seed
-```
-
-### Frontend
-```bash
-cd client
-
-# Remove dependencies
-rm -rf node_modules package-lock.json
-
-# Remove build artifacts
-rm -rf dist
-
-# Reinstall
-npm install
 ```
 
 ## 📚 Additional Setup (Optional)
@@ -450,23 +376,25 @@ php artisan queue:work
 
 ### Setting Up Task Scheduler
 
+The task scheduler runs scheduled tasks defined in `routes/console.php`.
+
+**For Development:**
+
+If you're using `composer run dev`, the scheduler is already included via `php artisan schedule:work`. Alternatively, you can run it separately:
+
+```bash
+cd server
+php artisan schedule:work
+```
+
+**For Production:**
+
 Add to crontab (Linux/Mac):
 ```bash
 * * * * * cd /path-to-your-project/server && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-### Installing Development Tools
-
-```bash
-# Laravel Debugbar
-cd server
-composer require barryvdh/laravel-debugbar --dev
-
-# Laravel Telescope
-composer require laravel/telescope --dev
-php artisan telescope:install
-php artisan migrate
-```
+> ℹ️ **Note**: `schedule:work` is for development (runs continuously), while `schedule:run` is for production (called by cron every minute).
 
 ## 🚀 Next Steps
 
@@ -482,9 +410,7 @@ After successful installation:
 - Check [Troubleshooting](#-troubleshooting) section above
 - Review [Prerequisites](./PREREQUISITES.md)
 - Contact the development team
-- Check Laravel and React documentation
 
 ---
 
 *Installation complete? Great! Proceed to [Configuration](./CONFIGURATION.md) to customize your setup.*
-

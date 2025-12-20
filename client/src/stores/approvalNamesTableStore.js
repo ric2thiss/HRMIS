@@ -17,6 +17,11 @@ export const useApprovalNamesTableStore = create((set, get) => ({
       return state.approvalNames;
     }
 
+    // If already loading and not forcing refresh, return cached data (prevent duplicate requests)
+    if (state.loading && !forceRefresh) {
+      return state.approvalNames.length > 0 ? state.approvalNames : [];
+    }
+
     // Fetch new data
     set({ loading: true });
     try {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Services\WebSocketService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -133,6 +134,29 @@ class LeaveController extends Controller
                 return response()->json([
                     'message' => 'The selected leave type is not available. Please select an active leave type.',
                     'errors' => ['leave_type_id' => ['The selected leave type is inactive.']]
+                ], 422);
+            }
+
+            // Check if user has enough leave credits
+            $usedDays = Leave::where('user_id', $user->id)
+                ->where('leave_type_id', $leaveType->id)
+                ->whereIn('status', ['approved', 'pending'])
+                ->sum('working_days');
+            
+            $remainingDays = max(0, ($leaveType->max_days ?? 0) - $usedDays);
+            
+            if ($remainingDays <= 0) {
+                return response()->json([
+                    'message' => 'You have exhausted all available credits for ' . $leaveType->name . '. You cannot apply for this leave type.',
+                    'errors' => ['leave_type_id' => ['Insufficient leave credits.']]
+                ], 422);
+            }
+            
+            // Check if the requested days exceed remaining credits
+            if ($validated['working_days'] > $remainingDays) {
+                return response()->json([
+                    'message' => 'You only have ' . $remainingDays . ' remaining day(s) for ' . $leaveType->name . '. You cannot apply for ' . $validated['working_days'] . ' day(s).',
+                    'errors' => ['working_days' => ['Insufficient leave credits.']]
                 ], 422);
             }
 
@@ -484,6 +508,24 @@ class LeaveController extends Controller
                     'approver:id,first_name,middle_initial,last_name'
                 ]);
 
+                // Send real-time notification to leave applicant
+                try {
+                    $websocketService = new WebSocketService();
+                    $websocketService->notifyUser($leave->user_id, [
+                        'type' => 'warning',
+                        'title' => 'Leave Application Rejected',
+                        'message' => 'Your leave application has been rejected.',
+                        'entity_type' => 'leave',
+                        'entity_id' => $leave->id,
+                        'data' => [
+                            'leave_id' => $leave->id,
+                            'status' => 'rejected',
+                        ]
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send WebSocket notification for leave rejection: ' . $e->getMessage());
+                }
+
                 return response()->json([
                     'message' => 'Leave application rejected successfully',
                     'leave' => $leave
@@ -568,6 +610,26 @@ class LeaveController extends Controller
                 'recommendationApproverApprover:id,first_name,middle_initial,last_name',
                 'leaveApproverApprover:id,first_name,middle_initial,last_name'
             ]);
+
+            // Send real-time notification if fully approved
+            if ($leave->status === 'approved') {
+                try {
+                    $websocketService = new WebSocketService();
+                    $websocketService->notifyUser($leave->user_id, [
+                        'type' => 'success',
+                        'title' => 'Leave Application Approved',
+                        'message' => 'Your leave application has been fully approved!',
+                        'entity_type' => 'leave',
+                        'entity_id' => $leave->id,
+                        'data' => [
+                            'leave_id' => $leave->id,
+                            'status' => 'approved',
+                        ]
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send WebSocket notification for leave approval: ' . $e->getMessage());
+                }
+            }
 
             return response()->json([
                 'message' => "Leave application approved successfully",
@@ -755,24 +817,39 @@ class LeaveController extends Controller
                 
                 if (!$leave->leave_credit_officer_approved) {
                     $currentStage = 'leave_credit_officer';
-                    // Check if user is the Leave Credit Authorized Officer
-                    if ($role === 'hr' || $role === 'admin' || 
-                        in_array($leave->leave_credit_authorized_officer_id, $approvalNameIds)) {
+                    // Check if user is the Leave Credit Authorized Officer AND hasn't already approved
+                    if ($role === 'hr' || $role === 'admin') {
+                        // HR/Admin can approve at any stage
                         $isUserTurn = true;
+                    } elseif (in_array($leave->leave_credit_authorized_officer_id, $approvalNameIds)) {
+                        // Check if user has already approved at this stage
+                        if ($leave->leave_credit_officer_approved_by !== $user->id) {
+                            $isUserTurn = true;
+                        }
                     }
                 } elseif (!$leave->recommendation_approver_approved) {
                     $currentStage = 'recommendation_approver';
-                    // Check if user is the Recommendation Approver
-                    if ($role === 'hr' || $role === 'admin' || 
-                        in_array($leave->recommendation_approver_id, $approvalNameIds)) {
+                    // Check if user is the Recommendation Approver AND hasn't already approved
+                    if ($role === 'hr' || $role === 'admin') {
+                        // HR/Admin can approve at any stage
                         $isUserTurn = true;
+                    } elseif (in_array($leave->recommendation_approver_id, $approvalNameIds)) {
+                        // Check if user has already approved at this stage
+                        if ($leave->recommendation_approver_approved_by !== $user->id) {
+                            $isUserTurn = true;
+                        }
                     }
                 } elseif (!$leave->leave_approver_approved) {
                     $currentStage = 'leave_approver';
-                    // Check if user is the Leave Approver
-                    if ($role === 'hr' || $role === 'admin' || 
-                        in_array($leave->leave_approver_id, $approvalNameIds)) {
+                    // Check if user is the Leave Approver AND hasn't already approved
+                    if ($role === 'hr' || $role === 'admin') {
+                        // HR/Admin can approve at any stage
                         $isUserTurn = true;
+                    } elseif (in_array($leave->leave_approver_id, $approvalNameIds)) {
+                        // Check if user has already approved at this stage
+                        if ($leave->leave_approver_approved_by !== $user->id) {
+                            $isUserTurn = true;
+                        }
                     }
                 } else {
                     $currentStage = 'completed';

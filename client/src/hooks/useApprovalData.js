@@ -11,6 +11,7 @@ export const approvalQueryKeys = {
   isApprover: () => ['approvals', 'is-approver'],
   pendingLeaves: (role) => ['approvals', 'pending-leaves', role],
   pendingPds: () => ['approvals', 'pending-pds'],
+  forRevisionPds: () => ['approvals', 'for-revision-pds'],
   masterLists: () => ['approvals', 'master-lists'],
   counts: () => ['approvals', 'counts'],
 };
@@ -57,8 +58,10 @@ export const usePendingLeaveApprovals = (user) => {
       }
     },
     enabled: !!user, // Only run if user exists
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Real-time - no caching
     gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -76,8 +79,31 @@ export const usePendingPdsApprovals = (user) => {
       return response.pds || [];
     },
     enabled: !!user && isHROrAdmin, // Only run if user is HR/Admin
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always consider data stale - refetch on focus/invalidate
     gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchOnMount: true, // Always refetch on mount
+  });
+};
+
+/**
+ * Hook to fetch PDS for revision (HR/Admin only)
+ */
+export const useForRevisionPdsApprovals = (user) => {
+  const role = getUserRole(user);
+  const isHROrAdmin = role === 'hr' || role === 'admin';
+  
+  return useQuery({
+    queryKey: approvalQueryKeys.forRevisionPds(),
+    queryFn: async () => {
+      const response = await getAllPds('for-revision');
+      return response.pds || [];
+    },
+    enabled: !!user && isHROrAdmin, // Only run if user is HR/Admin
+    staleTime: 0, // Always consider data stale - refetch on focus/invalidate
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchOnMount: true, // Always refetch on mount
   });
 };
 
@@ -105,10 +131,12 @@ export const useApprovalCounts = (user) => {
   
   const { data: leaveApprovals = [] } = usePendingLeaveApprovals(user);
   const { data: pdsApprovals = [] } = usePendingPdsApprovals(user);
+  const { data: forRevisionPds = [] } = useForRevisionPdsApprovals(user);
 
   const counts = {
     leaveCount: leaveApprovals.length,
     pdsCount: isHROrAdmin ? pdsApprovals.length : 0,
+    forRevisionCount: isHROrAdmin ? forRevisionPds.length : 0,
     totalCount: leaveApprovals.length + (isHROrAdmin ? pdsApprovals.length : 0),
   };
 
@@ -162,13 +190,21 @@ export const usePrefetchApprovalData = () => {
       }),
     ];
 
-    // If HR/Admin, also prefetch PDS approvals
+    // If HR/Admin, also prefetch PDS approvals (pending and for-revision)
     if (isHROrAdmin) {
       prefetchPromises.push(
         queryClient.prefetchQuery({
           queryKey: approvalQueryKeys.pendingPds(),
           queryFn: async () => {
             const response = await getAllPds('pending');
+            return response.pds || [];
+          },
+          staleTime: 5 * 60 * 1000,
+        }),
+        queryClient.prefetchQuery({
+          queryKey: approvalQueryKeys.forRevisionPds(),
+          queryFn: async () => {
+            const response = await getAllPds('for-revision');
             return response.pds || [];
           },
           staleTime: 5 * 60 * 1000,
@@ -189,7 +225,11 @@ export const useInvalidateApprovalQueries = () => {
   const queryClient = useQueryClient();
 
   const invalidateAllApprovalQueries = () => {
-    queryClient.invalidateQueries({ queryKey: approvalQueryKeys.all });
+    // Invalidate all approval queries and force refetch of active ones
+    queryClient.invalidateQueries({ 
+      queryKey: approvalQueryKeys.all,
+      refetchType: 'active' // Only refetch active queries
+    });
   };
 
   return { invalidateAllApprovalQueries };

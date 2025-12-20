@@ -4,60 +4,24 @@ import EmployeeCardsView from './EmployeeCardsView';
 import EmployeeTableView from './EmployeeTableView';
 import EmployeeViewModal from './EmployeeViewModal';
 import EditAccountModal from '../accounts/EditAccountModal';
-import api from '../../../api/axios';
-import getAccounts from '../../../api/user/get_accounts';
 import deleteAccount from '../../../api/user/delete_account';
-import { getAllPds } from '../../../api/pds/pds';
 import { useNotificationStore } from '../../../stores/notificationStore';
+import { useEmployeesStore } from '../../../stores/employeesStore';
 import LoadingSpinner from '../../../components/Loading/LoadingSpinner';
-
-/**
- * Calculate PDS completion percentage based on filled fields
- */
-const calculatePdsCompletion = (formData) => {
-    if (!formData) return 0;
-
-    const fields = [
-        // Personal Information
-        'surname', 'firstName', 'dateOfBirth', 'placeOfBirth', 'sex', 'civilStatus',
-        'mobileNo', 'emailAddress',
-        // Address
-        'resHouseNo', 'resBarangay', 'resCity', 'resProvince',
-        // Family
-        'fatherSurname', 'fatherFirstName', 'motherSurname', 'motherFirstName',
-        // Education (at least one)
-        'education',
-        // References (at least one)
-        'refName1',
-    ];
-
-    let filledCount = 0;
-    let totalCount = fields.length;
-
-    fields.forEach(field => {
-        if (field === 'education') {
-            // Check if at least one education entry has school
-            const hasEducation = formData.education?.some(edu => edu.school && edu.school.trim() !== '');
-            if (hasEducation) filledCount++;
-        } else if (field === 'refName1') {
-            // Check if at least one reference has name
-            if (formData.refName1 && formData.refName1.trim() !== '') filledCount++;
-        } else {
-            const value = formData[field];
-            if (value !== null && value !== undefined && value !== '' && value !== false) {
-                filledCount++;
-            }
-        }
-    });
-
-    return Math.round((filledCount / totalCount) * 100);
-};
 
 function EmployeeManager() {
     const showSuccess = useNotificationStore((state) => state.showSuccess);
     const showError = useNotificationStore((state) => state.showError);
     
-    const [employees, setEmployees] = useState([]);
+    // Use employees store with caching
+    const { 
+        getEmployees, 
+        employees, 
+        loading: storeLoading, 
+        updateEmployeeInCache, 
+        removeEmployeeFromCache 
+    } = useEmployeesStore();
+    
     const [filteredEmployees, setFilteredEmployees] = useState([]);
     const [viewMode, setViewMode] = useState('cards');
     const [searchTerm, setSearchTerm] = useState('');
@@ -67,61 +31,15 @@ function EmployeeManager() {
     const [initializing, setInitializing] = useState(true);
     const [error, setError] = useState(null);
 
-    // Fetch employees and their PDS data
+    // Fetch employees from store (uses cache if available)
     useEffect(() => {
         const fetchEmployees = async () => {
             try {
                 setInitializing(true);
                 setError(null);
-                await api.get("/sanctum/csrf-cookie");
-
-                // Fetch employees and PDS data in parallel
-                const [employeesRes, pdsRes] = await Promise.all([
-                    api.get("/api/users"),
-                    getAllPds()
-                ]);
-
-                const employeesData = employeesRes.data.users || [];
-                const pdsData = pdsRes.pds || [];
-
-                // Create a map of user_id to PDS for quick lookup
-                const pdsMap = {};
-                pdsData.forEach(pds => {
-                    if (pds.user_id) {
-                        pdsMap[pds.user_id] = pds;
-                    }
-                });
-
-                // Enrich employees with PDS completion percentage
-                const enrichedEmployees = employeesData.map(employee => {
-                    const pds = pdsMap[employee.id];
-                    const completion = pds?.form_data ? calculatePdsCompletion(pds.form_data) : 0;
-                    
-                    // Get initials
-                    const firstName = employee.first_name || '';
-                    const lastName = employee.last_name || '';
-                    const initials = firstName && lastName 
-                        ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
-                        : employee.name ? employee.name.substring(0, 2).toUpperCase() : 'NA';
-
-                    // Format role name (Title Case)
-                    const roleName = employee.role?.name || employee.roles?.[0]?.name || '';
-                    const formattedRole = roleName 
-                        ? roleName.charAt(0).toUpperCase() + roleName.slice(1).toLowerCase()
-                        : 'N/A';
-
-                    return {
-                        ...employee,
-                        initials,
-                        role: formattedRole,
-                        percentage: completion,
-                        pdsStatus: pds?.status || 'no-pds',
-                        pdsId: pds?.id || null
-                    };
-                });
-
-                setEmployees(enrichedEmployees);
-                setFilteredEmployees(enrichedEmployees);
+                
+                // This will use cache if available, or fetch if expired
+                await getEmployees();
             } catch (err) {
                 const message = err?.response?.data?.message || err.message || "Failed to load employees.";
                 setError(message);
@@ -132,9 +50,9 @@ function EmployeeManager() {
         };
 
         fetchEmployees();
-    }, [showError]);
+    }, [getEmployees, showError]);
 
-    // Filter employees based on search term
+    // Filter employees based on search term - updates when employees change (from cache or edits)
     useEffect(() => {
         if (!searchTerm.trim()) {
             setFilteredEmployees(employees);
@@ -172,6 +90,30 @@ function EmployeeManager() {
         }
     }, [employees]);
 
+    // Update employees list when store updates (real-time updates)
+    useEffect(() => {
+        // This effect ensures filteredEmployees updates when employees from store change
+        if (!searchTerm.trim()) {
+            setFilteredEmployees(employees);
+        } else {
+            const term = searchTerm.toLowerCase();
+            const filtered = employees.filter(employee => {
+                const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.toLowerCase();
+                const email = (employee.email || '').toLowerCase();
+                const employeeId = (employee.employee_id || '').toString();
+                const position = (employee.position?.title || '').toLowerCase();
+                const role = (employee.role || '').toLowerCase();
+
+                return fullName.includes(term) ||
+                       email.includes(term) ||
+                       employeeId.includes(term) ||
+                       position.includes(term) ||
+                       role.includes(term);
+            });
+            setFilteredEmployees(filtered);
+        }
+    }, [employees, searchTerm]);
+
     const handleDelete = async (employee) => {
         const employeeName = employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'this employee';
         
@@ -185,9 +127,8 @@ function EmployeeManager() {
             setLoading(true);
             await deleteAccount(employee.id);
             
-            // Remove from state
-            setEmployees(prev => prev.filter(emp => emp.id !== employee.id));
-            setFilteredEmployees(prev => prev.filter(emp => emp.id !== employee.id));
+            // Remove from cache (this will automatically update the employees list)
+            removeEmployeeFromCache(employee.id);
             
             showSuccess('Employee deleted successfully');
             setError(null);
@@ -201,14 +142,11 @@ function EmployeeManager() {
     };
 
     const handleEmployeeUpdate = useCallback((updatedEmployee) => {
-        setEmployees(prev =>
-            prev.map(emp => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
-        );
-        setFilteredEmployees(prev =>
-            prev.map(emp => (emp.id === updatedEmployee.id ? updatedEmployee : emp))
-        );
+        // Update in cache (this will automatically update the employees list and DOM)
+        updateEmployeeInCache(updatedEmployee);
         setEditingEmployee(null);
-    }, []);
+        showSuccess('Employee updated successfully');
+    }, [updateEmployeeInCache, showSuccess]);
 
     const handleCloseViewModal = () => {
         setViewingEmployee(null);
@@ -219,7 +157,7 @@ function EmployeeManager() {
         setError(null);
     };
 
-    if (initializing) {
+    if (initializing || storeLoading) {
         return (
             <div className="bg-white p-6 rounded-xl shadow-lg">
                 <div className="flex justify-center items-center py-12">

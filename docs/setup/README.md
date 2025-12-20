@@ -2,20 +2,11 @@
 
 ## 📖 Overview
 
-This guide will help you set up the DICT Project on your local machine for development or prepare it for production deployment.
+This guide will help you set up the DICT HRMIS on your local machine for development or prepare it for production deployment.
 
-## 📚 Setup Documentation
+## 🎯 Quick Start
 
-### Quick Links
-
-1. **[Prerequisites](./PREREQUISITES.md)** - Required software and tools
-2. **[Installation](./INSTALLATION.md)** - Step-by-step installation guide
-3. **[Configuration](./CONFIGURATION.md)** - Environment and system configuration
-4. **[Deployment](./DEPLOYMENT.md)** - Production deployment guide
-
-## 🚀 Quick Start (For the Impatient)
-
-If you have all prerequisites installed:
+If you're experienced and have all prerequisites:
 
 ```bash
 # Clone repository
@@ -34,30 +25,36 @@ cd ../client
 npm install
 
 # Run development servers
-# Terminal 1 (Backend)
-cd server
-php artisan serve
-
-# Terminal 2 (Frontend)
-cd client
-npm run dev
+cd ../server
+composer run dev
 ```
 
 Visit `http://localhost:5173`
 
-> ⚠️ **Note**: For detailed setup including troubleshooting, please follow the complete guides linked above.
+## 📚 Setup Documentation
 
-## 📋 Setup Checklist
+Follow these guides in order:
 
-Use this checklist to track your setup progress:
+### Step 1: [Prerequisites](./PREREQUISITES.md)
+Install required software and tools before starting.
+
+### Step 2: [Installation](./INSTALLATION.md)
+Step-by-step installation instructions.
+
+### Step 3: [Configuration](./CONFIGURATION.md)
+Configure environment variables and system settings.
+
+### Step 4: [Deployment](./DEPLOYMENT.md)
+Production deployment guide (if needed).
+
+## ✅ Setup Checklist
 
 ### Prerequisites
-- [ ] PHP 8.2 or higher installed
+- [ ] PHP 8.2+ installed
 - [ ] Composer installed
 - [ ] Node.js 18+ and npm installed
 - [ ] Git installed
 - [ ] Database (SQLite for dev, MySQL/PostgreSQL for production)
-- [ ] Text editor/IDE (VS Code recommended)
 
 ### Backend Setup
 - [ ] Repository cloned
@@ -81,7 +78,6 @@ Use this checklist to track your setup progress:
 - [ ] Can log in with seeded account
 - [ ] API requests working
 - [ ] No console errors
-- [ ] All features loading correctly
 
 ## 🆘 Need Help?
 
@@ -89,94 +85,6 @@ Use this checklist to track your setup progress:
 - **Configuration Problems**: See [Configuration Guide](./CONFIGURATION.md)
 - **Production Deployment**: See [Deployment Guide](./DEPLOYMENT.md)
 
-## 🔧 Development Tools (Optional but Recommended)
-
-### Backend Development
-- **Laravel Debugbar**: For debugging Laravel applications
-- **Laravel Telescope**: For monitoring application
-- **PHPUnit**: For testing (included)
-
-### Frontend Development
-- **React Developer Tools**: Browser extension for React debugging
-- **Redux DevTools**: For state debugging (if using Redux)
-- **Vite DevTools**: Built into Vite
-
-### Database Tools
-- **TablePlus**: Universal database tool
-- **DBeaver**: Free universal database tool
-- **phpMyAdmin**: Web-based MySQL administration
-
-### API Testing
-- **Postman**: API testing and documentation
-- **Insomnia**: Alternative to Postman
-- **Thunder Client**: VS Code extension
-
-## 🌐 URLs After Setup
-
-| Service | Development URL | Description |
-|---------|----------------|-------------|
-| Frontend | `http://localhost:5173` | React application |
-| Backend API | `http://localhost:8000` | Laravel API |
-| Database | SQLite file or DB server | Database connection |
-
-## 📝 Default Credentials (After Seeding)
-
-After running the database seeders, you should have default accounts:
-
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@dict.gov.ph | password |
-| HR | hr@dict.gov.ph | password |
-| Employee | employee@dict.gov.ph | password |
-
-> ⚠️ **Security**: Change these passwords immediately in production!
-
-## 🔄 Next Steps
-
-After completing the setup:
-
-1. **Explore the Application**: Log in and test features
-2. **Read Module Documentation**: See [Modules](../modules/README.md)
-3. **Review Architecture**: See [General Documentation](../general/README.md)
-4. **Start Development**: Begin working on features
-
-## 🐛 Common Issues
-
-### Port Already in Use
-If port 8000 or 5173 is already in use:
-
-```bash
-# For Laravel (use different port)
-php artisan serve --port=8001
-
-# For Vite (use different port)
-npm run dev -- --port 5174
-```
-
-### Permission Errors
-If you encounter permission errors on storage directories:
-
-```bash
-cd server
-chmod -R 775 storage bootstrap/cache
-```
-
-### Database Connection Issues
-Check your `.env` database configuration and ensure the database server is running.
-
-### npm Install Fails
-Try clearing npm cache:
-
-```bash
-npm cache clean --force
-npm install
-```
-
-## 📞 Support
-
-For more detailed help with specific issues, refer to the individual setup documents or contact the development team.
-
 ---
 
 *Ready to get started? Begin with [Prerequisites](./PREREQUISITES.md)!*
-
